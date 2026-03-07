@@ -1,7 +1,7 @@
 import { useState } from "react";
 
-const GITHUB_URL = "https://github.com/chrislatorres/benzo";
-const RELEASES_URL = "https://github.com/chrislatorres/benzo/releases";
+const GITHUB_URL = "https://github.com/chrisrogers37/benzo";
+const RELEASES_URL = "https://github.com/chrisrogers37/benzo/releases";
 
 const BenzoHybrid = () => {
   const [isActive, setIsActive] = useState(true);
