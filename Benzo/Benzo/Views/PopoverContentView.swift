@@ -1,0 +1,81 @@
+import SwiftUI
+
+struct PopoverContentView: View {
+    @ObservedObject var viewModel: BenzoViewModel
+    @State private var showOptions = false
+
+    var body: some View {
+        if viewModel.needsSetup {
+            SetupView(
+                onSetup: viewModel.runSetup,
+                errorMessage: viewModel.errorMessage
+            )
+        } else {
+            mainView
+        }
+    }
+
+    private var mainView: some View {
+        VStack(spacing: 0) {
+            MasterToggleView(
+                isActive: viewModel.isActive,
+                activeCount: viewModel.activeCount,
+                onToggle: viewModel.toggleMaster
+            )
+
+            Divider().opacity(0.5)
+
+            // Collapsible options
+            HStack {
+                Text("Options")
+                    .font(.system(size: 11, weight: .medium))
+                    .foregroundColor(BenzoTheme.textMuted)
+                Spacer()
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 9, weight: .medium))
+                    .foregroundColor(BenzoTheme.textFaint)
+                    .rotationEffect(.degrees(showOptions ? 90 : 0))
+            }
+            .padding(.horizontal, 20)
+            .padding(.vertical, 10)
+            .frame(maxWidth: .infinity)
+            .contentShape(Rectangle())
+            .onTapGesture {
+                showOptions.toggle()
+            }
+
+            if showOptions {
+                VStack(spacing: 0) {
+                    ForEach(SleepSetting.allCases) { setting in
+                        SettingRowView(
+                            setting: setting,
+                            isEnabled: viewModel.settingStates[setting] ?? false,
+                            isActive: viewModel.isActive,
+                            onToggle: { viewModel.toggleSetting(setting) }
+                        )
+                    }
+                }
+            }
+
+            if let error = viewModel.errorMessage {
+                Text(error)
+                    .font(.system(size: 10))
+                    .foregroundColor(.red)
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 6)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+
+            Divider().opacity(0.3)
+
+            FooterView(
+                launchAtLogin: $viewModel.launchAtLogin,
+                onRevert: viewModel.revertToDefaults,
+                onQuit: { NSApplication.shared.terminate(nil) }
+            )
+        }
+        .frame(width: 320)
+        .fixedSize(horizontal: false, vertical: true)
+        .background(BenzoTheme.surface)
+    }
+}

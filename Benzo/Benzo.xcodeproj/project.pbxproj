@@ -1,0 +1,372 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 56;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		A10000010000000000000001 /* BenzoApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000010000000000000001; };
+		A10000020000000000000002 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000020000000000000002; };
+		A10000030000000000000003 /* SleepSetting.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000030000000000000003; };
+		A10000040000000000000004 /* PMSetState.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000040000000000000004; };
+		A10000050000000000000005 /* OriginalSettingsBackup.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000050000000000000005; };
+		A10000060000000000000006 /* ShellExecutor.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000060000000000000006; };
+		A10000070000000000000007 /* PMSetService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000070000000000000007; };
+		A10000080000000000000008 /* BackupService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000080000000000000008; };
+		A10000090000000000000009 /* BenzoViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000090000000000000009; };
+		A1000010000000000000000A /* PopoverContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000010000000000000000A; };
+		A1000011000000000000000B /* MasterToggleView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000011000000000000000B; };
+		A1000012000000000000000C /* SettingRowView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000012000000000000000C; };
+		A1000013000000000000000D /* FooterView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000013000000000000000D; };
+		A1000014000000000000000E /* BenzoTheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000014000000000000000E; };
+		A1000015000000000000000F /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = A2000015000000000000000F; };
+		A10000160000000000000010 /* SetupView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000170000000000000011; };
+/* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+		A20000010000000000000001 /* BenzoApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BenzoApp.swift; sourceTree = "<group>"; };
+		A20000020000000000000002 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
+		A20000030000000000000003 /* SleepSetting.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SleepSetting.swift; sourceTree = "<group>"; };
+		A20000040000000000000004 /* PMSetState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PMSetState.swift; sourceTree = "<group>"; };
+		A20000050000000000000005 /* OriginalSettingsBackup.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OriginalSettingsBackup.swift; sourceTree = "<group>"; };
+		A20000060000000000000006 /* ShellExecutor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShellExecutor.swift; sourceTree = "<group>"; };
+		A20000070000000000000007 /* PMSetService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PMSetService.swift; sourceTree = "<group>"; };
+		A20000080000000000000008 /* BackupService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BackupService.swift; sourceTree = "<group>"; };
+		A20000090000000000000009 /* BenzoViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BenzoViewModel.swift; sourceTree = "<group>"; };
+		A2000010000000000000000A /* PopoverContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PopoverContentView.swift; sourceTree = "<group>"; };
+		A2000011000000000000000B /* MasterToggleView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MasterToggleView.swift; sourceTree = "<group>"; };
+		A2000012000000000000000C /* SettingRowView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingRowView.swift; sourceTree = "<group>"; };
+		A2000013000000000000000D /* FooterView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FooterView.swift; sourceTree = "<group>"; };
+		A2000014000000000000000E /* BenzoTheme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BenzoTheme.swift; sourceTree = "<group>"; };
+		A2000015000000000000000F /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		A20000160000000000000010 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		A20000170000000000000011 /* SetupView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SetupView.swift; sourceTree = "<group>"; };
+		A30000000000000000000001 /* Benzo.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Benzo.app; sourceTree = BUILT_PRODUCTS_DIR; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		A40000000000000000000001 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		A50000000000000000000000 = {
+			isa = PBXGroup;
+			children = (
+				A50000010000000000000001 /* Benzo */,
+				A50000020000000000000002 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		A50000010000000000000001 /* Benzo */ = {
+			isa = PBXGroup;
+			children = (
+				A50000030000000000000003 /* App */,
+				A50000040000000000000004 /* Models */,
+				A50000050000000000000005 /* Services */,
+				A50000060000000000000006 /* ViewModels */,
+				A50000070000000000000007 /* Views */,
+				A50000080000000000000008 /* Theme */,
+				A50000090000000000000009 /* Resources */,
+				A20000160000000000000010 /* Info.plist */,
+			);
+			path = Benzo;
+			sourceTree = "<group>";
+		};
+		A50000020000000000000002 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				A30000000000000000000001 /* Benzo.app */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		A50000030000000000000003 /* App */ = {
+			isa = PBXGroup;
+			children = (
+				A20000010000000000000001 /* BenzoApp.swift */,
+				A20000020000000000000002 /* AppDelegate.swift */,
+			);
+			path = App;
+			sourceTree = "<group>";
+		};
+		A50000040000000000000004 /* Models */ = {
+			isa = PBXGroup;
+			children = (
+				A20000030000000000000003 /* SleepSetting.swift */,
+				A20000040000000000000004 /* PMSetState.swift */,
+				A20000050000000000000005 /* OriginalSettingsBackup.swift */,
+			);
+			path = Models;
+			sourceTree = "<group>";
+		};
+		A50000050000000000000005 /* Services */ = {
+			isa = PBXGroup;
+			children = (
+				A20000060000000000000006 /* ShellExecutor.swift */,
+				A20000070000000000000007 /* PMSetService.swift */,
+				A20000080000000000000008 /* BackupService.swift */,
+			);
+			path = Services;
+			sourceTree = "<group>";
+		};
+		A50000060000000000000006 /* ViewModels */ = {
+			isa = PBXGroup;
+			children = (
+				A20000090000000000000009 /* BenzoViewModel.swift */,
+			);
+			path = ViewModels;
+			sourceTree = "<group>";
+		};
+		A50000070000000000000007 /* Views */ = {
+			isa = PBXGroup;
+			children = (
+				A2000010000000000000000A /* PopoverContentView.swift */,
+				A2000011000000000000000B /* MasterToggleView.swift */,
+				A2000012000000000000000C /* SettingRowView.swift */,
+				A2000013000000000000000D /* FooterView.swift */,
+				A20000170000000000000011 /* SetupView.swift */,
+			);
+			path = Views;
+			sourceTree = "<group>";
+		};
+		A50000080000000000000008 /* Theme */ = {
+			isa = PBXGroup;
+			children = (
+				A2000014000000000000000E /* BenzoTheme.swift */,
+			);
+			path = Theme;
+			sourceTree = "<group>";
+		};
+		A50000090000000000000009 /* Resources */ = {
+			isa = PBXGroup;
+			children = (
+				A2000015000000000000000F /* Assets.xcassets */,
+			);
+			path = Resources;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		A60000000000000000000001 /* Benzo */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = A80000000000000000000001 /* Build configuration list for PBXNativeTarget "Benzo" */;
+			buildPhases = (
+				A70000000000000000000001 /* Sources */,
+				A40000000000000000000001 /* Frameworks */,
+				A70000010000000000000002 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = Benzo;
+			productName = Benzo;
+			productReference = A30000000000000000000001 /* Benzo.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		A90000000000000000000001 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = 1;
+				LastSwiftUpdateCheck = 1500;
+				LastUpgradeCheck = 1500;
+				TargetAttributes = {
+					A60000000000000000000001 = {
+						CreatedOnToolsVersion = 15.0;
+					};
+				};
+			};
+			buildConfigurationList = A80000010000000000000002 /* Build configuration list for PBXProject "Benzo" */;
+			compatibilityVersion = "Xcode 14.0";
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				Base,
+			);
+			mainGroup = A50000000000000000000000;
+			productRefGroup = A50000020000000000000002 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				A60000000000000000000001 /* Benzo */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		A70000010000000000000002 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				A1000015000000000000000F /* Assets.xcassets in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		A70000000000000000000001 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				A10000010000000000000001 /* BenzoApp.swift in Sources */,
+				A10000020000000000000002 /* AppDelegate.swift in Sources */,
+				A10000030000000000000003 /* SleepSetting.swift in Sources */,
+				A10000040000000000000004 /* PMSetState.swift in Sources */,
+				A10000050000000000000005 /* OriginalSettingsBackup.swift in Sources */,
+				A10000060000000000000006 /* ShellExecutor.swift in Sources */,
+				A10000070000000000000007 /* PMSetService.swift in Sources */,
+				A10000080000000000000008 /* BackupService.swift in Sources */,
+				A10000090000000000000009 /* BenzoViewModel.swift in Sources */,
+				A1000010000000000000000A /* PopoverContentView.swift in Sources */,
+				A1000011000000000000000B /* MasterToggleView.swift in Sources */,
+				A1000012000000000000000C /* SettingRowView.swift in Sources */,
+				A1000013000000000000000D /* FooterView.swift in Sources */,
+				A1000014000000000000000E /* BenzoTheme.swift in Sources */,
+				A10000160000000000000010 /* SetupView.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+		B10000000000000000000001 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+				);
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				MACOSX_DEPLOYMENT_TARGET = 13.0;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				SDKROOT = macosx;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+			};
+			name = Debug;
+		};
+		B10000010000000000000002 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				MACOSX_DEPLOYMENT_TARGET = 13.0;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				SDKROOT = macosx;
+				SWIFT_COMPILATION_MODE = wholemodule;
+			};
+			name = Release;
+		};
+		B10000020000000000000003 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_STYLE = Automatic;
+				COMBINE_HIDPI_IMAGES = YES;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = Benzo/Info.plist;
+				INFOPLIST_KEY_LSUIElement = YES;
+				INFOPLIST_KEY_NSMainNibFile = "";
+				INFOPLIST_KEY_NSPrincipalClass = NSApplication;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				MARKETING_VERSION = 0.1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.benzo.app;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+			};
+			name = Debug;
+		};
+		B10000030000000000000004 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_STYLE = Automatic;
+				COMBINE_HIDPI_IMAGES = YES;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = Benzo/Info.plist;
+				INFOPLIST_KEY_LSUIElement = YES;
+				INFOPLIST_KEY_NSMainNibFile = "";
+				INFOPLIST_KEY_NSPrincipalClass = NSApplication;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				MARKETING_VERSION = 0.1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.benzo.app;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		A80000000000000000000001 /* Build configuration list for PBXNativeTarget "Benzo" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				B10000020000000000000003 /* Debug */,
+				B10000030000000000000004 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		A80000010000000000000002 /* Build configuration list for PBXProject "Benzo" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				B10000000000000000000001 /* Debug */,
+				B10000010000000000000002 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = A90000000000000000000001 /* Project object */;
+}
