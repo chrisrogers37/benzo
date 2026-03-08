@@ -46,6 +46,11 @@ enum PMSetService {
         try ShellExecutor.runWithAdmin(batchCommand)
     }
 
+    /// Force the Mac to sleep immediately
+    static func sleepNow() throws {
+        try ShellExecutor.runWithAdmin("sudo /usr/bin/pmset sleepnow")
+    }
+
     /// Restore all original values from backup
     static func restoreValues(_ backup: OriginalSettingsBackup) throws {
         let relevantKeys = Set(SleepSetting.allCases.flatMap(\.pmsetKeys))
