@@ -6,6 +6,7 @@ const RELEASES_URL = "https://github.com/chrisrogers37/benzo/releases";
 const BenzoHybrid = () => {
   const [isActive, setIsActive] = useState(true);
   const [showDropdown, setShowDropdown] = useState(true);
+  const [showOptions, setShowOptions] = useState(true);
   const [settings, setSettings] = useState({
     hibernateMode: true,
     disablePowerNap: true,
@@ -111,7 +112,7 @@ const BenzoHybrid = () => {
             Benzo
           </span>
         </div>
-        <div style={{ display: "flex", gap: 24, fontSize: 13, color: "#aaa" }}>
+        <div style={{ display: "flex", gap: 16, fontSize: 13, color: "#aaa" }}>
           <a
             href={GITHUB_URL}
             target="_blank"
@@ -140,7 +141,7 @@ const BenzoHybrid = () => {
       {/* Hero */}
       <section
         style={{
-          padding: "72px 48px 36px",
+          padding: "48px 48px 24px",
           maxWidth: 860,
           margin: "0 auto",
           textAlign: "center",
@@ -168,7 +169,7 @@ const BenzoHybrid = () => {
 
         <h1
           style={{
-            fontSize: "clamp(40px, 5.5vw, 68px)",
+            fontSize: "clamp(32px, 7vw, 68px)",
             fontWeight: 300,
             lineHeight: 1.06,
             letterSpacing: "-0.025em",
@@ -197,7 +198,7 @@ const BenzoHybrid = () => {
             lineHeight: 1.7,
             color: "#999",
             maxWidth: 500,
-            margin: "0 auto 52px",
+            margin: "0 auto 40px",
             fontWeight: 400,
           }}
         >
@@ -211,7 +212,8 @@ const BenzoHybrid = () => {
       <section
         style={{
           maxWidth: 388,
-          margin: "0 auto 72px",
+          margin: "0 auto 40px",
+          padding: "0 20px",
           position: "relative",
           zIndex: 10,
         }}
@@ -301,12 +303,12 @@ const BenzoHybrid = () => {
                   <div
                     style={{ fontSize: 13, fontWeight: 600, marginBottom: 2 }}
                   >
-                    Deep Sleep Mode
+                    {isActive ? "Deep Sleep is On" : "Deep Sleep is Off"}
                   </div>
                   <div style={{ fontSize: 11, color: "#bbb" }}>
                     {isActive
-                      ? `${activeCount} protection${activeCount !== 1 ? "s" : ""} active`
-                      : "USB ports will drain battery"}
+                      ? "Sedated. Your Mac can rest."
+                      : "Your Mac is awake."}
                   </div>
                 </div>
                 <div
@@ -339,8 +341,37 @@ const BenzoHybrid = () => {
               </div>
             </div>
 
-            {/* Individual Settings */}
+            {/* Options toggle */}
             {isActive && (
+              <div
+                onClick={() => setShowOptions(!showOptions)}
+                style={{
+                  padding: "9px 20px",
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  cursor: "pointer",
+                  borderBottom: "1px solid rgba(0,0,0,0.04)",
+                }}
+              >
+                <span style={{ fontSize: 12, fontWeight: 500, color: "#999" }}>
+                  Options
+                </span>
+                <span
+                  style={{
+                    fontSize: 10,
+                    color: "#bbb",
+                    transform: showOptions ? "rotate(90deg)" : "rotate(0deg)",
+                    transition: "transform 0.2s ease",
+                  }}
+                >
+                  ▶
+                </span>
+              </div>
+            )}
+
+            {/* Individual Settings */}
+            {isActive && showOptions && (
               <div style={{ padding: "4px 0" }}>
                 {[
                   {
@@ -354,11 +385,6 @@ const BenzoHybrid = () => {
                     desc: "No background syncing during sleep",
                   },
                   {
-                    key: "disableTcpKeepAlive",
-                    label: "Disable TCP Keep-Alive",
-                    desc: "No network wake — disables Find My",
-                  },
-                  {
                     key: "disableProximityWake",
                     label: "Disable Proximity Wake",
                     desc: "iPhone/Watch won't wake Mac",
@@ -367,6 +393,11 @@ const BenzoHybrid = () => {
                     key: "disableUsbWake",
                     label: "Disable USB Wake",
                     desc: "Only power button wakes Mac",
+                  },
+                  {
+                    key: "disableTcpKeepAlive",
+                    label: "Disable TCP Keep-Alive",
+                    desc: "No network wake — disables Find My",
                   },
                 ].map((item) => (
                   <div
@@ -450,7 +481,7 @@ const BenzoHybrid = () => {
                     cursor: "pointer",
                   }}
                 >
-                  Revert to Defaults
+                  Restore System Defaults
                 </span>
                 <span
                   style={{
@@ -471,7 +502,7 @@ const BenzoHybrid = () => {
       <section
         style={{
           maxWidth: 760,
-          margin: "0 auto 72px",
+          margin: "0 auto 48px",
           padding: "0 48px",
           position: "relative",
           zIndex: 10,
@@ -551,7 +582,7 @@ const BenzoHybrid = () => {
       <section
         style={{
           maxWidth: 540,
-          margin: "0 auto 72px",
+          margin: "0 auto 48px",
           padding: "0 48px",
           position: "relative",
           zIndex: 10,
@@ -637,7 +668,7 @@ sudo pmset -a proximitywake 0`}
       <section
         style={{
           maxWidth: 540,
-          margin: "0 auto 72px",
+          margin: "0 auto 48px",
           padding: "0 48px",
           textAlign: "center",
           position: "relative",
