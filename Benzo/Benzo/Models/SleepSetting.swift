@@ -4,7 +4,7 @@ enum SleepSetting: String, CaseIterable, Identifiable {
     case hibernateMode
     case disablePowerNap
     case disableProximityWake
-    case disableUsbWake
+    case disableNetworkWake
     case disableTcpKeepAlive
 
     var id: String { rawValue }
@@ -15,7 +15,7 @@ enum SleepSetting: String, CaseIterable, Identifiable {
         case .disablePowerNap: return "Disable Power Nap"
         case .disableTcpKeepAlive: return "Disable TCP Keep-Alive"
         case .disableProximityWake: return "Disable Proximity Wake"
-        case .disableUsbWake: return "Disable USB Wake"
+        case .disableNetworkWake: return "Disable Network Wake"
         }
     }
 
@@ -25,13 +25,13 @@ enum SleepSetting: String, CaseIterable, Identifiable {
         case .disablePowerNap: return "No background syncing during sleep"
         case .disableTcpKeepAlive: return "No network wake — disables Find My"
         case .disableProximityWake: return "iPhone/Watch won't wake Mac"
-        case .disableUsbWake: return "Only power button wakes Mac"
+        case .disableNetworkWake: return "No Wake-on-LAN from network devices"
         }
     }
 
     var defaultEnabled: Bool {
         switch self {
-        case .hibernateMode, .disablePowerNap, .disableProximityWake, .disableUsbWake:
+        case .hibernateMode, .disablePowerNap, .disableProximityWake, .disableNetworkWake:
             return true
         case .disableTcpKeepAlive:
             return false
@@ -49,7 +49,7 @@ enum SleepSetting: String, CaseIterable, Identifiable {
             return [("tcpkeepalive", "0")]
         case .disableProximityWake:
             return [("proximitywake", "0")]
-        case .disableUsbWake:
+        case .disableNetworkWake:
             return [("womp", "0")]
         }
     }

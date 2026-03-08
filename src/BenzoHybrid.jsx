@@ -12,7 +12,7 @@ const BenzoHybrid = () => {
     disablePowerNap: true,
     disableTcpKeepAlive: false,
     disableProximityWake: true,
-    disableUsbWake: true,
+    disableNetworkWake: true,
   });
 
   const toggleSetting = (key) => {
@@ -35,7 +35,7 @@ const BenzoHybrid = () => {
         fontFamily:
           "'Instrument Sans', 'SF Pro Display', -apple-system, Helvetica, sans-serif",
         color: "#1a1a1a",
-        overflow: "hidden",
+        overflowX: "hidden",
         position: "relative",
       }}
     >
@@ -202,9 +202,9 @@ const BenzoHybrid = () => {
             fontWeight: 400,
           }}
         >
-          Close the lid with your dock plugged in. No fan. No battery drain.
-          No warm laptop in your bag. Benzo forces true hibernation — even
-          with USB devices connected.
+          Leave your dock plugged in. When your Mac sleeps, Benzo forces
+          true hibernation — no fan, no heat, no wear and tear on your
+          battery.
         </p>
       </section>
 
@@ -233,8 +233,6 @@ const BenzoHybrid = () => {
             boxShadow: "0 -1px 0 rgba(0,0,0,0.03)",
           }}
         >
-          <span style={{ fontSize: 11, color: "#c0c0c0" }}>Wi-Fi</span>
-          <span style={{ fontSize: 11, color: "#c0c0c0" }}>9:41 AM</span>
           <div
             onClick={() => setShowDropdown(!showDropdown)}
             style={{
@@ -267,6 +265,8 @@ const BenzoHybrid = () => {
               }}
             />
           </div>
+          <span style={{ fontSize: 11, color: "#c0c0c0" }}>Wi-Fi</span>
+          <span style={{ fontSize: 11, color: "#c0c0c0" }}>9:41 AM</span>
         </div>
 
         {/* Dropdown */}
@@ -341,6 +341,43 @@ const BenzoHybrid = () => {
               </div>
             </div>
 
+            {/* Sleep Now button */}
+            <div style={{ padding: "0 20px 14px" }}>
+              <button
+                style={{
+                  width: "100%",
+                  padding: "10px 0",
+                  borderRadius: 100,
+                  border: "none",
+                  background: pink,
+                  color: "#fff",
+                  fontSize: 12,
+                  fontWeight: 600,
+                  fontFamily: "inherit",
+                  cursor: "pointer",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: 7,
+                  boxShadow: `0 2px 12px rgba(212,116,156,0.2)`,
+                  transition: "box-shadow 0.2s ease",
+                }}
+                onMouseEnter={(e) =>
+                  (e.currentTarget.style.boxShadow =
+                    "0 4px 20px rgba(212,116,156,0.35)")
+                }
+                onMouseLeave={(e) =>
+                  (e.currentTarget.style.boxShadow =
+                    "0 2px 12px rgba(212,116,156,0.2)")
+                }
+              >
+                <span style={{ fontSize: 11 }}>🌙</span>
+                Sleep Now
+              </button>
+            </div>
+
+            <div style={{ borderTop: "1px solid rgba(0,0,0,0.05)" }} />
+
             {/* Options toggle */}
             {isActive && (
               <div
@@ -390,9 +427,9 @@ const BenzoHybrid = () => {
                     desc: "iPhone/Watch won't wake Mac",
                   },
                   {
-                    key: "disableUsbWake",
-                    label: "Disable USB Wake",
-                    desc: "Only power button wakes Mac",
+                    key: "disableNetworkWake",
+                    label: "Disable Network Wake",
+                    desc: "No Wake-on-LAN from network devices",
                   },
                   {
                     key: "disableTcpKeepAlive",
@@ -498,6 +535,33 @@ const BenzoHybrid = () => {
         )}
       </section>
 
+      {/* Scroll affordance */}
+      <div
+        style={{
+          textAlign: "center",
+          margin: "0 auto 32px",
+          position: "relative",
+          zIndex: 10,
+        }}
+      >
+        <div
+          style={{
+            display: "inline-block",
+            animation: "gentleBounce 2.4s ease-in-out infinite",
+            color: "#ccc",
+            fontSize: 18,
+          }}
+        >
+          &#8964;
+        </div>
+        <style>{`
+          @keyframes gentleBounce {
+            0%, 100% { transform: translateY(0); opacity: 0.4; }
+            50% { transform: translateY(6px); opacity: 0.7; }
+          }
+        `}</style>
+      </div>
+
       {/* Feature Grid */}
       <section
         style={{
@@ -522,7 +586,7 @@ const BenzoHybrid = () => {
             },
             {
               title: "Dock-friendly",
-              body: "CalDigit, OWC, Anker — leave it all plugged in. Benzo cuts power when the lid closes.",
+              body: "CalDigit, Plugable, OWC, Anker — leave it all plugged in. Benzo kills power once your Mac drifts into hibernation.",
             },
             {
               title: "One-click revert",
@@ -530,7 +594,7 @@ const BenzoHybrid = () => {
             },
             {
               title: "No more warm bags",
-              body: "Kills Power Nap, TCP keep-alive, proximity wake, and USB wake. Your Mac goes cold.",
+              body: "Kills Power Nap, TCP keep-alive, proximity wake, and network wake. Your Mac goes cold.",
             },
             {
               title: "Granular control",

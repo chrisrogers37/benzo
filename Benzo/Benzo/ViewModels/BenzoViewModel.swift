@@ -16,6 +16,7 @@ final class BenzoViewModel: ObservableObject {
     }
     @Published var needsSetup: Bool = false
     @Published var errorMessage: String?
+    @Published var isSleeping = false
 
     var onStateChange: ((Bool) -> Void)?
     private var isInitialized = false
@@ -92,6 +93,40 @@ final class BenzoViewModel: ObservableObject {
             // Don't change state
         } catch {
             errorMessage = error.localizedDescription
+        }
+    }
+
+    func sleepNow() {
+        isSleeping = true
+        errorMessage = nil
+
+        do {
+            // If Deep Sleep isn't active, enable it first
+            if !isActive {
+                if !BackupService.hasBackup() {
+                    let state = try PMSetService.readCurrentState()
+                    try BackupService.save(state)
+                }
+                let enabled = SleepSetting.allCases.filter { settingStates[$0] == true }
+                try PMSetService.applySettings(enabled)
+                isActive = true
+                onStateChange?(true)
+            }
+
+            // Brief delay to let settings propagate, then sleep
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
+                do {
+                    try PMSetService.sleepNow()
+                } catch {
+                    self?.errorMessage = error.localizedDescription
+                }
+                self?.isSleeping = false
+            }
+        } catch ShellError.userCancelled {
+            isSleeping = false
+        } catch {
+            errorMessage = error.localizedDescription
+            isSleeping = false
         }
     }
 

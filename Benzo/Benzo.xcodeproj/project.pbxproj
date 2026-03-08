@@ -23,6 +23,7 @@
 		A1000014000000000000000E /* BenzoTheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000014000000000000000E; };
 		A1000015000000000000000F /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = A2000015000000000000000F; };
 		A10000160000000000000010 /* SetupView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000170000000000000011; };
+		A10000180000000000000012 /* SleepNowButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000180000000000000012; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -43,6 +44,7 @@
 		A2000015000000000000000F /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		A20000160000000000000010 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		A20000170000000000000011 /* SetupView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SetupView.swift; sourceTree = "<group>"; };
+		A20000180000000000000012 /* SleepNowButton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SleepNowButton.swift; sourceTree = "<group>"; };
 		A30000000000000000000001 /* Benzo.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Benzo.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
@@ -133,6 +135,7 @@
 				A2000012000000000000000C /* SettingRowView.swift */,
 				A2000013000000000000000D /* FooterView.swift */,
 				A20000170000000000000011 /* SetupView.swift */,
+				A20000180000000000000012 /* SleepNowButton.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -237,6 +240,7 @@
 				A1000013000000000000000D /* FooterView.swift in Sources */,
 				A1000014000000000000000E /* BenzoTheme.swift in Sources */,
 				A10000160000000000000010 /* SetupView.swift in Sources */,
+				A10000180000000000000012 /* SleepNowButton.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

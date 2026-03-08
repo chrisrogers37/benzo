@@ -23,6 +23,10 @@ struct PopoverContentView: View {
                 onToggle: viewModel.toggleMaster
             )
 
+            SleepNowButton(isSleeping: viewModel.isSleeping, onSleep: viewModel.sleepNow)
+                .padding(.horizontal, 20)
+                .padding(.bottom, 14)
+
             Divider().opacity(0.5)
 
             // Collapsible options
