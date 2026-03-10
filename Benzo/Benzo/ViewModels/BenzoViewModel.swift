@@ -146,6 +146,36 @@ final class BenzoViewModel: ObservableObject {
         }
     }
 
+    // MARK: - Drift Detection
+
+    func verifyAndCorrectSettings() {
+        guard isActive else { return }
+
+        let enabled = SleepSetting.allCases.filter { settingStates[$0] == true }
+        guard !enabled.isEmpty else { return }
+
+        DispatchQueue.global(qos: .userInitiated).async { [weak self] in
+            guard let currentState = try? PMSetService.readCurrentState() else { return }
+
+            var drifted = false
+            for setting in enabled {
+                for (key, value) in setting.pmsetCommands {
+                    if currentState.values[key] != value {
+                        drifted = true
+                        break
+                    }
+                }
+                if drifted { break }
+            }
+
+            if drifted {
+                DispatchQueue.main.async {
+                    self?.applyCurrentSettings()
+                }
+            }
+        }
+    }
+
     // MARK: - Diagnostics
 
     func loadDiagnostics() {

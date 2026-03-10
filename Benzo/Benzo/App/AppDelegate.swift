@@ -99,6 +99,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
             // Detect ⌥-click for diagnostics
             let optionHeld = NSEvent.modifierFlags.contains(.option)
             viewModel.showDiagnostics = optionHeld
+            viewModel.verifyAndCorrectSettings()
             openPopover()
         }
     }
