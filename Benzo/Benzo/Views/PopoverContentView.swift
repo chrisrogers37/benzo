@@ -10,6 +10,10 @@ struct PopoverContentView: View {
                 onSetup: viewModel.runSetup,
                 errorMessage: viewModel.errorMessage
             )
+        } else if viewModel.showDiagnostics {
+            DiagnosticView(viewModel: viewModel, onBack: {
+                viewModel.showDiagnostics = false
+            })
         } else {
             mainView
         }

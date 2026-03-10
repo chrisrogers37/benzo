@@ -23,7 +23,7 @@ struct FooterView: View {
             .padding(.top, 8)
 
             HStack {
-                Text("v0.1.0")
+                Text("v0.2.0")
                     .font(.system(size: 10))
                     .foregroundColor(Color(hex: "d0d0d0"))
 

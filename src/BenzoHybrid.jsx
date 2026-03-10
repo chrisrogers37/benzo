@@ -7,6 +7,7 @@ const BenzoHybrid = () => {
   const [isActive, setIsActive] = useState(true);
   const [showDropdown, setShowDropdown] = useState(true);
   const [showOptions, setShowOptions] = useState(true);
+  const [showDiagnostics, setShowDiagnostics] = useState(false);
   const [settings, setSettings] = useState({
     hibernateMode: true,
     disablePowerNap: true,
@@ -234,7 +235,15 @@ const BenzoHybrid = () => {
           }}
         >
           <div
-            onClick={() => setShowDropdown(!showDropdown)}
+            onClick={(e) => {
+              if (e.altKey) {
+                setShowDiagnostics(!showDiagnostics);
+                setShowDropdown(true);
+              } else {
+                setShowDiagnostics(false);
+                setShowDropdown(!showDropdown);
+              }
+            }}
             style={{
               cursor: "pointer",
               padding: "2px 8px",
@@ -285,255 +294,588 @@ const BenzoHybrid = () => {
               transition: "box-shadow 0.6s ease",
             }}
           >
-            {/* Master Toggle */}
-            <div
-              style={{
-                padding: "16px 20px",
-                borderBottom: "1px solid rgba(0,0,0,0.05)",
-              }}
-            >
-              <div
-                style={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  alignItems: "center",
-                }}
-              >
-                <div>
-                  <div
-                    style={{ fontSize: 13, fontWeight: 600, marginBottom: 2 }}
+            {showDiagnostics ? (
+              <>
+                {/* Diagnostics Header */}
+                <div
+                  style={{
+                    padding: "10px 16px",
+                    borderBottom: "1px solid rgba(0,0,0,0.05)",
+                    display: "flex",
+                    alignItems: "center",
+                  }}
+                >
+                  <span
+                    onClick={() => setShowDiagnostics(false)}
+                    style={{
+                      fontSize: 11,
+                      fontWeight: 500,
+                      color: pink,
+                      cursor: "pointer",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 3,
+                    }}
                   >
-                    {isActive ? "Deep Sleep is On" : "Deep Sleep is Off"}
+                    <span style={{ fontSize: 9 }}>&#9664;</span> Back
+                  </span>
+                  <span
+                    style={{
+                      flex: 1,
+                      textAlign: "center",
+                      fontSize: 13,
+                      fontWeight: 600,
+                    }}
+                  >
+                    Diagnostics
+                  </span>
+                  <span style={{ width: 40 }} />
+                </div>
+
+                {/* Recent Sleep Sessions */}
+                <div style={{ padding: "10px 16px 6px" }}>
+                  <div
+                    style={{
+                      fontSize: 9,
+                      fontWeight: 700,
+                      color: "#ccc",
+                      textTransform: "uppercase",
+                      letterSpacing: "0.08em",
+                      marginBottom: 6,
+                    }}
+                  >
+                    Recent Sleep Sessions
                   </div>
-                  <div style={{ fontSize: 11, color: "#bbb" }}>
-                    {isActive
-                      ? "Sedated. Your Mac can rest."
-                      : "Your Mac is awake."}
+                  {[
+                    {
+                      sleep: "Mar 8, 11:30 PM",
+                      wake: "7:15 AM",
+                      dur: "7h 45m",
+                      bat: "85% → 83%",
+                      delta: "-2%",
+                    },
+                    {
+                      sleep: "Mar 7, 10:45 PM",
+                      wake: "6:30 AM",
+                      dur: "7h 45m",
+                      bat: "92% → 91%",
+                      delta: "-1%",
+                    },
+                    {
+                      sleep: "Mar 6, 11:15 PM",
+                      wake: "7:00 AM",
+                      dur: "7h 45m",
+                      bat: "78% → 78%",
+                      delta: "0%",
+                    },
+                  ].map((s, i) => (
+                    <div
+                      key={i}
+                      style={{ marginBottom: 6, lineHeight: 1.5 }}
+                    >
+                      <div style={{ fontSize: 11, fontWeight: 500 }}>
+                        {s.sleep}{" "}
+                        <span style={{ color: "#ccc" }}>→</span> {s.wake}
+                      </div>
+                      <div style={{ fontSize: 10, color: "#bbb" }}>
+                        {s.dur} ·{" "}
+                        <span
+                          style={{
+                            fontFamily:
+                              "'IBM Plex Mono', 'SF Mono', monospace",
+                          }}
+                        >
+                          {s.bat}
+                        </span>{" "}
+                        <span
+                          style={{
+                            color:
+                              s.delta === "0%"
+                                ? "#4caf50"
+                                : "#bbb",
+                          }}
+                        >
+                          ({s.delta})
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                <div
+                  style={{ borderTop: "1px solid rgba(0,0,0,0.04)" }}
+                />
+
+                {/* Last Wake Reason */}
+                <div style={{ padding: "10px 16px" }}>
+                  <div
+                    style={{
+                      fontSize: 9,
+                      fontWeight: 700,
+                      color: "#ccc",
+                      textTransform: "uppercase",
+                      letterSpacing: "0.08em",
+                      marginBottom: 6,
+                    }}
+                  >
+                    Last Wake Reason
+                  </div>
+                  <div
+                    style={{
+                      fontSize: 12,
+                      fontWeight: 500,
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 6,
+                    }}
+                  >
+                    <span style={{ color: pink }}>⏻</span> Lid Opened
                   </div>
                 </div>
+
                 <div
-                  onClick={() => setIsActive(!isActive)}
+                  style={{ borderTop: "1px solid rgba(0,0,0,0.04)" }}
+                />
+
+                {/* Connected USB Devices */}
+                <div style={{ padding: "10px 16px" }}>
+                  <div
+                    style={{
+                      fontSize: 9,
+                      fontWeight: 700,
+                      color: "#ccc",
+                      textTransform: "uppercase",
+                      letterSpacing: "0.08em",
+                      marginBottom: 6,
+                    }}
+                  >
+                    Connected USB Devices
+                  </div>
+                  {[
+                    { name: "CalDigit TS4", power: "500" },
+                    { name: "Apple Keyboard", power: "100" },
+                  ].map((d, i) => (
+                    <div
+                      key={i}
+                      style={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        fontSize: 11,
+                        padding: "3px 0",
+                      }}
+                    >
+                      <span style={{ fontWeight: 500 }}>{d.name}</span>
+                      <span
+                        style={{
+                          color: "#bbb",
+                          fontFamily:
+                            "'IBM Plex Mono', 'SF Mono', monospace",
+                          fontSize: 10,
+                        }}
+                      >
+                        {d.power} mA
+                      </span>
+                    </div>
+                  ))}
+                </div>
+
+                <div
+                  style={{ borderTop: "1px solid rgba(0,0,0,0.04)" }}
+                />
+
+                {/* Settings Verification */}
+                <div style={{ padding: "10px 16px 6px" }}>
+                  <div
+                    style={{
+                      fontSize: 9,
+                      fontWeight: 700,
+                      color: "#ccc",
+                      textTransform: "uppercase",
+                      letterSpacing: "0.08em",
+                      marginBottom: 6,
+                    }}
+                  >
+                    Settings Verification
+                  </div>
+                  {[
+                    {
+                      key: "hibernatemode",
+                      val: "25",
+                      ok: true,
+                    },
+                    { key: "standby", val: "0", ok: true },
+                    { key: "autopoweroff", val: "0", ok: true },
+                    { key: "powernap", val: "0", ok: true },
+                    {
+                      key: "tcpkeepalive",
+                      val: "1",
+                      expected: "0",
+                      ok: false,
+                    },
+                    { key: "proximitywake", val: "0", ok: true },
+                    { key: "womp", val: "0", ok: true },
+                  ].map((s, i) => (
+                    <div
+                      key={i}
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 5,
+                        fontSize: 11,
+                        padding: "2px 0",
+                        fontFamily:
+                          "'IBM Plex Mono', 'SF Mono', monospace",
+                      }}
+                    >
+                      <span
+                        style={{
+                          color: s.ok ? "#4caf50" : "#e53935",
+                          fontSize: 10,
+                        }}
+                      >
+                        {s.ok ? "✓" : "✗"}
+                      </span>
+                      <span style={{ color: "#666" }}>{s.key}</span>
+                      <span style={{ flex: 1 }} />
+                      <span
+                        style={{
+                          color: s.ok ? "#bbb" : "#e53935",
+                        }}
+                      >
+                        {s.val}
+                      </span>
+                      {!s.ok && (
+                        <span
+                          style={{
+                            fontSize: 9,
+                            color: "rgba(229,57,53,0.6)",
+                          }}
+                        >
+                          (exp {s.expected})
+                        </span>
+                      )}
+                    </div>
+                  ))}
+                  <div
+                    style={{
+                      textAlign: "center",
+                      fontSize: 10,
+                      fontWeight: 500,
+                      color: "#e53935",
+                      marginTop: 6,
+                      paddingBottom: 4,
+                      fontFamily: "inherit",
+                    }}
+                  >
+                    1 setting drifted
+                  </div>
+                </div>
+              </>
+            ) : (
+              <>
+                {/* Master Toggle */}
+                <div
                   style={{
-                    width: 44,
-                    height: 26,
-                    borderRadius: 13,
-                    background: isActive ? pink : "#ddd",
-                    cursor: "pointer",
-                    position: "relative",
-                    transition: "all 0.3s ease",
-                    boxShadow: isActive ? pinkGlow : "none",
+                    padding: "16px 20px",
+                    borderBottom: "1px solid rgba(0,0,0,0.05)",
                   }}
                 >
                   <div
                     style={{
-                      width: 20,
-                      height: 20,
-                      borderRadius: "50%",
-                      background: "#fff",
-                      position: "absolute",
-                      top: 3,
-                      left: isActive ? 21 : 3,
-                      transition: "left 0.2s ease",
-                      boxShadow: "0 1px 4px rgba(0,0,0,0.12)",
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "center",
                     }}
-                  />
+                  >
+                    <div>
+                      <div
+                        style={{
+                          fontSize: 13,
+                          fontWeight: 600,
+                          marginBottom: 2,
+                        }}
+                      >
+                        {isActive
+                          ? "Deep Sleep is On"
+                          : "Deep Sleep is Off"}
+                      </div>
+                      <div style={{ fontSize: 11, color: "#bbb" }}>
+                        {isActive
+                          ? "Sedated. Your Mac can rest."
+                          : "Your Mac is awake."}
+                      </div>
+                    </div>
+                    <div
+                      onClick={() => setIsActive(!isActive)}
+                      style={{
+                        width: 44,
+                        height: 26,
+                        borderRadius: 13,
+                        background: isActive ? pink : "#ddd",
+                        cursor: "pointer",
+                        position: "relative",
+                        transition: "all 0.3s ease",
+                        boxShadow: isActive ? pinkGlow : "none",
+                      }}
+                    >
+                      <div
+                        style={{
+                          width: 20,
+                          height: 20,
+                          borderRadius: "50%",
+                          background: "#fff",
+                          position: "absolute",
+                          top: 3,
+                          left: isActive ? 21 : 3,
+                          transition: "left 0.2s ease",
+                          boxShadow: "0 1px 4px rgba(0,0,0,0.12)",
+                        }}
+                      />
+                    </div>
+                  </div>
                 </div>
-              </div>
-            </div>
 
-            {/* Sleep Now button */}
-            <div style={{ padding: "0 20px 14px" }}>
-              <button
-                style={{
-                  width: "100%",
-                  padding: "10px 0",
-                  borderRadius: 100,
-                  border: "none",
-                  background: pink,
-                  color: "#fff",
-                  fontSize: 12,
-                  fontWeight: 600,
-                  fontFamily: "inherit",
-                  cursor: "pointer",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  gap: 7,
-                  boxShadow: `0 2px 12px rgba(212,116,156,0.2)`,
-                  transition: "box-shadow 0.2s ease",
-                }}
-                onMouseEnter={(e) =>
-                  (e.currentTarget.style.boxShadow =
-                    "0 4px 20px rgba(212,116,156,0.35)")
-                }
-                onMouseLeave={(e) =>
-                  (e.currentTarget.style.boxShadow =
-                    "0 2px 12px rgba(212,116,156,0.2)")
-                }
-              >
-                <span style={{ fontSize: 11 }}>🌙</span>
-                Sleep Now
-              </button>
-            </div>
+                {/* Sleep Now button */}
+                <div style={{ padding: "0 20px 14px" }}>
+                  <button
+                    style={{
+                      width: "100%",
+                      padding: "10px 0",
+                      borderRadius: 100,
+                      border: "none",
+                      background: pink,
+                      color: "#fff",
+                      fontSize: 12,
+                      fontWeight: 600,
+                      fontFamily: "inherit",
+                      cursor: "pointer",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      gap: 7,
+                      boxShadow: `0 2px 12px rgba(212,116,156,0.2)`,
+                      transition: "box-shadow 0.2s ease",
+                    }}
+                    onMouseEnter={(e) =>
+                      (e.currentTarget.style.boxShadow =
+                        "0 4px 20px rgba(212,116,156,0.35)")
+                    }
+                    onMouseLeave={(e) =>
+                      (e.currentTarget.style.boxShadow =
+                        "0 2px 12px rgba(212,116,156,0.2)")
+                    }
+                  >
+                    <span style={{ fontSize: 11 }}>🌙</span>
+                    Sleep Now
+                  </button>
+                </div>
 
-            <div style={{ borderTop: "1px solid rgba(0,0,0,0.05)" }} />
+                <div
+                  style={{ borderTop: "1px solid rgba(0,0,0,0.05)" }}
+                />
 
-            {/* Options toggle */}
-            {isActive && (
-              <div
-                onClick={() => setShowOptions(!showOptions)}
-                style={{
-                  padding: "9px 20px",
-                  display: "flex",
-                  justifyContent: "space-between",
-                  alignItems: "center",
-                  cursor: "pointer",
-                  borderBottom: "1px solid rgba(0,0,0,0.04)",
-                }}
-              >
-                <span style={{ fontSize: 12, fontWeight: 500, color: "#999" }}>
-                  Options
-                </span>
-                <span
-                  style={{
-                    fontSize: 10,
-                    color: "#bbb",
-                    transform: showOptions ? "rotate(90deg)" : "rotate(0deg)",
-                    transition: "transform 0.2s ease",
-                  }}
-                >
-                  ▶
-                </span>
-              </div>
-            )}
-
-            {/* Individual Settings */}
-            {isActive && showOptions && (
-              <div style={{ padding: "4px 0" }}>
-                {[
-                  {
-                    key: "hibernateMode",
-                    label: "Hibernate Mode",
-                    desc: "Full power-off, USB ports disabled",
-                  },
-                  {
-                    key: "disablePowerNap",
-                    label: "Disable Power Nap",
-                    desc: "No background syncing during sleep",
-                  },
-                  {
-                    key: "disableProximityWake",
-                    label: "Disable Proximity Wake",
-                    desc: "iPhone/Watch won't wake Mac",
-                  },
-                  {
-                    key: "disableNetworkWake",
-                    label: "Disable Network Wake",
-                    desc: "No Wake-on-LAN from network devices",
-                  },
-                  {
-                    key: "disableTcpKeepAlive",
-                    label: "Disable TCP Keep-Alive",
-                    desc: "No network wake — disables Find My",
-                  },
-                ].map((item) => (
+                {/* Options toggle */}
+                {isActive && (
                   <div
-                    key={item.key}
-                    onClick={() => toggleSetting(item.key)}
+                    onClick={() => setShowOptions(!showOptions)}
                     style={{
                       padding: "9px 20px",
                       display: "flex",
                       justifyContent: "space-between",
                       alignItems: "center",
                       cursor: "pointer",
-                      transition: "background 0.15s",
+                      borderBottom: "1px solid rgba(0,0,0,0.04)",
                     }}
-                    onMouseEnter={(e) =>
-                      (e.currentTarget.style.background = settings[item.key]
-                        ? "rgba(212,116,156,0.03)"
-                        : "rgba(0,0,0,0.02)")
-                    }
-                    onMouseLeave={(e) =>
-                      (e.currentTarget.style.background = "transparent")
-                    }
                   >
-                    <div>
-                      <div style={{ fontSize: 12.5, fontWeight: 500 }}>
-                        {item.label}
-                      </div>
-                      <div
-                        style={{
-                          fontSize: 10.5,
-                          color: "#c0c0c0",
-                          marginTop: 1,
-                        }}
-                      >
-                        {item.desc}
-                      </div>
-                    </div>
-                    <div
+                    <span
                       style={{
-                        width: 15,
-                        height: 15,
-                        borderRadius: 3,
-                        border: settings[item.key]
-                          ? "none"
-                          : "1.5px solid #ddd",
-                        background: settings[item.key] ? pink : "transparent",
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        fontSize: 9,
-                        color: "#fff",
-                        transition: "all 0.2s ease",
-                        flexShrink: 0,
-                        boxShadow: settings[item.key]
-                          ? "0 0 8px rgba(212,116,156,0.25)"
-                          : "none",
+                        fontSize: 12,
+                        fontWeight: 500,
+                        color: "#999",
                       }}
                     >
-                      {settings[item.key] && "✓"}
-                    </div>
+                      Options
+                    </span>
+                    <span
+                      style={{
+                        fontSize: 10,
+                        color: "#bbb",
+                        transform: showOptions
+                          ? "rotate(90deg)"
+                          : "rotate(0deg)",
+                        transition: "transform 0.2s ease",
+                      }}
+                    >
+                      ▶
+                    </span>
                   </div>
-                ))}
-              </div>
-            )}
+                )}
 
-            {/* Footer */}
-            <div
-              style={{
-                padding: "10px 20px",
-                borderTop: "1px solid rgba(0,0,0,0.04)",
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
-              }}
-            >
-              <span style={{ fontSize: 10, color: "#d0d0d0" }}>v0.1.0</span>
-              <div style={{ display: "flex", gap: 14 }}>
-                <span
+                {/* Individual Settings */}
+                {isActive && showOptions && (
+                  <div style={{ padding: "4px 0" }}>
+                    {[
+                      {
+                        key: "hibernateMode",
+                        label: "Hibernate Mode",
+                        desc: "Full power-off, USB ports disabled",
+                      },
+                      {
+                        key: "disablePowerNap",
+                        label: "Disable Power Nap",
+                        desc: "No background syncing during sleep",
+                      },
+                      {
+                        key: "disableProximityWake",
+                        label: "Disable Proximity Wake",
+                        desc: "iPhone/Watch won't wake Mac",
+                      },
+                      {
+                        key: "disableNetworkWake",
+                        label: "Disable Network Wake",
+                        desc: "No Wake-on-LAN from network devices",
+                      },
+                      {
+                        key: "disableTcpKeepAlive",
+                        label: "Disable TCP Keep-Alive",
+                        desc: "No network wake — disables Find My",
+                      },
+                    ].map((item) => (
+                      <div
+                        key={item.key}
+                        onClick={() => toggleSetting(item.key)}
+                        style={{
+                          padding: "9px 20px",
+                          display: "flex",
+                          justifyContent: "space-between",
+                          alignItems: "center",
+                          cursor: "pointer",
+                          transition: "background 0.15s",
+                        }}
+                        onMouseEnter={(e) =>
+                          (e.currentTarget.style.background =
+                            settings[item.key]
+                              ? "rgba(212,116,156,0.03)"
+                              : "rgba(0,0,0,0.02)")
+                        }
+                        onMouseLeave={(e) =>
+                          (e.currentTarget.style.background =
+                            "transparent")
+                        }
+                      >
+                        <div>
+                          <div
+                            style={{
+                              fontSize: 12.5,
+                              fontWeight: 500,
+                            }}
+                          >
+                            {item.label}
+                          </div>
+                          <div
+                            style={{
+                              fontSize: 10.5,
+                              color: "#c0c0c0",
+                              marginTop: 1,
+                            }}
+                          >
+                            {item.desc}
+                          </div>
+                        </div>
+                        <div
+                          style={{
+                            width: 15,
+                            height: 15,
+                            borderRadius: 3,
+                            border: settings[item.key]
+                              ? "none"
+                              : "1.5px solid #ddd",
+                            background: settings[item.key]
+                              ? pink
+                              : "transparent",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            fontSize: 9,
+                            color: "#fff",
+                            transition: "all 0.2s ease",
+                            flexShrink: 0,
+                            boxShadow: settings[item.key]
+                              ? "0 0 8px rgba(212,116,156,0.25)"
+                              : "none",
+                          }}
+                        >
+                          {settings[item.key] && "✓"}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* Footer */}
+                <div
                   style={{
-                    fontSize: 10,
-                    color: "#bbb",
-                    cursor: "pointer",
+                    padding: "10px 20px",
+                    borderTop: "1px solid rgba(0,0,0,0.04)",
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
                   }}
                 >
-                  Restore System Defaults
-                </span>
-                <span
-                  style={{
-                    fontSize: 10,
-                    color: "#bbb",
-                    cursor: "pointer",
-                  }}
-                >
-                  Quit
-                </span>
-              </div>
-            </div>
+                  <span style={{ fontSize: 10, color: "#d0d0d0" }}>
+                    v0.2.0
+                  </span>
+                  <div style={{ display: "flex", gap: 14 }}>
+                    <span
+                      style={{
+                        fontSize: 10,
+                        color: "#bbb",
+                        cursor: "pointer",
+                      }}
+                    >
+                      Restore System Defaults
+                    </span>
+                    <span
+                      style={{
+                        fontSize: 10,
+                        color: "#bbb",
+                        cursor: "pointer",
+                      }}
+                    >
+                      Quit
+                    </span>
+                  </div>
+                </div>
+              </>
+            )}
           </div>
         )}
       </section>
+
+      {/* Diagnostics hint */}
+      <div
+        style={{
+          textAlign: "center",
+          margin: "0 auto 16px",
+          position: "relative",
+          zIndex: 10,
+        }}
+      >
+        <span
+          onClick={() => {
+            setShowDiagnostics(!showDiagnostics);
+            setShowDropdown(true);
+          }}
+          style={{
+            fontSize: 11,
+            color: showDiagnostics ? pink : "#ccc",
+            cursor: "pointer",
+            transition: "color 0.3s ease",
+          }}
+        >
+          {showDiagnostics ? "Viewing diagnostics" : "⌥-click pill for diagnostics"}
+        </span>
+      </div>
 
       {/* Scroll affordance */}
       <div

@@ -18,6 +18,14 @@ final class BenzoViewModel: ObservableObject {
     @Published var errorMessage: String?
     @Published var isSleeping = false
 
+    // Diagnostics
+    @Published var showDiagnostics = false
+    @Published var isLoadingDiagnostics = false
+    @Published var sleepSessions: [SleepSession] = []
+    @Published var lastWakeReason: String?
+    @Published var usbDevices: [USBDevice] = []
+    @Published var settingsVerification: [SettingVerification] = []
+
     var onStateChange: ((Bool) -> Void)?
     private var isInitialized = false
 
@@ -127,6 +135,28 @@ final class BenzoViewModel: ObservableObject {
         } catch {
             errorMessage = error.localizedDescription
             isSleeping = false
+        }
+    }
+
+    // MARK: - Diagnostics
+
+    func loadDiagnostics() {
+        isLoadingDiagnostics = true
+        DispatchQueue.global(qos: .userInitiated).async { [weak self] in
+            let (sessions, wakeReason) = DiagnosticService.fetchSleepData()
+            let usb = DiagnosticService.fetchUSBDevices()
+
+            DispatchQueue.main.async {
+                guard let self else { return }
+                self.sleepSessions = sessions
+                self.lastWakeReason = wakeReason.map { SleepSession.humanReadableReason($0) }
+                self.usbDevices = usb
+                self.settingsVerification = DiagnosticService.verifySettings(
+                    settingStates: self.settingStates,
+                    isActive: self.isActive
+                )
+                self.isLoadingDiagnostics = false
+            }
         }
     }
 
