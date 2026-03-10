@@ -79,7 +79,7 @@ struct PopoverContentView: View {
             FooterView(
                 launchAtLogin: $viewModel.launchAtLogin,
                 onRevert: viewModel.revertToDefaults,
-                onQuit: { NSApplication.shared.terminate(nil) }
+                onQuit: viewModel.quit
             )
         }
         .frame(width: 320)

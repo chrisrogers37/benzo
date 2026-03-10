@@ -1,3 +1,4 @@
+import AppKit
 import Foundation
 import ServiceManagement
 
@@ -102,6 +103,13 @@ final class BenzoViewModel: ObservableObject {
         } catch {
             errorMessage = error.localizedDescription
         }
+    }
+
+    func quit() {
+        if isActive, let backup = try? BackupService.load() {
+            try? PMSetService.restoreValues(backup)
+        }
+        NSApplication.shared.terminate(nil)
     }
 
     func sleepNow() {
