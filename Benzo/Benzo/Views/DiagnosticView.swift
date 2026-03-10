@@ -107,8 +107,8 @@ struct DiagnosticView: View {
                         .foregroundColor(delta == 0 ? Color.green : BenzoTheme.textMuted)
                 }
 
-                if let reason = session.wakeReason {
-                    Text(SleepSession(sleepTime: session.sleepTime, wakeTime: session.wakeTime, batteryAtSleep: nil, batteryAtWake: nil, wakeReason: reason).humanWakeReason)
+                if session.wakeReason != nil {
+                    Text(session.humanWakeReason)
                         .font(.system(size: 10))
                         .foregroundColor(BenzoTheme.textFaint)
                 }

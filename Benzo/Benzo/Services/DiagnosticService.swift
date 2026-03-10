@@ -11,10 +11,10 @@ struct SettingVerification: Identifiable {
 
 enum DiagnosticService {
 
-    // MARK: - Sleep Sessions
+    // MARK: - Sleep Data (single log parse)
 
-    static func fetchSleepSessions(limit: Int = 5) -> [SleepSession] {
-        guard let log = try? ShellExecutor.run("pmset -g log") else { return [] }
+    static func fetchSleepData(limit: Int = 5) -> (sessions: [SleepSession], lastWakeReason: String?) {
+        guard let log = try? ShellExecutor.run("pmset -g log") else { return ([], nil) }
 
         var sleepEvents: [(date: Date, battery: Int?)] = []
         var wakeEvents: [(date: Date, battery: Int?, reason: String?)] = []
@@ -37,10 +37,19 @@ enum DiagnosticService {
             }
         }
 
-        // Pair sleep events with their subsequent wake events
+        // Extract last wake reason before pairing consumes events
+        let lastWakeReason = wakeEvents.last?.reason
+
+        // Pair sleep events with subsequent wake events chronologically
+        // Both lists are already in chronological order from the log
         var sessions: [SleepSession] = []
-        for sleep in sleepEvents.reversed() {
-            let matchingWake = wakeEvents.first(where: { $0.date > sleep.date })
+        var wakeIndex = 0
+        for sleep in sleepEvents {
+            // Advance wake index past any wake events before this sleep
+            while wakeIndex < wakeEvents.count && wakeEvents[wakeIndex].date <= sleep.date {
+                wakeIndex += 1
+            }
+            let matchingWake = wakeIndex < wakeEvents.count ? wakeEvents[wakeIndex] : nil
             sessions.append(SleepSession(
                 sleepTime: sleep.date,
                 wakeTime: matchingWake?.date,
@@ -48,29 +57,14 @@ enum DiagnosticService {
                 batteryAtWake: matchingWake?.battery,
                 wakeReason: matchingWake?.reason
             ))
-            if let wake = matchingWake {
-                wakeEvents.removeAll(where: { $0.date == wake.date })
-            }
-            if sessions.count >= limit { break }
-        }
-
-        return sessions
-    }
-
-    // MARK: - Last Wake Reason
-
-    static func fetchLastWakeReason() -> String? {
-        guard let log = try? ShellExecutor.run("pmset -g log") else { return nil }
-
-        // Search from the end for the most recent wake event
-        let lines = log.components(separatedBy: .newlines).reversed()
-        for line in lines {
-            let trimmed = line.trimmingCharacters(in: .whitespaces)
-            if trimmed.contains("Wake from") || trimmed.contains("\tWake\t") {
-                return extractWakeReason(from: trimmed)
+            if matchingWake != nil {
+                wakeIndex += 1
             }
         }
-        return nil
+
+        // Return most recent sessions first, limited to requested count
+        let recentSessions = Array(sessions.suffix(limit).reversed())
+        return (recentSessions, lastWakeReason)
     }
 
     // MARK: - USB Devices
@@ -117,15 +111,12 @@ enum DiagnosticService {
     // MARK: - Private
 
     private static func parsePMSetLogLine(_ line: String, dateFormatter: DateFormatter) -> (date: Date, battery: Int?)? {
-        // Extract date from the beginning of the line (format: "2024-03-15 22:30:15 -0500")
-        // The date portion is roughly the first 25 characters
         let components = line.split(separator: " ", maxSplits: 3)
         guard components.count >= 3 else { return nil }
 
         let dateString = "\(components[0]) \(components[1]) \(components[2])"
         guard let date = dateFormatter.date(from: dateString) else { return nil }
 
-        // Extract battery charge from "Charge:XX%"
         var battery: Int?
         if let range = line.range(of: "Charge:") {
             let afterCharge = line[range.upperBound...]
@@ -137,10 +128,8 @@ enum DiagnosticService {
     }
 
     private static func extractWakeReason(from line: String) -> String? {
-        // Look for "due to <reason>" pattern
         if let range = line.range(of: "due to ") {
             let afterDue = line[range.upperBound...]
-            // Take until next whitespace cluster or end of meaningful text
             let reason = afterDue.prefix(while: { $0 != "\t" })
                 .trimmingCharacters(in: .whitespaces)
             if !reason.isEmpty { return reason }
@@ -149,16 +138,14 @@ enum DiagnosticService {
     }
 
     private static func collectUSBDevices(from dict: [String: Any], into devices: inout [USBDevice]) {
-        // Skip root bus entries, only collect actual devices
-        if let name = dict["_name"] as? String,
-           !name.contains("Bus") || dict["manufacturer"] != nil {
-            let power = dict["bus_power_used"] as? String
-            if dict["manufacturer"] != nil || dict["vendor_id"] != nil {
+        if let name = dict["_name"] as? String {
+            let hasIdentity = dict["manufacturer"] != nil || dict["vendor_id"] != nil
+            if hasIdentity {
+                let power = dict["bus_power_used"] as? String
                 devices.append(USBDevice(name: name, busPowerUsed: power))
             }
         }
 
-        // Recurse into child items
         if let items = dict["_items"] as? [[String: Any]] {
             for item in items {
                 collectUSBDevices(from: item, into: &devices)

@@ -143,16 +143,13 @@ final class BenzoViewModel: ObservableObject {
     func loadDiagnostics() {
         isLoadingDiagnostics = true
         DispatchQueue.global(qos: .userInitiated).async { [weak self] in
-            let sessions = DiagnosticService.fetchSleepSessions()
-            let wakeReason = DiagnosticService.fetchLastWakeReason()
+            let (sessions, wakeReason) = DiagnosticService.fetchSleepData()
             let usb = DiagnosticService.fetchUSBDevices()
 
             DispatchQueue.main.async {
                 guard let self else { return }
                 self.sleepSessions = sessions
-                self.lastWakeReason = wakeReason.flatMap {
-                    SleepSession(sleepTime: Date(), wakeTime: nil, batteryAtSleep: nil, batteryAtWake: nil, wakeReason: $0).humanWakeReason
-                }
+                self.lastWakeReason = wakeReason.map { SleepSession.humanReadableReason($0) }
                 self.usbDevices = usb
                 self.settingsVerification = DiagnosticService.verifySettings(
                     settingStates: self.settingStates,

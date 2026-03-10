@@ -30,6 +30,10 @@ struct SleepSession: Identifiable {
 
     var humanWakeReason: String {
         guard let reason = wakeReason else { return "Unknown" }
+        return Self.humanReadableReason(reason)
+    }
+
+    static func humanReadableReason(_ reason: String) -> String {
         if reason.contains("LidOpen") || reason.contains("Lid Open") { return "Lid Opened" }
         if reason.contains("PowerButton") || reason.contains("User") { return "Power Button" }
         if reason.contains("OHC") || reason.contains("EHC") || reason.contains("XHC") || reason.contains("USB") { return "USB Device" }
