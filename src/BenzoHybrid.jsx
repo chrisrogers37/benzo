@@ -8,6 +8,7 @@ const BenzoHybrid = () => {
   const [showDropdown, setShowDropdown] = useState(true);
   const [showOptions, setShowOptions] = useState(true);
   const [showDiagnostics, setShowDiagnostics] = useState(false);
+  const [showGatekeeper, setShowGatekeeper] = useState(false);
   const [settings, setSettings] = useState({
     hibernateMode: true,
     disablePowerNap: true,
@@ -1122,6 +1123,96 @@ sudo pmset -a proximitywake 0`}
           >
             View on GitHub →
           </a>
+        </div>
+      </section>
+
+      {/* Gatekeeper note */}
+      <section
+        style={{
+          maxWidth: 540,
+          margin: "0 auto 48px",
+          padding: "0 48px",
+          textAlign: "center",
+          position: "relative",
+          zIndex: 10,
+        }}
+      >
+        <div
+          onClick={() => setShowGatekeeper(!showGatekeeper)}
+          style={{
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 6,
+            padding: "7px 24px",
+            borderRadius: 100,
+            background: showGatekeeper
+              ? pinkSoft
+              : "rgba(212,116,156,0.04)",
+            border: `1px solid ${
+              showGatekeeper ? pinkBorder : "rgba(212,116,156,0.08)"
+            }`,
+            cursor: "pointer",
+            transition: "all 0.3s ease",
+            fontSize: 11,
+            color: showGatekeeper ? pink : "rgba(212,116,156,0.5)",
+            fontWeight: 500,
+            letterSpacing: "0.02em",
+          }}
+        >
+          <span
+            style={{
+              fontSize: 9,
+              transition: "transform 0.3s ease",
+              transform: showGatekeeper ? "rotate(90deg)" : "rotate(0deg)",
+            }}
+          >
+            ▶
+          </span>
+          macOS says "unidentified developer"?
+        </div>
+
+        <div
+          style={{
+            maxHeight: showGatekeeper ? 200 : 0,
+            opacity: showGatekeeper ? 1 : 0,
+            overflow: "hidden",
+            transition: "max-height 0.4s ease, opacity 0.3s ease, margin 0.4s ease",
+            marginTop: showGatekeeper ? 16 : 0,
+          }}
+        >
+          <div
+            style={{
+              background: "#fff",
+              border: `1px solid ${pinkBorder}`,
+              borderRadius: 10,
+              padding: "16px 20px",
+              textAlign: "left",
+              fontSize: 12,
+              color: "#999",
+              lineHeight: 1.7,
+            }}
+          >
+            Benzo isn't notarized yet — macOS Gatekeeper will block it.
+            To open it, right-click the app and choose{" "}
+            <strong style={{ color: "#666" }}>Open</strong>, or run:
+            <pre
+              style={{
+                fontFamily: "'IBM Plex Mono', 'SF Mono', monospace",
+                fontSize: 11,
+                color: pink,
+                background: pinkSoft,
+                borderRadius: 6,
+                padding: "8px 12px",
+                margin: "10px 0 4px",
+                overflowX: "auto",
+              }}
+            >
+              xattr -d com.apple.quarantine /Applications/Benzo.app
+            </pre>
+            <span style={{ fontSize: 11, color: "#bbb" }}>
+              This is standard for open-source Mac apps distributed outside the App Store.
+            </span>
+          </div>
         </div>
       </section>
 
