@@ -824,7 +824,7 @@ const BenzoHybrid = () => {
                   }}
                 >
                   <span style={{ fontSize: 10, color: "#d0d0d0" }}>
-                    v0.2.0
+                    v0.2.1
                   </span>
                   <div style={{ display: "flex", gap: 14 }}>
                     <span

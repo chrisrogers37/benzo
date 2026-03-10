@@ -4,6 +4,8 @@ All notable changes to Benzo are documented here.
 
 ## [Unreleased]
 
+## [0.2.1] - 2026-03-10
+
 ### Added
 - **Drift detection** — On popover open, Benzo reads `pmset -g` and re-applies settings if they've drifted from expected values (e.g., changed by another tool or macOS update). Only runs when deep sleep is active.
 

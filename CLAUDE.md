@@ -44,7 +44,7 @@ This file provides project-specific guidance for Claude Code. Update this file w
 
 **Benzo** is a macOS menubar app that forces true hibernation (`hibernatemode 25`). Landing page built with React/Vite, deployed on Vercel.
 
-**Version**: 0.2.0
+**Version**: 0.2.1
 
 ### Architecture
 
