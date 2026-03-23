@@ -1,7 +1,8 @@
 # Phase 01: Shell Command Hardening
 
-**Status:** 🔧 IN PROGRESS
+**Status:** ✅ COMPLETE
 **Started:** 2026-03-21
+**Completed:** 2026-03-21
 **PR title:** `security: validate pmset values before shell interpolation`
 **Severity:** MEDIUM
 **Effort:** Small (< 1 hour)
