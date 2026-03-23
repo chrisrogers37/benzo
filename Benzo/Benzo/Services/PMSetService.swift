@@ -1,5 +1,16 @@
 import Foundation
 
+enum PMSetError: LocalizedError {
+    case invalidBackupData(key: String)
+
+    var errorDescription: String? {
+        switch self {
+        case .invalidBackupData(let key):
+            return "Backup data for '\(key)' is invalid. Delete ~/Library/Application Support/Benzo/original-pmset.json and re-activate."
+        }
+    }
+}
+
 enum PMSetService {
     /// Read current pmset values
     static func readCurrentState() throws -> PMSetState {
@@ -35,6 +46,9 @@ enum PMSetService {
             for setting in disabledSettings {
                 for key in setting.pmsetKeys {
                     if let originalValue = backup.values[key] {
+                        guard isValidPMSetParam(key, originalValue) else {
+                            throw PMSetError.invalidBackupData(key: key)
+                        }
                         commands.append("/usr/bin/pmset -a \(key) \(originalValue)")
                     }
                 }
@@ -44,6 +58,14 @@ enum PMSetService {
         guard !commands.isEmpty else { return }
         let batchCommand = commands.map { "sudo \($0)" }.joined(separator: " && ")
         try ShellExecutor.runWithAdmin(batchCommand)
+    }
+
+    /// Validate that a pmset key and value are safe for shell interpolation.
+    private static func isValidPMSetParam(_ key: String, _ value: String) -> Bool {
+        let letters = CharacterSet.letters
+        let digits = CharacterSet.decimalDigits
+        return !key.isEmpty && key.unicodeScalars.allSatisfy(letters.contains)
+            && !value.isEmpty && value.unicodeScalars.allSatisfy(digits.contains)
     }
 
     /// Force the Mac to sleep immediately
@@ -57,6 +79,9 @@ enum PMSetService {
         var commands: [String] = []
 
         for (key, value) in backup.values where relevantKeys.contains(key) {
+            guard isValidPMSetParam(key, value) else {
+                throw PMSetError.invalidBackupData(key: key)
+            }
             commands.append("/usr/bin/pmset -a \(key) \(value)")
         }
 
