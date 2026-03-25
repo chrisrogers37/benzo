@@ -31,6 +31,23 @@ struct PopoverContentView: View {
                 .padding(.horizontal, 20)
                 .padding(.bottom, 14)
 
+            if viewModel.isActive && !viewModel.sleepBlockers.isEmpty {
+                let names = viewModel.sleepBlockers.map(\.displayName).joined(separator: ", ")
+                VStack(spacing: 2) {
+                    HStack(spacing: 4) {
+                        Image(systemName: "exclamationmark.triangle")
+                            .font(.system(size: 9))
+                        Text("\(viewModel.sleepBlockers.count) app\(viewModel.sleepBlockers.count == 1 ? "" : "s") may prevent sleep:")
+                            .font(.system(size: 11))
+                    }
+                    Text(names)
+                        .font(.system(size: 10))
+                }
+                .foregroundColor(BenzoTheme.textMuted)
+                .padding(.horizontal, 20)
+                .padding(.bottom, 10)
+            }
+
             Divider().opacity(0.5)
 
             // Collapsible options

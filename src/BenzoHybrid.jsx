@@ -671,6 +671,33 @@ const BenzoHybrid = () => {
                   </button>
                 </div>
 
+                {/* Sleep blocker warning */}
+                {isActive && (
+                  <div
+                    style={{
+                      padding: "0 20px 10px",
+                      textAlign: "center",
+                    }}
+                  >
+                    <div
+                      style={{
+                        fontSize: 11,
+                        color: "#999",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        gap: 4,
+                      }}
+                    >
+                      <span style={{ fontSize: 9 }}>⚠</span>
+                      1 app may prevent sleep:
+                    </div>
+                    <div style={{ fontSize: 10, color: "#999" }}>
+                      caffeinate
+                    </div>
+                  </div>
+                )}
+
                 <div
                   style={{ borderTop: "1px solid rgba(0,0,0,0.05)" }}
                 />
