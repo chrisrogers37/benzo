@@ -89,4 +89,10 @@ enum PMSetService {
         let batchCommand = commands.map { "sudo \($0)" }.joined(separator: " && ")
         try ShellExecutor.runWithAdmin(batchCommand)
     }
+
+    /// Kill caffeinate processes owned by the current user
+    @discardableResult
+    static func killCaffeinateProcesses() -> Bool {
+        return (try? ShellExecutor.run("pkill caffeinate")) != nil
+    }
 }

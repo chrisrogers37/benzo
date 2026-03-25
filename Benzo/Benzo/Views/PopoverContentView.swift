@@ -27,7 +27,13 @@ struct PopoverContentView: View {
                 onToggle: viewModel.toggleMaster
             )
 
-            SleepNowButton(isSleeping: viewModel.isSleeping, onSleep: viewModel.sleepNow)
+            SleepNowButton(
+                isSleeping: viewModel.isSleeping,
+                sleepTimerRemaining: viewModel.sleepTimerRemaining,
+                onSleep: viewModel.sleepNow,
+                onTimedSleep: viewModel.scheduleSleep,
+                onCancelTimer: viewModel.cancelScheduledSleep
+            )
                 .padding(.horizontal, 20)
                 .padding(.bottom, 14)
 
