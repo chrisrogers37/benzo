@@ -95,6 +95,14 @@ enum DiagnosticService {
 
     private static let filteredProcesses: Set<String> = ["WindowServer", "useractivityd", "powerd"]
 
+    private static let friendlyNames: [String: String] = [
+        "sharingd": "Handoff",
+        "coreaudiod": "Audio",
+        "caffeinate": "caffeinate",
+        "bluetoothd": "Bluetooth",
+        "mDNSResponder": "Bonjour",
+    ]
+
     static func fetchSleepBlockers() -> [SleepBlocker] {
         guard let output = try? ShellExecutor.run("pmset -g assertions") else { return [] }
 
@@ -112,7 +120,7 @@ enum DiagnosticService {
             guard !seen.contains(processName) else { continue }
             seen.insert(processName)
 
-            let displayName = extractAssertionName(from: trimmed) ?? processName
+            let displayName = friendlyNames[processName] ?? processName
             blockers.append(SleepBlocker(processName: processName, displayName: displayName))
         }
 
