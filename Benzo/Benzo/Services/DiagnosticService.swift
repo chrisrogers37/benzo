@@ -1,5 +1,11 @@
 import Foundation
 
+struct SleepBlocker: Identifiable {
+    let id = UUID()
+    let processName: String
+    let displayName: String
+}
+
 struct SettingVerification: Identifiable {
     let id = UUID()
     let setting: SleepSetting
@@ -85,6 +91,34 @@ enum DiagnosticService {
         return devices
     }
 
+    // MARK: - Sleep Blockers
+
+    private static let filteredProcesses: Set<String> = ["WindowServer", "useractivityd", "powerd"]
+
+    static func fetchSleepBlockers() -> [SleepBlocker] {
+        guard let output = try? ShellExecutor.run("pmset -g assertions") else { return [] }
+
+        var seen = Set<String>()
+        var blockers: [SleepBlocker] = []
+
+        for line in output.components(separatedBy: .newlines) {
+            let trimmed = line.trimmingCharacters(in: .whitespaces)
+            guard trimmed.contains("PreventUserIdleSystemSleep") || trimmed.contains("PreventSystemSleep") else {
+                continue
+            }
+
+            guard let processName = extractProcessName(from: trimmed) else { continue }
+            guard !filteredProcesses.contains(processName) else { continue }
+            guard !seen.contains(processName) else { continue }
+            seen.insert(processName)
+
+            let displayName = extractAssertionName(from: trimmed) ?? processName
+            blockers.append(SleepBlocker(processName: processName, displayName: displayName))
+        }
+
+        return blockers
+    }
+
     // MARK: - Settings Verification
 
     static func verifySettings(settingStates: [SleepSetting: Bool], isActive: Bool) -> [SettingVerification] {
@@ -135,6 +169,24 @@ enum DiagnosticService {
             if !reason.isEmpty { return reason }
         }
         return nil
+    }
+
+    /// Extract process name from "pid NNN(processName):" pattern
+    private static func extractProcessName(from line: String) -> String? {
+        guard let openParen = line.firstIndex(of: "("),
+              let closeParen = line.firstIndex(of: ")"),
+              openParen < closeParen else { return nil }
+        let name = String(line[line.index(after: openParen)..<closeParen])
+        return name.isEmpty ? nil : name
+    }
+
+    /// Extract the named assertion label from 'named: "..."'
+    private static func extractAssertionName(from line: String) -> String? {
+        guard let range = line.range(of: "named: \"") else { return nil }
+        let afterNamed = line[range.upperBound...]
+        guard let endQuote = afterNamed.firstIndex(of: "\"") else { return nil }
+        let name = String(afterNamed[afterNamed.startIndex..<endQuote])
+        return name.isEmpty ? nil : name
     }
 
     private static func collectUSBDevices(from dict: [String: Any], into devices: inout [USBDevice]) {

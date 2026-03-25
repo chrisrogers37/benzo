@@ -26,6 +26,7 @@ final class BenzoViewModel: ObservableObject {
     @Published var lastWakeReason: String?
     @Published var usbDevices: [USBDevice] = []
     @Published var settingsVerification: [SettingVerification] = []
+    @Published var sleepBlockers: [SleepBlocker] = []
 
     var onStateChange: ((Bool) -> Void)?
     private var isInitialized = false
@@ -149,7 +150,12 @@ final class BenzoViewModel: ObservableObject {
     // MARK: - Drift Detection
 
     func verifyAndCorrectSettings() {
-        guard isActive else { return }
+        guard isActive else {
+            if !sleepBlockers.isEmpty {
+                sleepBlockers = []
+            }
+            return
+        }
 
         let enabled = SleepSetting.allCases.filter { settingStates[$0] == true }
         guard !enabled.isEmpty else { return }
@@ -168,10 +174,13 @@ final class BenzoViewModel: ObservableObject {
                 if drifted { break }
             }
 
-            if drifted {
-                DispatchQueue.main.async {
+            let blockers = DiagnosticService.fetchSleepBlockers()
+
+            DispatchQueue.main.async {
+                if drifted {
                     self?.applyCurrentSettings()
                 }
+                self?.sleepBlockers = blockers
             }
         }
     }
