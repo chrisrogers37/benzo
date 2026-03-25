@@ -62,11 +62,11 @@ struct SleepNowButton: View {
 
     private var timerPills: some View {
         HStack(spacing: 8) {
-            ForEach([5, 15, 30], id: \.self) { minutes in
+            ForEach([5, 15, 30, 60], id: \.self) { minutes in
                 Text("\(minutes)m")
                     .font(.system(size: 11, weight: .semibold))
                     .foregroundColor(BenzoTheme.accent)
-                    .padding(.horizontal, 12)
+                    .padding(.horizontal, 10)
                     .padding(.vertical, 4)
                     .background(Capsule().fill(Color.white.opacity(0.9)))
                     .onTapGesture {

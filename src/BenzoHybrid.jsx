@@ -690,7 +690,7 @@ const BenzoHybrid = () => {
                           alignItems: "center",
                         }}
                       >
-                        {[5, 15, 30].map((m) => (
+                        {[5, 15, 30, 60].map((m) => (
                           <span
                             key={m}
                             style={{
