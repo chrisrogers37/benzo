@@ -27,9 +27,11 @@ final class BenzoViewModel: ObservableObject {
     @Published var usbDevices: [USBDevice] = []
     @Published var settingsVerification: [SettingVerification] = []
     @Published var sleepBlockers: [SleepBlocker] = []
+    @Published var sleepTimerRemaining: TimeInterval?
 
     var onStateChange: ((Bool) -> Void)?
     private var isInitialized = false
+    private var sleepTimer: Timer?
 
     init() {
         let savedActive = UserDefaults.standard.bool(forKey: "isActive")
@@ -145,6 +147,38 @@ final class BenzoViewModel: ObservableObject {
             errorMessage = error.localizedDescription
             isSleeping = false
         }
+    }
+
+    // MARK: - Timed Sleep
+
+    func scheduleSleep(after seconds: TimeInterval) {
+        cancelScheduledSleep()
+        let fireDate = Date().addingTimeInterval(seconds)
+        sleepTimerRemaining = seconds
+
+        sleepTimer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] timer in
+            guard let self else { timer.invalidate(); return }
+            let remaining = fireDate.timeIntervalSinceNow
+            if remaining <= 0 {
+                timer.invalidate()
+                self.sleepTimer = nil
+                self.sleepTimerRemaining = nil
+                self.executeSleepWithBlockerKill()
+            } else {
+                self.sleepTimerRemaining = remaining
+            }
+        }
+    }
+
+    func cancelScheduledSleep() {
+        sleepTimer?.invalidate()
+        sleepTimer = nil
+        sleepTimerRemaining = nil
+    }
+
+    private func executeSleepWithBlockerKill() {
+        PMSetService.killCaffeinateProcesses()
+        sleepNow()
     }
 
     // MARK: - Drift Detection

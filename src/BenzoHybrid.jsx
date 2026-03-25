@@ -9,6 +9,7 @@ const BenzoHybrid = () => {
   const [showOptions, setShowOptions] = useState(true);
   const [showDiagnostics, setShowDiagnostics] = useState(false);
   const [showGatekeeper, setShowGatekeeper] = useState(false);
+  const [sleepButtonState, setSleepButtonState] = useState("default"); // "default" | "picker" | "countdown"
   const [settings, setSettings] = useState({
     hibernateMode: true,
     disablePowerNap: true,
@@ -636,9 +637,18 @@ const BenzoHybrid = () => {
                   </div>
                 </div>
 
-                {/* Sleep Now button */}
+                {/* Sleep Now button — cycles: default → picker → countdown → default */}
                 <div style={{ padding: "0 20px 14px" }}>
                   <button
+                    onClick={() =>
+                      setSleepButtonState((prev) =>
+                        prev === "default"
+                          ? "picker"
+                          : prev === "picker"
+                            ? "countdown"
+                            : "default",
+                      )
+                    }
                     style={{
                       width: "100%",
                       padding: "10px 0",
@@ -655,7 +665,7 @@ const BenzoHybrid = () => {
                       justifyContent: "center",
                       gap: 7,
                       boxShadow: `0 2px 12px rgba(212,116,156,0.2)`,
-                      transition: "box-shadow 0.2s ease",
+                      transition: "all 0.2s ease",
                     }}
                     onMouseEnter={(e) =>
                       (e.currentTarget.style.boxShadow =
@@ -666,8 +676,43 @@ const BenzoHybrid = () => {
                         "0 2px 12px rgba(212,116,156,0.2)")
                     }
                   >
-                    <span style={{ fontSize: 11 }}>🌙</span>
-                    Sleep Now
+                    {sleepButtonState === "default" && (
+                      <>
+                        <span style={{ fontSize: 11 }}>🌙</span>
+                        Sleep Now
+                      </>
+                    )}
+                    {sleepButtonState === "picker" && (
+                      <span
+                        style={{
+                          display: "flex",
+                          gap: 8,
+                          alignItems: "center",
+                        }}
+                      >
+                        {[5, 15, 30].map((m) => (
+                          <span
+                            key={m}
+                            style={{
+                              fontSize: 11,
+                              fontWeight: 600,
+                              color: pink,
+                              background: "rgba(255,255,255,0.9)",
+                              padding: "4px 12px",
+                              borderRadius: 100,
+                            }}
+                          >
+                            {m}m
+                          </span>
+                        ))}
+                      </span>
+                    )}
+                    {sleepButtonState === "countdown" && (
+                      <>
+                        <span style={{ fontSize: 11 }}>💤</span>
+                        Sleeping in 4:32
+                      </>
+                    )}
                   </button>
                 </div>
 
