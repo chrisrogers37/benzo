@@ -16,22 +16,57 @@ enum ShellError: LocalizedError {
 
 enum ShellExecutor {
     private static let sudoersPath = "/etc/sudoers.d/benzo"
+    private static let sudoersVersionKey = "sudoersRuleVersion"
+
+    /// Bump when the sudoers rule body changes to trigger migration on next launch.
+    static let currentSudoersRuleVersion = 2
 
     /// Check if passwordless pmset access is installed
     static var isSetupComplete: Bool {
         FileManager.default.fileExists(atPath: sudoersPath)
     }
 
+    /// True when an old narrower-than-current rule should be re-installed.
+    static var needsSudoersUpdate: Bool {
+        guard isSetupComplete else { return false }
+        return UserDefaults.standard.integer(forKey: sudoersVersionKey) < currentSudoersRuleVersion
+    }
+
     /// One-time setup: install sudoers rule granting passwordless pmset access
+    /// for exactly the subcommands Benzo uses. Validated with `visudo -cf` before
+    /// install so a malformed rule never lands in /etc/sudoers.d/.
     static func installSudoersRule() throws {
-        let rule = "%admin ALL=(root) NOPASSWD: /usr/bin/pmset\n"
-        let command = "echo '\(rule)' > \(sudoersPath) && chmod 0440 \(sudoersPath)"
-        try runWithOsascript(command)
+        let rule = buildSudoersRule()
+        let script = """
+        set -e
+        tmp=$(/usr/bin/mktemp /tmp/benzo-sudoers.XXXXXX)
+        /bin/cat > "$tmp" <<'BENZO_SUDOERS'
+        \(rule)
+        BENZO_SUDOERS
+        /usr/sbin/visudo -cf "$tmp"
+        /usr/bin/install -m 0440 -o root -g wheel "$tmp" \(sudoersPath)
+        /bin/rm -f "$tmp"
+        """
+        try runWithOsascript(script)
+        UserDefaults.standard.set(currentSudoersRuleVersion, forKey: sudoersVersionKey)
     }
 
     /// Remove the sudoers rule (for uninstall/cleanup)
     static func removeSudoersRule() throws {
         try runWithOsascript("rm -f \(sudoersPath)")
+        UserDefaults.standard.removeObject(forKey: sudoersVersionKey)
+    }
+
+    /// Build the sudoers rule body from `SleepSetting.allCases` so the allowlist
+    /// stays in sync with the keys Benzo actually writes.
+    private static func buildSudoersRule() -> String {
+        let keys = SleepSetting.allCases.flatMap(\.pmsetKeys).sorted()
+        var entries = ["/usr/bin/pmset sleepnow"]
+        entries.append(contentsOf: keys.map { "/usr/bin/pmset -a \($0) [0-9]*" })
+        return """
+        Cmnd_Alias BENZO_PMSET = \(entries.joined(separator: ", "))
+        %admin ALL=(root) NOPASSWD: BENZO_PMSET
+        """
     }
 
     /// Run a shell command without privileges

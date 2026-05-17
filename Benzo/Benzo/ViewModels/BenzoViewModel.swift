@@ -58,6 +58,12 @@ final class BenzoViewModel: ObservableObject {
 
         self.needsSetup = !ShellExecutor.isSetupComplete
         self.isInitialized = true
+
+        if ShellExecutor.needsSudoersUpdate {
+            DispatchQueue.main.async {
+                try? ShellExecutor.installSudoersRule()
+            }
+        }
     }
 
     func runSetup() {

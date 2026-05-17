@@ -140,7 +140,7 @@ npm run build        # Production build
 - `womp` = Wake-on-LAN (network wake), NOT physical USB device wake. Labeled "Disable Network Wake" in the app.
 - There is no pmset key to disable physical USB wake during normal sleep. Protection comes from `hibernatemode 25` cutting power to USB ports after hibernation completes.
 - Between `pmset sleepnow` and full hibernation, there's a brief window where the Mac is in normal sleep and USB devices could still wake it.
-- The sudoers rule (`/etc/sudoers.d/benzo`) grants passwordless access to all `pmset` subcommands including `sleepnow`.
+- The sudoers rule (`/etc/sudoers.d/benzo`) grants passwordless access to a narrow allowlist of `pmset` invocations only: `pmset sleepnow` and `pmset -a <key> [0-9]*` for the keys defined in `SleepSetting.allCases.flatMap(\.pmsetKeys)`. Generated at install time from `SleepSetting`, validated with `visudo -cf` before install, versioned via `sudoersRuleVersion` in `UserDefaults` for migration.
 
 ### Distribution
 
