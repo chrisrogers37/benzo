@@ -20,7 +20,7 @@ enum DiagnosticService {
     // MARK: - Sleep Data (single log parse)
 
     static func fetchSleepData(limit: Int = 5) -> (sessions: [SleepSession], lastWakeReason: String?) {
-        guard let log = try? ShellExecutor.run("pmset -g log") else { return ([], nil) }
+        guard let log = try? ShellExecutor.runDirect("/usr/bin/pmset", ["-g", "log"]) else { return ([], nil) }
 
         var sleepEvents: [(date: Date, battery: Int?)] = []
         var wakeEvents: [(date: Date, battery: Int?, reason: String?)] = []
@@ -76,7 +76,7 @@ enum DiagnosticService {
     // MARK: - USB Devices
 
     static func fetchUSBDevices() -> [USBDevice] {
-        guard let json = try? ShellExecutor.run("system_profiler SPUSBDataType -json") else { return [] }
+        guard let json = try? ShellExecutor.runDirect("/usr/sbin/system_profiler", ["SPUSBDataType", "-json"]) else { return [] }
         guard let data = json.data(using: .utf8) else { return [] }
 
         guard let root = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
@@ -104,7 +104,7 @@ enum DiagnosticService {
     ]
 
     static func fetchSleepBlockers() -> [SleepBlocker] {
-        guard let output = try? ShellExecutor.run("pmset -g assertions") else { return [] }
+        guard let output = try? ShellExecutor.runDirect("/usr/bin/pmset", ["-g", "assertions"]) else { return [] }
 
         var seen = Set<String>()
         var blockers: [SleepBlocker] = []

@@ -12,33 +12,28 @@ enum PMSetError: LocalizedError {
 }
 
 enum PMSetService {
+    private static let pmsetPath = "/usr/bin/pmset"
+
     /// Read current pmset values
     static func readCurrentState() throws -> PMSetState {
-        let output = try ShellExecutor.run("pmset -g")
+        let output = try ShellExecutor.runDirect(pmsetPath, ["-g"])
         return PMSetState(parsing: output)
     }
 
-    /// Apply enabled settings
+    /// Apply enabled settings. First failure aborts the rest.
     static func applySettings(_ enabledSettings: [SleepSetting]) throws {
-        var commands: [String] = []
         for setting in enabledSettings {
             for (key, value) in setting.pmsetCommands {
-                commands.append("/usr/bin/pmset -a \(key) \(value)")
+                try ShellExecutor.runDirectWithSudo(pmsetPath, ["-a", key, value])
             }
         }
-
-        guard !commands.isEmpty else { return }
-        let batchCommand = commands.map { "sudo \($0)" }.joined(separator: " && ")
-        try ShellExecutor.runWithAdmin(batchCommand)
     }
 
     /// Apply enabled settings and restore original values for disabled ones
     static func applySettingsWithRestore(_ enabledSettings: [SleepSetting], disabledSettings: [SleepSetting], backup: OriginalSettingsBackup?) throws {
-        var commands: [String] = []
-
         for setting in enabledSettings {
             for (key, value) in setting.pmsetCommands {
-                commands.append("/usr/bin/pmset -a \(key) \(value)")
+                try ShellExecutor.runDirectWithSudo(pmsetPath, ["-a", key, value])
             }
         }
 
@@ -49,18 +44,15 @@ enum PMSetService {
                         guard isValidPMSetParam(key, originalValue) else {
                             throw PMSetError.invalidBackupData(key: key)
                         }
-                        commands.append("/usr/bin/pmset -a \(key) \(originalValue)")
+                        try ShellExecutor.runDirectWithSudo(pmsetPath, ["-a", key, originalValue])
                     }
                 }
             }
         }
-
-        guard !commands.isEmpty else { return }
-        let batchCommand = commands.map { "sudo \($0)" }.joined(separator: " && ")
-        try ShellExecutor.runWithAdmin(batchCommand)
     }
 
-    /// Validate that a pmset key and value are safe for shell interpolation.
+    /// Defense-in-depth: backup data is user-influenced via the JSON file on disk,
+    /// so still validate format even though argv exec defangs shell injection.
     private static func isValidPMSetParam(_ key: String, _ value: String) -> Bool {
         let letters = CharacterSet.letters
         let digits = CharacterSet.decimalDigits
@@ -70,29 +62,24 @@ enum PMSetService {
 
     /// Force the Mac to sleep immediately
     static func sleepNow() throws {
-        try ShellExecutor.runWithAdmin("sudo /usr/bin/pmset sleepnow")
+        try ShellExecutor.runDirectWithSudo(pmsetPath, ["sleepnow"])
     }
 
     /// Restore all original values from backup
     static func restoreValues(_ backup: OriginalSettingsBackup) throws {
         let relevantKeys = Set(SleepSetting.allCases.flatMap(\.pmsetKeys))
-        var commands: [String] = []
 
         for (key, value) in backup.values where relevantKeys.contains(key) {
             guard isValidPMSetParam(key, value) else {
                 throw PMSetError.invalidBackupData(key: key)
             }
-            commands.append("/usr/bin/pmset -a \(key) \(value)")
+            try ShellExecutor.runDirectWithSudo(pmsetPath, ["-a", key, value])
         }
-
-        guard !commands.isEmpty else { return }
-        let batchCommand = commands.map { "sudo \($0)" }.joined(separator: " && ")
-        try ShellExecutor.runWithAdmin(batchCommand)
     }
 
     /// Kill caffeinate processes owned by the current user
     @discardableResult
     static func killCaffeinateProcesses() -> Bool {
-        return (try? ShellExecutor.run("pkill caffeinate")) != nil
+        return (try? ShellExecutor.runDirect("/usr/bin/pkill", ["caffeinate"])) != nil
     }
 }
