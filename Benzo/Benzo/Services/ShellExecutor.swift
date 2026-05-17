@@ -26,10 +26,25 @@ enum ShellExecutor {
         FileManager.default.fileExists(atPath: sudoersPath)
     }
 
-    /// True when an old narrower-than-current rule should be re-installed.
+    /// True when the sudoers file is missing, an older version, or no longer functional.
+    /// The functional probe catches manual edits / corruption that the version marker can't see.
     static var needsSudoersUpdate: Bool {
         guard isSetupComplete else { return false }
-        return UserDefaults.standard.integer(forKey: sudoersVersionKey) < currentSudoersRuleVersion
+        if UserDefaults.standard.integer(forKey: sudoersVersionKey) < currentSudoersRuleVersion {
+            return true
+        }
+        return !sudoersRuleFunctional()
+    }
+
+    /// Cheap probe: does `sudo -n /usr/bin/pmset -g` succeed?
+    /// If yes, the NOPASSWD rule is in place and grants the access we expect.
+    private static func sudoersRuleFunctional() -> Bool {
+        do {
+            _ = try runDirect("/usr/bin/sudo", ["-n", "/usr/bin/pmset", "-g"])
+            return true
+        } catch {
+            return false
+        }
     }
 
     /// One-time setup: install sudoers rule granting passwordless pmset access
@@ -69,13 +84,15 @@ enum ShellExecutor {
         """
     }
 
-    /// Run a shell command without privileges
-    static func run(_ command: String) throws -> String {
+    /// Run an executable directly with arguments — no shell, no interpolation.
+    /// stderr is merged into the returned output so failure messages survive.
+    @discardableResult
+    static func runDirect(_ executable: String, _ args: [String] = []) throws -> String {
         let process = Process()
         let pipe = Pipe()
 
-        process.executableURL = URL(fileURLWithPath: "/bin/sh")
-        process.arguments = ["-c", command]
+        process.executableURL = URL(fileURLWithPath: executable)
+        process.arguments = args
         process.standardOutput = pipe
         process.standardError = pipe
 
@@ -83,39 +100,21 @@ enum ShellExecutor {
         process.waitUntilExit()
 
         let data = pipe.fileHandleForReading.readDataToEndOfFile()
-        return String(data: data, encoding: .utf8) ?? ""
+        let output = String(data: data, encoding: .utf8) ?? ""
+
+        if process.terminationStatus != 0 {
+            throw ShellError.executionFailed(output.trimmingCharacters(in: .whitespacesAndNewlines))
+        }
+        return output
     }
 
-    /// Run a pmset command using sudo (no password needed after setup)
-    static func runWithAdmin(_ command: String) throws {
-        if isSetupComplete {
-            try runWithSudo(command)
-        } else {
-            try runWithOsascript(command)
-        }
+    /// Run an executable via passwordless sudo. `-n` makes sudo fail fast rather
+    /// than prompting, so a missing/broken sudoers rule surfaces as an error.
+    static func runDirectWithSudo(_ executable: String, _ args: [String] = []) throws {
+        _ = try runDirect("/usr/bin/sudo", ["-n", executable] + args)
     }
 
     // MARK: - Private
-
-    /// Run via sudo (passwordless after sudoers rule installed)
-    private static func runWithSudo(_ command: String) throws {
-        let process = Process()
-        let errorPipe = Pipe()
-
-        process.executableURL = URL(fileURLWithPath: "/bin/sh")
-        process.arguments = ["-c", command]
-        process.standardOutput = FileHandle.nullDevice
-        process.standardError = errorPipe
-
-        try process.run()
-        process.waitUntilExit()
-
-        if process.terminationStatus != 0 {
-            let errorData = errorPipe.fileHandleForReading.readDataToEndOfFile()
-            let errorMessage = String(data: errorData, encoding: .utf8) ?? "Unknown error"
-            throw ShellError.executionFailed(errorMessage.trimmingCharacters(in: .whitespacesAndNewlines))
-        }
-    }
 
     /// Run via osascript (prompts for password)
     private static func runWithOsascript(_ command: String) throws {
