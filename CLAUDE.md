@@ -97,6 +97,8 @@ Casks/benzo.rb                   — Homebrew cask formula
 3. Run landing page: `npm run dev`
 4. Before creating PR: verify both app build and landing page render correctly
 
+PRs run `npm audit --audit-level=moderate` and gitleaks in CI (`.github/workflows/security.yml`); both must pass before merge.
+
 ## Commands Reference
 
 ```sh
