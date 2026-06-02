@@ -637,33 +637,19 @@ const BenzoHybrid = () => {
                   </div>
                 </div>
 
-                {/* Sleep Now button — cycles: default → picker → countdown → default */}
+                {/* Sleep Now button — split capsule: [Sleep Now | timer] */}
                 <div style={{ padding: "0 20px 14px" }}>
-                  <button
-                    onClick={() =>
-                      setSleepButtonState((prev) =>
-                        prev === "default"
-                          ? "picker"
-                          : prev === "picker"
-                            ? "countdown"
-                            : "default",
-                      )
-                    }
+                  <div
                     style={{
                       width: "100%",
-                      padding: "10px 0",
                       borderRadius: 100,
-                      border: "none",
                       background: pink,
                       color: "#fff",
                       fontSize: 12,
                       fontWeight: 600,
-                      fontFamily: "inherit",
-                      cursor: "pointer",
                       display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      gap: 7,
+                      alignItems: "stretch",
+                      overflow: "hidden",
                       boxShadow: `0 2px 12px rgba(212,116,156,0.2)`,
                       transition: "all 0.2s ease",
                     }}
@@ -676,44 +662,111 @@ const BenzoHybrid = () => {
                         "0 2px 12px rgba(212,116,156,0.2)")
                     }
                   >
-                    {sleepButtonState === "default" && (
-                      <>
-                        <span style={{ fontSize: 11 }}>🌙</span>
-                        Sleep Now
-                      </>
-                    )}
-                    {sleepButtonState === "picker" && (
-                      <span
+                    {sleepButtonState === "countdown" ? (
+                      <div
+                        onClick={() => setSleepButtonState("default")}
                         style={{
+                          flex: 1,
+                          padding: "10px 0",
+                          cursor: "pointer",
                           display: "flex",
-                          gap: 8,
                           alignItems: "center",
+                          justifyContent: "center",
+                          gap: 7,
                         }}
                       >
-                        {[5, 15, 30, 60].map((m) => (
-                          <span
-                            key={m}
-                            style={{
-                              fontSize: 11,
-                              fontWeight: 600,
-                              color: pink,
-                              background: "rgba(255,255,255,0.9)",
-                              padding: "4px 12px",
-                              borderRadius: 100,
-                            }}
-                          >
-                            {m}m
-                          </span>
-                        ))}
-                      </span>
-                    )}
-                    {sleepButtonState === "countdown" && (
-                      <>
                         <span style={{ fontSize: 11 }}>💤</span>
                         Sleeping in 4:32
+                      </div>
+                    ) : (
+                      <>
+                        <div
+                          style={{
+                            flex: 1,
+                            padding: "10px 0",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            gap: 7,
+                            cursor:
+                              sleepButtonState === "default"
+                                ? "pointer"
+                                : "default",
+                          }}
+                          onClick={() => {
+                            if (sleepButtonState === "default") {
+                              setSleepButtonState("countdown");
+                            }
+                          }}
+                        >
+                          {sleepButtonState === "picker" ? (
+                            <span
+                              style={{
+                                display: "flex",
+                                gap: 8,
+                                alignItems: "center",
+                              }}
+                            >
+                              {[5, 15, 30, 60].map((m) => (
+                                <span
+                                  key={m}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setSleepButtonState("countdown");
+                                  }}
+                                  style={{
+                                    fontSize: 11,
+                                    fontWeight: 600,
+                                    color: pink,
+                                    background: "rgba(255,255,255,0.9)",
+                                    padding: "4px 10px",
+                                    borderRadius: 100,
+                                    cursor: "pointer",
+                                  }}
+                                >
+                                  {m}m
+                                </span>
+                              ))}
+                            </span>
+                          ) : (
+                            <>
+                              <span style={{ fontSize: 11 }}>🌙</span>
+                              Sleep Now
+                            </>
+                          )}
+                        </div>
+                        <div
+                          style={{
+                            width: 1,
+                            background: "rgba(255,255,255,0.22)",
+                            margin: "10px 0",
+                          }}
+                        />
+                        <div
+                          onClick={() =>
+                            setSleepButtonState((prev) =>
+                              prev === "picker" ? "default" : "picker",
+                            )
+                          }
+                          style={{
+                            width: 38,
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            cursor: "pointer",
+                            fontSize: 13,
+                          }}
+                          title={
+                            sleepButtonState === "picker"
+                              ? "Close timer"
+                              : "Set sleep timer"
+                          }
+                        >
+                          {sleepButtonState === "picker" ? "✕" : "⏱"}
+                        </div>
                       </>
                     )}
-                  </button>
+                  </div>
                 </div>
 
                 {/* Sleep blocker warning */}
