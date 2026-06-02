@@ -1,6 +1,6 @@
 cask "benzo" do
-  version "0.2.1"
-  sha256 "a75fea68b27345d6b6318f5cb6efaf9b23e38ef8978933f964b66abcf6479e64"
+  version "0.3.0"
+  sha256 "0da25dee8fdc1b260fd8113d5d001b7f556864fef9ac0578146cb0bde62dd6c7"
 
   url "https://github.com/chrisrogers37/benzo/releases/download/v#{version}/Benzo-#{version}.dmg"
   name "Benzo"

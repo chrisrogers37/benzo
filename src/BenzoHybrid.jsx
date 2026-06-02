@@ -949,7 +949,7 @@ const BenzoHybrid = () => {
                   }}
                 >
                   <span style={{ fontSize: 10, color: "#d0d0d0" }}>
-                    v0.2.1
+                    v0.3.0
                   </span>
                   <div style={{ display: "flex", gap: 14 }}>
                     <span

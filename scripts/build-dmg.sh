@@ -27,8 +27,11 @@ xcodebuild -project Benzo/Benzo.xcodeproj \
     -archivePath "${ARCHIVE_PATH}" \
     archive
 
-# Export
+# Export — requires a Developer ID Application certificate.
+# When one isn't installed, fall back to the ad-hoc–signed .app already inside
+# the archive (used for unsigned community releases).
 echo "→ Exporting..."
+mkdir -p "${EXPORT_PATH}"
 cat > build/ExportOptions.plist << PLIST
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
@@ -42,10 +45,17 @@ cat > build/ExportOptions.plist << PLIST
 </plist>
 PLIST
 
-xcodebuild -exportArchive \
+if xcodebuild -exportArchive \
     -archivePath "${ARCHIVE_PATH}" \
     -exportPath "${EXPORT_PATH}" \
-    -exportOptionsPlist build/ExportOptions.plist
+    -exportOptionsPlist build/ExportOptions.plist 2>build/export.log; then
+    echo "  ↳ exported via Developer ID"
+else
+    echo "⚠ developer-id export failed — copying ad-hoc–signed .app from archive"
+    grep -i "error" build/export.log || true
+    rm -rf "${EXPORT_PATH}/Benzo.app"
+    cp -R "${ARCHIVE_PATH}/Products/Applications/Benzo.app" "${EXPORT_PATH}/Benzo.app"
+fi
 
 # Notarize
 if [ -n "${APPLE_ID:-}" ] && [ -n "${APPLE_TEAM_ID:-}" ] && [ -n "${APP_PASSWORD:-}" ]; then
