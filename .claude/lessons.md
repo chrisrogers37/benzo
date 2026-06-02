@@ -14,3 +14,6 @@ Every native app UI change must be mirrored in `src/BenzoHybrid.jsx`. The mockup
 
 ## import AppKit for NSApplication
 `BenzoViewModel.swift` originally only imported Foundation and ServiceManagement. Adding `quit()` with `NSApplication.shared.terminate` requires `import AppKit`.
+
+## Hidden modifier gestures need a visible affordance
+The original timed-sleep UX gated the picker behind ⌘-click on the Sleep Now button with no tooltip, hint text, or CHANGELOG entry. Users could not find it (and could not even remember which modifier was used). Rule: when a feature lives inside a popover/menubar surface, expose it with a visible control (split button, chevron, clock icon, etc.) rather than a modifier-click. Reserve modifier-click for power-user shortcuts, not for the only path to a feature.
