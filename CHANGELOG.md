@@ -4,6 +4,25 @@ All notable changes to Benzo are documented here.
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-06-01
+
+### Added
+- **Timed sleep** — Tap the clock icon on the Sleep Now button to reveal a timer picker (5m / 15m / 30m / 60m). When the timer fires, all caffeinate processes are killed before triggering `pmset sleepnow`, so the Mac actually enters hibernation. Tap the countdown to cancel.
+- **Sleep blocker awareness** — On popover open, Benzo lists any apps currently asserting `PreventUserIdleSystemSleep` (e.g. caffeinate, video calls) with friendly display names so you can see what's keeping the Mac awake.
+- **Split-button Sleep Now** — Visible clock icon next to "Sleep Now" replaces the previous hidden ⌘+click gesture for accessing the timer.
+
+### Changed
+- **Sudoers rule** — Narrowed `/etc/sudoers.d/benzo` from `pmset *` to a specific allowlist of `sleepnow` and `pmset -a <key> [0-9]*` for keys derived from `SleepSetting.allCases`. Validated with `visudo -cf` before install; versioned via `sudoersRuleVersion` in UserDefaults for migration.
+
+### Security
+- **Direct argv exec for pmset** — `ShellExecutor` now spawns `pmset` directly with argv instead of `/bin/sh -c`, eliminating shell-interpretation attack surface.
+- **Backup value validation** — `PMSetService` validates pmset backup values before shell interpolation.
+- **Dependency CVE patches** — Bumped `vite`, `picomatch`, and `postcss` to patched versions.
+- **CI security checks** — Added `npm audit --audit-level=moderate` and gitleaks workflow to PRs; added Dependabot config.
+
+### Fixed
+- **Friendly blocker names** — Sleep blocker display now uses friendly app names (e.g. "Google Chrome") rather than process names (e.g. "chrome_crashpad").
+
 ## [0.2.1] - 2026-03-10
 
 ### Added
