@@ -4,6 +4,12 @@ Source of truth: `documentation/planning/system-review_2026-07-07/`
 (`01_issue-tracker.md` for triaged issues BZ-001…BZ-054, `02_roadmap-to-revenue.md`
 for the milestone plan).
 
+**First action:** file the GitHub issues by running
+`DRY_RUN=1 ./documentation/planning/system-review_2026-07-07/file-issues.sh` (preview),
+then without `DRY_RUN` from a machine with repo write access. Afterwards, replace the
+BZ IDs below with issue numbers — GitHub becomes the live tracker
+(`03_issue-filing-plan.md` has the full procedure).
+
 ## Milestone 1 — Make the safety promise true
 
 - [ ] BZ-002 Robust pmset parsing + validate backup at save time

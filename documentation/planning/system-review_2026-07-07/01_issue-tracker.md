@@ -1,5 +1,10 @@
 # Benzo Issue Tracker — Full System Review 2026-07-07
 
+> **Filing status: not yet filed.** Run
+> [`file-issues.sh`](file-issues.sh) (see [`03_issue-filing-plan.md`](03_issue-filing-plan.md))
+> to create the GitHub issues, then mark this file as the archive and treat GitHub as
+> canonical.
+
 Each item is written so it can be copied 1:1 into a GitHub issue (title = heading,
 body = the rest). Suggested labels are given per item. **Size** describes invasiveness,
 not calendar time: S = localized edit, M = touches several files or needs a small
