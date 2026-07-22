@@ -1,51 +1,48 @@
 # Benzo Open Work
 
-Source of truth: `documentation/planning/system-review_2026-07-07/`
-(`01_issue-tracker.md` for triaged issues BZ-001…BZ-054, `02_roadmap-to-revenue.md`
-for the milestone plan).
-
-**First action:** file the GitHub issues by running
-`DRY_RUN=1 ./documentation/planning/system-review_2026-07-07/file-issues.sh` (preview),
-then without `DRY_RUN` from a machine with repo write access. Afterwards, replace the
-BZ IDs below with issue numbers — GitHub becomes the live tracker
-(`03_issue-filing-plan.md` has the full procedure).
+Live tracker: **GitHub issues [#53–#82](https://github.com/chrisrogers37/benzo/issues?q=is%3Aissue+is%3Aopen+BZ-)**.
+Archive + cross-reference: `documentation/planning/system-review_2026-07-07/04_github-issue-index.md`.
 
 ## Milestone 1 — Make the safety promise true
 
-- [ ] BZ-002 Robust pmset parsing + validate backup at save time
-- [ ] BZ-020 Unit-test target with pmset fixture tests
-- [ ] BZ-001 Restore on all termination paths + launch reconciliation
-- [ ] BZ-004 quit() surfaces restore failures (no `try?`)
-- [ ] BZ-003 Deactivate refuses to fake success without backup
-- [ ] BZ-005 Rollback on partial pmset apply
-- [ ] BZ-009 / BZ-014 / BZ-016 / BZ-010 / BZ-013 Settings-lifecycle fixes
-- [ ] BZ-011 Shell calls off the main thread
+- [ ] #53 BZ-001 Restore on all termination paths
+- [ ] #54 BZ-002 Robust pmset parsing + validate backup at save
+- [ ] #72 BZ-020 Unit-test target with pmset fixtures
+- [ ] #55 BZ-003 Deactivate refuses to fake success without backup
+- [ ] #56 BZ-004 quit() surfaces restore failures
+- [ ] #57 BZ-005 Rollback on partial pmset apply
+- [ ] #61 #62 #63 #65 #66 #68 BZ-009/010/011/013/014/016 Settings-lifecycle fixes
 - [ ] Kill-matrix verification (Cmd+Q, Force Quit, kill -9, logout, restart, crash)
 
 ## Milestone 2 — Frictionless, trustworthy install
 
 - [ ] Apple Developer Program membership ($99/yr)
-- [ ] BZ-007 Hardened runtime + entitlements
-- [ ] BZ-006 Fix build-dmg.sh signing/notarization path
-- [ ] BZ-019 CI compiles Swift + landing page on PRs
-- [ ] BZ-018 Release automation (tag → notarized DMG → release → cask bump)
-- [ ] BZ-017 Create homebrew-benzo tap (or fix README install docs)
-- [ ] BZ-015 / BZ-012 / BZ-022 Setup-flow correctness
-- [ ] BZ-054(c) Retire "isn't notarized" copy everywhere
+- [ ] #59 BZ-007 Hardened runtime + entitlements
+- [ ] #58 BZ-006 Fix build-dmg.sh signing/notarization
+- [ ] #71 BZ-019 CI compiles Swift + landing page
+- [ ] #70 BZ-018 Release automation
+- [ ] #69 BZ-017 Homebrew tap (or fix README)
+- [ ] #64 #67 #74 BZ-012/015/022 Setup-flow correctness
+- [ ] Retire "isn't notarized" copy (part of #81 umbrella)
 
 ## Milestone 3 — Monetization
 
-- [ ] BZ-008 License decision (recommendation: open-core MIT + paid signed builds)
-- [ ] Merchant of record (Paddle / Lemon Squeezy) + offline license keys
-- [ ] Trial + license UI (reuse BZ-048 Settings scene)
-- [ ] BZ-036 Sparkle auto-update via release workflow
-- [ ] BZ-035 Logging + opt-in crash reporting
-- [ ] BZ-034 Clean uninstall flow
-- [ ] Landing page: pricing, buy CTA, BZ-021 og-image, BZ-040 SEO, BZ-041 OS copy, BZ-039 a11y
+- [ ] #60 BZ-008 License decision
+- [ ] Merchant of record + offline license keys
+- [ ] Trial + license UI
+- [ ] #77 BZ-036 Sparkle auto-update
+- [ ] #76 BZ-035 Logging + opt-in crash reporting
+- [ ] #75 BZ-034 Clean uninstall flow
+- [ ] #81 Landing page quality pass (includes #73 og-image, SEO, a11y)
 - [ ] Privacy policy + terms page
-- [ ] Privacy-friendly site analytics
 
-## Backlog (P2/P3 burn-down)
+## Backlog (umbrella issues)
 
-See `01_issue-tracker.md` — BZ-023…BZ-054 (diagnostics correctness, DI refactor,
-landing-page decomposition, mockup sync pass, dead code, doc drift).
+- [ ] #78 Diagnostics correctness (BZ-024, 029, 030, 032, 050)
+- [ ] #79 Sleep lifecycle & behavior (BZ-023, 025–028, 031)
+- [ ] #80 Security hardening (BZ-033, 042)
+- [ ] #82 Swift codebase debt (BZ-037, 044–049, 051, 052)
+
+## Cleanup
+
+- [ ] Close duplicate test issues #51, #52

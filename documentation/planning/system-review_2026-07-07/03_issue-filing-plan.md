@@ -41,32 +41,21 @@ issues so the backlog stays legible.
 | Landing page quality pass | BZ-038, BZ-039, BZ-040, BZ-041, BZ-043, BZ-053, BZ-054 | M3 — Monetization |
 | Swift codebase debt burn-down | BZ-037, BZ-044–BZ-049, BZ-051, BZ-052 | backlog |
 
-## How to run
+## Status
 
-The script requires a `gh` CLI authenticated with **write** access to
-`chrisrogers37/benzo` (cloud agents only have read access — run it from your machine):
+**Filed 2026-07-22.** Issues [#53–#82](04_github-issue-index.md) created on GitHub.
+See [`04_github-issue-index.md`](04_github-issue-index.md) for the full BZ→issue map.
+
+Cloud-agent token could create issues but not labels/milestones — labels were mapped to
+existing repo labels; milestone assignments are in each issue body. Close test issues
+[#51](https://github.com/chrisrogers37/benzo/issues/51) and
+[#52](https://github.com/chrisrogers37/benzo/issues/52) manually.
+
+## How to run (historical)
+
+The original script (`file-issues.sh`) creates custom labels + milestones — use from a
+machine with full repo admin if re-filing. What was actually run:
 
 ```sh
-# Preview everything without touching GitHub
-DRY_RUN=1 ./documentation/planning/system-review_2026-07-07/file-issues.sh
-
-# File for real (labels → milestones → 30 issues)
-./documentation/planning/system-review_2026-07-07/file-issues.sh
+./documentation/planning/system-review_2026-07-07/file-issues-mapped.sh
 ```
-
-Notes:
-
-- The script creates/updates the needed **labels** (`--force`, so re-running just
-  refreshes colors/descriptions) and the three **milestones** (re-running prints a
-  "may already exist" notice and continues).
-- **Issues are not deduplicated** — run the issue-creation part once. If it fails
-  midway, delete the created issues or comment out the completed `create_issue`
-  blocks before re-running.
-- Override the target repo with `BENZO_REPO=owner/name` if filing against a fork.
-
-## After filing
-
-1. Add to the top of `01_issue-tracker.md`:
-   `> Filed as GitHub issues #N–#M on <date>. GitHub is now canonical; this file is the archive.`
-2. Rewrite `.claude/todo.md` milestone items to reference issue numbers.
-3. Reference IDs in commits/PRs as `Fixes #N (BZ-XXX)` so both trails connect.
