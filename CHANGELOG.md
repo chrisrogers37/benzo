@@ -4,6 +4,12 @@ All notable changes to Benzo are documented here.
 
 ## [Unreleased]
 
+### Added
+- **Full system review (2026-07-07)** — Triaged 54 issues (BZ-001–BZ-054) covering the
+  settings-restore lifecycle, notarization pipeline, CI gaps, and landing-page fixes
+  into `documentation/planning/system-review_2026-07-07/`, with a milestone roadmap to
+  a signed, notarized, revenue-generating release.
+
 ## [0.3.0] - 2026-06-01
 
 ### Added
