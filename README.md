@@ -1,6 +1,6 @@
 # Benzo
 
-**The anti-Amphetamine for macOS.** Force true deep sleep — even with your dock plugged in.
+**The anti-[Amphetamine](https://apps.apple.com/us/app/amphetamine/id937984704?mt=12) for macOS.** Force true deep sleep — even with your dock plugged in.
 
 Benzo sets `hibernatemode 25` and kills Power Nap, TCP keep-alive, proximity wake, and network wake. Your Mac writes RAM to disk, powers off completely, and USB ports go dark. No fan, no heat, no battery drain.
 
