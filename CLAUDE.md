@@ -42,7 +42,7 @@ This file provides project-specific guidance for Claude Code. Update this file w
 
 ## Project Overview
 
-**Benzo** is a macOS menubar app that forces true hibernation (`hibernatemode 25`). Landing page built with React/Vite, deployed on Vercel.
+**Benzo** is a macOS menubar sleep-configuration utility. Applying a pmset value is not proof of physical hibernation or USB power behavior. The landing page is React/Vite on Vercel. The approved re-orientation and delivery gates live in `documentation/plans/benzo-reorientation_2026-10-25/00_overview.md`.
 
 **Version**: 0.3.0
 
@@ -77,15 +77,18 @@ Benzo/Benzo/                     — Swift macOS menubar app
 └── Theme/
     └── BenzoTheme.swift         — colors (accent: #d4749c)
 
-src/BenzoHybrid.jsx              — landing page with interactive mockup, diagnostics, Gatekeeper tray
+src/BenzoHybrid.jsx              — marketing wrapper and shared demo state
+src/components/BenzoMockup.jsx   — interactive mockup; keep native UI parity here
+src/demo/                       — pure reducer and demonstration fixtures
+Benzo/BenzoTests/                — unhosted core XCTest bundle; fakes only
 scripts/build-dmg.sh             — archive, sign, notarize, and package as DMG
 Casks/benzo.rb                   — Homebrew cask formula
 ```
 
 ### Key Principles
 
-- **Mockup sync**: Any UI or behavioral change to the native app must also be reflected in the landing page mockup (`src/BenzoHybrid.jsx`). They must stay in sync.
-- **Quit restores defaults**: Quitting while active restores all original pmset settings from backup before terminating.
+- **Mockup sync**: Any UI or behavioral change to the native app must also be reflected in `src/components/BenzoMockup.jsx` and the shared demo state in `src/BenzoHybrid.jsx` / `src/demo/`.
+- **Recovery scope**: The current app attempts backup restoration on quit, with known failure paths tracked in P4/P5. Never claim defaults or successful restoration without evidence.
 - **Not App Store**: Benzo requires root access for pmset, incompatible with App Store sandboxing.
 
 ---
@@ -93,11 +96,13 @@ Casks/benzo.rb                   — Homebrew cask formula
 ## Development Workflow
 
 1. Make changes
-2. Build app: `xcodebuild -project Benzo/Benzo.xcodeproj -scheme Benzo -configuration Debug build`
-3. Run landing page: `npm run dev`
-4. Before creating PR: verify both app build and landing page render correctly
+2. Compile Debug and Release with full Xcode, without launching the app; run the unhosted `BenzoCoreTests` scheme. Use README commands and task-owned DerivedData.
+3. Use Node 24 from `.nvmrc`; run `npm ci`, `npm test`, `npm run build`, and authorized browser checks with `npm run dev`.
+4. Before declaring a PR ready: verify both app configurations, core tests, site tests/build and browser parity; record blocked checks explicitly. User merges each ordered phase.
 
-PRs run `npm audit --audit-level=moderate` and gitleaks in CI (`.github/workflows/security.yml`); both must pass before merge.
+PRs run web/native build and test checks (`.github/workflows/build.yml`) plus `npm audit --audit-level=moderate` and Gitleaks (`.github/workflows/security.yml`). All required checks and independent review must pass before merge.
+
+This Mac Mini is an always-on fleet host: never launch production Benzo or mutate its power, sudoers, login or fleet state for acceptance. Core tests compile only injected services/models/ViewModel and fake dependencies; they must not link live adapters or app composition. Dedicated native acceptance is separately approved. Vercel can auto-deploy branch previews: obtain scoped deployment authority before remote push. Never push main or merge.
 
 ## Commands Reference
 
@@ -107,7 +112,8 @@ xcodebuild -project Benzo/Benzo.xcodeproj -scheme Benzo -configuration Debug bui
 xcodebuild -project Benzo/Benzo.xcodeproj -scheme Benzo -configuration Release build  # Release build
 
 # Landing page
-npm install          # Install dependencies
+npm ci               # Exact lockfile install on Node 24 (.nvmrc)
+npm test             # Vitest / React Testing Library / jsdom
 npm run dev          # Dev server
 npm run build        # Production build
 
@@ -132,7 +138,7 @@ npm run build        # Production build
 - Don't add Swift files without registering them in `project.pbxproj` (4 sections)
 - Don't change native app UI without updating the landing page mockup
 - Don't use `womp` for USB wake — it's Wake-on-LAN (network wake) only
-- Don't assume physical USB wake can be disabled via pmset — protection comes from `hibernatemode 25` cutting power
+- Do not infer physical USB power behavior or hibernation from a pmset value; use declared hardware/OS evidence.
 - Don't forget the brief window between `pmset sleepnow` and full hibernation where USB devices could still wake the Mac
 
 ## Project-Specific Patterns
@@ -140,7 +146,7 @@ npm run build        # Production build
 ### pmset Learnings
 
 - `womp` = Wake-on-LAN (network wake), NOT physical USB device wake. Labeled "Disable Network Wake" in the app.
-- There is no pmset key to disable physical USB wake during normal sleep. Protection comes from `hibernatemode 25` cutting power to USB ports after hibernation completes.
+- Do not promise USB wake prevention or zero power drain from `hibernatemode 25`; supported hardware/OS behavior must be observed separately.
 - Between `pmset sleepnow` and full hibernation, there's a brief window where the Mac is in normal sleep and USB devices could still wake it.
 - The sudoers rule (`/etc/sudoers.d/benzo`) grants passwordless access to a narrow allowlist of `pmset` invocations only: `pmset sleepnow` and `pmset -a <key> [0-9]*` for the keys defined in `SleepSetting.allCases.flatMap(\.pmsetKeys)`. Generated at install time from `SleepSetting`, validated with `visudo -cf` before install, versioned via `sudoersRuleVersion` in `UserDefaults` for migration.
 
@@ -149,7 +155,7 @@ npm run build        # Production build
 - **GitHub Releases** — signed `.dmg` (notarized when Apple Developer credentials are available)
 - **Homebrew** — `brew install --cask benzo` (personal tap; official homebrew-cask tap requires notarized DMG)
 - Gatekeeper bypass: right-click → Open, or `xattr -d com.apple.quarantine /Applications/Benzo.app`
-- Landing page deploys automatically via Vercel on push to `main`
+- Vercel Git integration can deploy previews on branch pushes and production on main; deployment remains separately approved.
 
 ---
 

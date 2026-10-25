@@ -50,18 +50,53 @@ Toggle it off (or quit) and your original settings are restored.
 
 ## Build from source
 
+Native builds require macOS and full Xcode; Command Line Tools alone cannot build
+the project or its XCTest bundle. These commands compile the app without launching
+it, then run the unhosted core tests with injected fakes:
+
+```sh
+export BENZO_TEST_DERIVED="$(mktemp -d "${TMPDIR:-/tmp}/benzo-derived.XXXXXX")"
+xcodebuild -version
+xcodebuild -project Benzo/Benzo.xcodeproj -scheme Benzo -configuration Debug -derivedDataPath "$BENZO_TEST_DERIVED" CODE_SIGNING_ALLOWED=NO build
+xcodebuild -project Benzo/Benzo.xcodeproj -scheme Benzo -configuration Release -derivedDataPath "$BENZO_TEST_DERIVED" CODE_SIGNING_ALLOWED=NO build
+xcodebuild -project Benzo/Benzo.xcodeproj -scheme BenzoCoreTests -destination 'platform=macOS' -derivedDataPath "$BENZO_TEST_DERIVED" CODE_SIGNING_ALLOWED=NO test
 ```
-xcodebuild -project Benzo/Benzo.xcodeproj -scheme Benzo -configuration Release build
-```
+
+`BenzoCoreTests` does not host or launch the app. Its source list excludes the live
+command, diagnostic and login adapters. Tests use in-memory preferences, fake
+commands and clocks, and task-owned temporary backup files. Do not run the
+production app or privileged/lifecycle acceptance on an always-on fleet host.
+Physical sleep, permissions and recovery acceptance require a separately approved
+test Mac; a successful build or fake-based test does not prove those outcomes.
 
 ## Landing page
 
 [benzo-gules.vercel.app](https://benzo-gules.vercel.app) — built with React/Vite, includes an interactive mockup of the app.
 
-```
-npm install
+Use Node 24 LTS (24.15.0 or newer in the 24.x line); `.nvmrc` pins the version used
+in CI. With nvm installed, run `nvm install` and `nvm use` first.
+
+```sh
+npm ci
+npm test
+npm run build
+npm audit --audit-level=moderate
 npm run dev
 ```
+
+`npm test` runs Vitest, React Testing Library and jsdom interaction tests. The
+marketing wrapper owns shared demo state; `src/components/BenzoMockup.jsx` renders
+the mockup using `src/demo/state.js` and `src/demo/fixtures.js`. Native UI changes
+must preserve matching demo behavior.
+
+The `build` workflow runs web tests/build and full-Xcode Debug/Release/core tests.
+The separate `security` workflow retains npm audit and Gitleaks. Neither workflow
+publishes artifacts. The connected Vercel Git integration can deploy previews on
+branch pushes and the site on main; inspect and authorize deployment before push.
+
+The approved delivery order and outstanding acceptance are recorded in
+[the re-orientation plan](documentation/plans/benzo-reorientation_2026-10-25/00_overview.md)
+and [run log](documentation/plans/benzo-reorientation_2026-10-25/RUN_LOG.md).
 
 ## License
 

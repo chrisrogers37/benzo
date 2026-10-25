@@ -1,22 +1,8 @@
 import Foundation
 
-enum ShellError: LocalizedError {
-    case userCancelled
-    case executionFailed(String)
-
-    var errorDescription: String? {
-        switch self {
-        case .userCancelled:
-            return "Authentication was cancelled."
-        case .executionFailed(let message):
-            return message
-        }
-    }
-}
-
 enum ShellExecutor {
-    private static let sudoersPath = "/etc/sudoers.d/benzo"
-    private static let sudoersVersionKey = "sudoersRuleVersion"
+    private static let sudoersPath = BenzoPaths.sudoers
+    private static let sudoersVersionKey = BenzoPreferenceKey.sudoersRuleVersion
 
     /// Bump when the sudoers rule body changes to trigger migration on next launch.
     static let currentSudoersRuleVersion = 2
@@ -40,7 +26,7 @@ enum ShellExecutor {
     /// If yes, the NOPASSWD rule is in place and grants the access we expect.
     private static func sudoersRuleFunctional() -> Bool {
         do {
-            _ = try runDirect("/usr/bin/sudo", ["-n", "/usr/bin/pmset", "-g"])
+            _ = try runDirect(BenzoPaths.sudo, ["-n", BenzoPaths.pmset, "-g"])
             return true
         } catch {
             return false
@@ -76,8 +62,8 @@ enum ShellExecutor {
     /// stays in sync with the keys Benzo actually writes.
     private static func buildSudoersRule() -> String {
         let keys = SleepSetting.allCases.flatMap(\.pmsetKeys).sorted()
-        var entries = ["/usr/bin/pmset sleepnow"]
-        entries.append(contentsOf: keys.map { "/usr/bin/pmset -a \($0) [0-9]*" })
+        var entries = ["\(BenzoPaths.pmset) sleepnow"]
+        entries.append(contentsOf: keys.map { "\(BenzoPaths.pmset) -a \($0) [0-9]*" })
         return """
         Cmnd_Alias BENZO_PMSET = \(entries.joined(separator: ", "))
         %admin ALL=(root) NOPASSWD: BENZO_PMSET
@@ -111,7 +97,7 @@ enum ShellExecutor {
     /// Run an executable via passwordless sudo. `-n` makes sudo fail fast rather
     /// than prompting, so a missing/broken sudoers rule surfaces as an error.
     static func runDirectWithSudo(_ executable: String, _ args: [String] = []) throws {
-        _ = try runDirect("/usr/bin/sudo", ["-n", executable] + args)
+        _ = try runDirect(BenzoPaths.sudo, ["-n", executable] + args)
     }
 
     // MARK: - Private
@@ -144,5 +130,16 @@ enum ShellExecutor {
             }
             throw ShellError.executionFailed(errorMessage.trimmingCharacters(in: .whitespacesAndNewlines))
         }
+    }
+}
+
+/// Live command adapter. Excluded from the unhosted core test target.
+struct ShellCommandRunner: CommandRunning {
+    func runDirect(_ executable: String, _ arguments: [String]) throws -> String {
+        try ShellExecutor.runDirect(executable, arguments)
+    }
+
+    func runDirectWithSudo(_ executable: String, _ arguments: [String]) throws {
+        try ShellExecutor.runDirectWithSudo(executable, arguments)
     }
 }

@@ -5,3 +5,14 @@ dist
 *.xcodeproj/project.xcworkspace/xcuserdata
 DerivedData
 build
+.env
+.env.*
+!.env.example
+!.env.*.example
+*.p12
+*.p8
+*.mobileprovision
+*.provisionprofile
+*.xcresult
+.vercel
+coverage

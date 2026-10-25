@@ -28,6 +28,23 @@
 		C10000020000000000000002 /* USBDevice.swift in Sources */ = {isa = PBXBuildFile; fileRef = C20000020000000000000002; };
 		C10000030000000000000003 /* DiagnosticService.swift in Sources */ = {isa = PBXBuildFile; fileRef = C20000030000000000000003; };
 		C10000040000000000000004 /* DiagnosticView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C20000040000000000000004; };
+		D10000000000000000000001 /* ServiceTypes.swift in Sources */ = {isa = PBXBuildFile; fileRef = D20000000000000000000001; };
+		D10000000000000000000002 /* BenzoDependencies.swift in Sources */ = {isa = PBXBuildFile; fileRef = D20000000000000000000002; };
+		D10000000000000000000003 /* LoginItemClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = D20000000000000000000003; };
+		D10000000000000000000004 /* LiveLoginItemClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = D20000000000000000000004; };
+		D11000000000000000000001 /* SleepSetting.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000030000000000000003; };
+		D11000000000000000000002 /* PMSetState.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000040000000000000004; };
+		D11000000000000000000003 /* OriginalSettingsBackup.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000050000000000000005; };
+		D11000000000000000000004 /* SleepSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = C20000010000000000000001; };
+		D11000000000000000000005 /* USBDevice.swift in Sources */ = {isa = PBXBuildFile; fileRef = C20000020000000000000002; };
+		D11000000000000000000006 /* ServiceTypes.swift in Sources */ = {isa = PBXBuildFile; fileRef = D20000000000000000000001; };
+		D11000000000000000000007 /* PMSetService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000070000000000000007; };
+		D11000000000000000000008 /* BackupService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000080000000000000008; };
+		D11000000000000000000009 /* BenzoDependencies.swift in Sources */ = {isa = PBXBuildFile; fileRef = D20000000000000000000002; };
+		D1100000000000000000000A /* LoginItemClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = D20000000000000000000003; };
+		D1100000000000000000000B /* BenzoViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000090000000000000009; };
+		D1100000000000000000000C /* BenzoCoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D20000000000000000000005; };
+		D1100000000000000000000D /* TestDoubles.swift in Sources */ = {isa = PBXBuildFile; fileRef = D20000000000000000000006; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -54,6 +71,13 @@
 		C20000020000000000000002 /* USBDevice.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = USBDevice.swift; sourceTree = "<group>"; };
 		C20000030000000000000003 /* DiagnosticService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DiagnosticService.swift; sourceTree = "<group>"; };
 		C20000040000000000000004 /* DiagnosticView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DiagnosticView.swift; sourceTree = "<group>"; };
+		D20000000000000000000001 /* ServiceTypes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ServiceTypes.swift; sourceTree = "<group>"; };
+		D20000000000000000000002 /* BenzoDependencies.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BenzoDependencies.swift; sourceTree = "<group>"; };
+		D20000000000000000000003 /* LoginItemClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoginItemClient.swift; sourceTree = "<group>"; };
+		D20000000000000000000004 /* LiveLoginItemClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveLoginItemClient.swift; sourceTree = "<group>"; };
+		D20000000000000000000005 /* BenzoCoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BenzoCoreTests.swift; sourceTree = "<group>"; };
+		D20000000000000000000006 /* TestDoubles.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TestDoubles.swift; sourceTree = "<group>"; };
+		D30000000000000000000001 /* BenzoCoreTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = BenzoCoreTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -64,6 +88,12 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		D40000000000000000000001 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = ();
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
@@ -72,6 +102,7 @@
 			children = (
 				A50000010000000000000001 /* Benzo */,
 				A50000020000000000000002 /* Products */,
+				D50000000000000000000001 /* BenzoTests */,
 			);
 			sourceTree = "<group>";
 		};
@@ -94,6 +125,7 @@
 			isa = PBXGroup;
 			children = (
 				A30000000000000000000001 /* Benzo.app */,
+				D30000000000000000000001 /* BenzoCoreTests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -115,6 +147,7 @@
 				A20000050000000000000005 /* OriginalSettingsBackup.swift */,
 				C20000010000000000000001 /* SleepSession.swift */,
 				C20000020000000000000002 /* USBDevice.swift */,
+				D20000000000000000000001 /* ServiceTypes.swift */,
 			);
 			path = Models;
 			sourceTree = "<group>";
@@ -126,6 +159,9 @@
 				A20000070000000000000007 /* PMSetService.swift */,
 				A20000080000000000000008 /* BackupService.swift */,
 				C20000030000000000000003 /* DiagnosticService.swift */,
+				D20000000000000000000002 /* BenzoDependencies.swift */,
+				D20000000000000000000003 /* LoginItemClient.swift */,
+				D20000000000000000000004 /* LiveLoginItemClient.swift */,
 			);
 			path = Services;
 			sourceTree = "<group>";
@@ -168,6 +204,15 @@
 			path = Resources;
 			sourceTree = "<group>";
 		};
+		D50000000000000000000001 /* BenzoTests */ = {
+			isa = PBXGroup;
+			children = (
+				D20000000000000000000005 /* BenzoCoreTests.swift */,
+				D20000000000000000000006 /* TestDoubles.swift */,
+			);
+			path = BenzoTests;
+			sourceTree = "<group>";
+		};
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
@@ -188,6 +233,20 @@
 			productReference = A30000000000000000000001 /* Benzo.app */;
 			productType = "com.apple.product-type.application";
 		};
+		D60000000000000000000001 /* BenzoCoreTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = D80000000000000000000001 /* Build configuration list for PBXNativeTarget "BenzoCoreTests" */;
+			buildPhases = (
+				D70000000000000000000001 /* Sources */,
+				D40000000000000000000001 /* Frameworks */,
+			);
+			buildRules = ();
+			dependencies = ();
+			name = BenzoCoreTests;
+			productName = BenzoCoreTests;
+			productReference = D30000000000000000000001 /* BenzoCoreTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -198,6 +257,9 @@
 				LastSwiftUpdateCheck = 1500;
 				LastUpgradeCheck = 1500;
 				TargetAttributes = {
+					D60000000000000000000001 = {
+						CreatedOnToolsVersion = 16.0;
+					};
 					A60000000000000000000001 = {
 						CreatedOnToolsVersion = 15.0;
 					};
@@ -217,6 +279,7 @@
 			projectRoot = "";
 			targets = (
 				A60000000000000000000001 /* Benzo */,
+				D60000000000000000000001 /* BenzoCoreTests */,
 			);
 		};
 /* End PBXProject section */
@@ -257,6 +320,30 @@
 				C10000020000000000000002 /* USBDevice.swift in Sources */,
 				C10000030000000000000003 /* DiagnosticService.swift in Sources */,
 				C10000040000000000000004 /* DiagnosticView.swift in Sources */,
+				D10000000000000000000001 /* ServiceTypes.swift in Sources */,
+				D10000000000000000000002 /* BenzoDependencies.swift in Sources */,
+				D10000000000000000000003 /* LoginItemClient.swift in Sources */,
+				D10000000000000000000004 /* LiveLoginItemClient.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		D70000000000000000000001 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				D11000000000000000000001 /* SleepSetting.swift in Sources */,
+				D11000000000000000000002 /* PMSetState.swift in Sources */,
+				D11000000000000000000003 /* OriginalSettingsBackup.swift in Sources */,
+				D11000000000000000000004 /* SleepSession.swift in Sources */,
+				D11000000000000000000005 /* USBDevice.swift in Sources */,
+				D11000000000000000000006 /* ServiceTypes.swift in Sources */,
+				D11000000000000000000007 /* PMSetService.swift in Sources */,
+				D11000000000000000000008 /* BackupService.swift in Sources */,
+				D11000000000000000000009 /* BenzoDependencies.swift in Sources */,
+				D1100000000000000000000A /* LoginItemClient.swift in Sources */,
+				D1100000000000000000000B /* BenzoViewModel.swift in Sources */,
+				D1100000000000000000000C /* BenzoCoreTests.swift in Sources */,
+				D1100000000000000000000D /* TestDoubles.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -365,6 +452,46 @@
 			};
 			name = Release;
 		};
+		D90000000000000000000001 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				ENABLE_TESTING_SEARCH_PATHS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@loader_path/../Frameworks",
+					"@executable_path/../Frameworks",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 13.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.benzo.coretests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				SUPPORTED_PLATFORMS = macosx;
+				SWIFT_VERSION = 5.0;
+			};
+			name = Debug;
+		};
+		D90000000000000000000002 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				ENABLE_TESTING_SEARCH_PATHS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@loader_path/../Frameworks",
+					"@executable_path/../Frameworks",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 13.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.benzo.coretests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				SUPPORTED_PLATFORMS = macosx;
+				SWIFT_VERSION = 5.0;
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -385,6 +512,15 @@
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
+		};
+		D80000000000000000000001 /* Build configuration list for PBXNativeTarget "BenzoCoreTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				D90000000000000000000001 /* Debug */,
+				D90000000000000000000002 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
 		};
 /* End XCConfigurationList section */
 	};
