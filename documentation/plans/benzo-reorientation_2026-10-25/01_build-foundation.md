@@ -57,15 +57,17 @@ Set `BENZO_TEST_DERIVED` to a newly created task-owned temporary directory, not 
 ## Verification Checklist
 
 - [ ] Clean installation, web behavior/build/security jobs and full-Xcode Debug/Release/core tests pass at PR head.
-- [ ] Unit-test composition cannot instantiate production startup or invoke host power/auth/login mutations.
+- [x] Unit-test composition excludes production startup/live adapters; fake-boundary cases passed in unhosted XCTest at 776c08d.
 - [ ] Extracted demo preserves outside diagnostics caller, initial state and visible interaction behavior with browser evidence.
-- [ ] Current advisories are resolved or the PR remains blocked; no suppression is presented as remediation.
+- [x] Current advisories resolved; local and remote audit at 776c08d pass without suppression.
 - [ ] #22/#23/#71 scopes have evidence; #72/#82 partial rows use `Refs`, not premature closure.
 - [ ] Independent `claudna:review-work` findings addressed; plan receipts updated; user merges.
 
 ## Delivery receipt — 2026-10-25
 
-Local implementation and independent `claudna:review-work` are complete with no actionable source defects. Clean install, 17 web tests, web build, audit and Gitleaks pass; compile-only native checks and source/target isolation checks pass. Full-Xcode Debug/Release/XCTest and required browser screenshots remain outstanding, so the combined acceptance checkboxes above remain unchecked. The user approved the P1 branch push, PR and automatic Vercel preview. Publication proceeds as a draft while required acceptance remains pending. See [RUN_LOG](RUN_LOG.md) for exact review identities, frozen source, delegated work, commands, issue/#82 dispositions and limitations. P2 remains queued on the owner's P1 merge.
+Implementation and independent `claudna:review-work` are complete with no actionable source defects. Draft [PR #95](https://github.com/chrisrogers37/benzo/pull/95) is published with explicit approval for its automatic Vercel preview. At implementation SHA `776c08d99077d33f25a39462517fe12bd3d66139`, remote clean install, 17 web tests/build, audit, Gitleaks, full-Xcode Debug/Release and all 11 unhosted XCTest cases passed. Xcode was 16.4 (16F6) on macos-15; no production app or native test was run on the fleet Mac. Delivery-only follow-up commits require green checks at their resulting PR head.
+
+Required browser screenshots remain blocked by saved policy. Repository rules currently require review but no status checks, so #71 remains open pending approved policy configuration. These are separate outstanding acceptance items; P1 is not ready to merge. See [RUN_LOG](RUN_LOG.md) for exact checks/review identities, deployment, issue/#82 dispositions and limitations. P2 remains queued on the owner's P1 merge.
 
 ## What NOT To Do
 

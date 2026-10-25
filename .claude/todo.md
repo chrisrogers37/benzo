@@ -4,7 +4,7 @@
 
 - [x] Phase 1 evaluation: `documentation/plans/00_benzo-evaluation_2026-10-25.md`.
 - [x] Phase 2 plan and ironclad hardening: `documentation/plans/benzo-reorientation_2026-10-25/00_overview.md`; document corrections independently verified; recommended F1–F7 and Phase 3 approved with conditions on 2026-10-25.
-- [ ] Phase 3 delivery: P1 local implementation reviewed on `codex/benzo-build-foundation`; Xcode/browser acceptance remains pending; the user approved P1 push/PR/automatic preview. See `documentation/plans/benzo-reorientation_2026-10-25/RUN_LOG.md`; one feature branch/PR per phase, user merges.
+- [ ] Phase 3 delivery: P1 published as draft PR #95 on `codex/benzo-build-foundation`; native/web/security CI passes. Browser evidence and required-check policy remain pending; P2 waits for user merge. See `documentation/plans/benzo-reorientation_2026-10-25/RUN_LOG.md`; one feature branch/PR per phase, user merges.
 
 The Mac Mini is an always-on fleet host. Leave power settings, permission rules, login items and fleet processes untouched. Privileged/physical acceptance requires a separately approved test Mac. Outward and destructive actions retain their explicit approval gates.
 

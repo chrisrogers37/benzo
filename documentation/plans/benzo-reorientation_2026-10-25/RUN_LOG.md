@@ -20,7 +20,7 @@ Epic: [approved re-orientation](00_overview.md). User ratified recommended F1–
 | Phase 3 / F1–F7 | Passed: explicit user approval; F7 rights/channel conditions and all outward gates remain. |
 | Source base | Passed: fetched origin/main at a0c12f1ddde45a36be2b89e603d3a4ae080871cd. 56 open issues; dependency PRs #92–94 remain open. |
 | Host safety | Binding: do not launch production Benzo or change power settings, permission rules, login registration, blockers or fleet processes. |
-| Full Xcode | Blocked locally: xcodebuild reports CommandLineTools, no installed Xcode app. P1 adds full-Xcode CI; no installation/system developer-path change implied. |
+| Full Xcode | Passed remotely at implementation commit 776c08d: Xcode 16.4 (16F6), Debug/Release and 11 unhosted tests. Still absent locally; no installation/system developer-path change. |
 | Browser visual parity | Blocked: authorized retry of http://127.0.0.1:4173 rejected by saved browser security policy. No alternate surface or policy bypass. Temporary baseline server stopped. |
 | Push / automatic preview | Passed for P1: user explicitly approved the automatic Vercel preview, branch push and PR. Integration rechecked before publication. Releases and production/main deployment remain separately gated. |
 | Dedicated native acceptance | Not invoked in P1; separately approved isolated hardware required for later privileged/lifecycle acceptance. |
@@ -44,7 +44,7 @@ Single repo, no stacked branches. P1 uses codex/benzo-build-foundation in the at
 
 | Phase | Plan | Issues | State | PR / CI |
 |---|---|---|---|---|
-| P1 | [Foundation](01_build-foundation.md) | #22 #23 #71; partial #72 #82 | Local implementation reviewed; acceptance blocked | No push or PR yet |
+| P1 | [Foundation](01_build-foundation.md) | #22 #23 #71; partial #72 #82 | Draft; automated checks passed, browser/policy acceptance pending | [PR #95](https://github.com/chrisrogers37/benzo/pull/95), source commit 776c08d green |
 | P2 | [Distribution](02_distribution-build.md) | Per epic | Queued on P1 merge | — |
 | P3 | [Commands](03_command-permissions.md) | Per epic | Queued on P2 merge | — |
 | P4 | [Recovery](04_recovery-engine.md) | Per epic | Queued on P3 merge | — |
@@ -61,14 +61,15 @@ Runtime selection: Node 24.22.1, verified from official Node distribution checks
 
 ## Review rounds
 
-The integrated source and four simplification lenses are complete. Independent review found no actionable source defects; required full-Xcode and browser acceptance remain blocked. Exact checks, scope, reviewers and dispositions are recorded below.
+The integrated source and four simplification lenses are complete. Independent review found no actionable source defects; full-Xcode CI subsequently passed, while browser acceptance remains blocked. Exact checks, scope, reviewers and dispositions are recorded below.
 
 ## Owner-decision queue
 
 1. P1 automatic preview/push/PR approved by the user. Observe its actual deployment and CI outcome; this does not authorize production deployment or a merge.
 2. Resolve saved local-browser denial for required visual acceptance; user authorization already exists but tool policy still denies.
-3. User merges each verified PR in order. No successor branch before that merge.
-4. Future dedicated native, exact signed artifacts, release/deployment and F7 rights/reporting prerequisites remain as recorded in the epic.
+3. #71 requires the build jobs on PRs. Existing ruleset 13642556 requires review but has no status-check rule. A repository-policy update needs separate scoped approval; no rules were changed.
+4. User merges each verified PR in order. No successor branch before that merge.
+5. Future dedicated native, exact signed artifacts, release/deployment and F7 rights/reporting prerequisites remain as recorded in the epic.
 
 ## P1 implementation and verification receipt
 
@@ -81,7 +82,7 @@ Local preparation snapshot: `codex/benzo-build-foundation` from `a0c12f1ddde45a3
 - Node 24.22.1 and the resulting compatible Vite/Vitest/React testing dependencies are recorded consistently. Source-only CI adds clean web tests/build plus full-Xcode Debug/Release/core tests. Existing npm-audit/Gitleaks checks remain.
 - Ignore policy covers environment/credential/output artifacts while allowing templates. Tracked-path inspection found no matching secret artifact; no claim about hypothetical past leaks is made. README, CLAUDE, AGENTS and the work pointer describe the actual commands and host boundary.
 
-### Evidence
+### Local evidence before publication
 
 | Check | Result and limit |
 |---|---|
@@ -112,14 +113,24 @@ Independent `claudna:review-work changes` ran as `/root/p1_review_work` with no 
 |---|---|---|
 | #22 / #81 BZ-038 | Component/state/fixture extraction and shared-caller behavior tests complete locally. | Required browser parity; keep open. |
 | #23 | Repeated boundary paths and preference strings centralized without changing persisted values. | P2 bundle-derived footer/version policy; keep open. |
-| #71 | Web/native build workflow and shared schemes prepared. | Actual full-Xcode/remote security/build results at PR head; required-check configuration only if separately needed. |
-| #72 / #82 BZ-037 | Explicit dependency seams, fake-only test target and useful starting cases prepared. | XCTest execution plus parser/policy/recovery/diagnostic regression scope in P3–P6; no umbrella closure. |
+| #71 | Web/native workflows now run and pass in [PR #95](https://github.com/chrisrogers37/benzo/pull/95), including full Xcode. | Existing Protect Main ruleset does not require status checks. Keep open pending approved required-check configuration and owner merge. |
+| #72 / #82 BZ-037 | Explicit dependency seams, fake-only target and 11 XCTest cases pass remotely. | Parser/policy/recovery/diagnostic regression scope in P3–P6; no umbrella closure. |
 | #80 BZ-042 env | Ignore rules and tracked-path inspection complete locally; templates remain eligible. | Owner-merged implementation receipt; umbrella includes other items. |
 | #82 BZ-045 | Replaced the content-controller force unwrap with one optional binding. `statusItem`/`popover` are assigned before their callbacks are registered; no reachable nil crash was established for those IUOs. Existing Application Support `.first!` assumption was moved to app composition, not introduced or proven safe for every hypothetical environment. | Do not claim every IUO removed or an observed crash fixed. No speculative fallback directory that could lose originals. |
-| #82 BZ-046 | Removed the extracted web demo's unused `activeCount`; retained native `capturedAt` as persisted recovery provenance, covered by a round-trip test awaiting XCTest execution. `killCaffeinateProcesses` is reachable, so it is not dead code; removing that behavior belongs to P5. Native `MasterToggleView.activeCount` is an unused input spanning untouched view files. | P7 may remove that native input during the owned UI change; no broad dead-code-complete claim. |
+| #82 BZ-046 | Removed the extracted web demo's unused `activeCount`; retained native `capturedAt` as persisted recovery provenance, covered by a round-trip test that passed in remote XCTest. `killCaffeinateProcesses` is reachable, so it is not dead code; removing that behavior belongs to P5. Native `MasterToggleView.activeCount` is an unused input spanning untouched view files. | P7 may remove that native input during the owned UI change; no broad dead-code-complete claim. |
 
-P1 is not accepted or ready to merge. Full Xcode and browser evidence remain; the user approved P1 preview publication. P2–P8 remain queued behind their predecessor merges.
+P1 is not accepted or ready to merge. Full-Xcode CI passed; browser evidence and the required-check repository policy remain. The user approved P1 preview publication. P2–P8 remain queued behind their predecessor merges.
 
 ### Authorized publication
 
 User replied “Yes” to the explicit request to allow P1's automatic Vercel preview, push the branch and open its PR. Fresh `origin/main` remains `a0c12f1ddde45a36be2b89e603d3a4ae080871cd`; all 41 final files matched their recorded hashes before documentation-only authorization updates. Publish a draft while full-Xcode CI and screenshots are pending. No production/main deployment, release, merge or host change is authorized by this publication approval.
+
+
+### Publication results — 2026-10-25
+
+- Pushed only `codex/benzo-build-foundation`; created and attached draft [PR #95](https://github.com/chrisrogers37/benzo/pull/95) at implementation SHA `776c08d99077d33f25a39462517fe12bd3d66139`. No merge or main push.
+- [Build run 40215851910](https://github.com/chrisrogers37/benzo/actions/runs/40215851910) passed web clean install, 17 web tests/build, full-Xcode Debug and Release, and all 11 unhosted core tests with zero failures. Runner: macos-15, Xcode 16.4 build 16F6. Native job 121236693670 logs show both BUILD SUCCEEDED receipts, XCTest test names and TEST SUCCEEDED. AppIntents metadata-skip warnings do not affect these checks; no application was launched.
+- [Security run 40215851830](https://github.com/chrisrogers37/benzo/actions/runs/40215851830) passed npm audit and Gitleaks. The authorized [Vercel preview](https://benzo-cj5y46d7g-chrisrogers37.vercel.app) is READY for that exact SHA; deployment `dpl_7MZ9N9fqVpcXL3bucKXXwaJx7Wzj` has preview target (null), not production. This is deployment-state evidence, not browser acceptance.
+- Independent source review still applies: no runtime source changed after its frozen manifest. This follow-up updates only delivery documents; CI must also pass at the resulting PR head. Current results remain visible on the PR Checks tab.
+- Read-only repository-policy inspection found the active [Protect Main ruleset](https://github.com/chrisrogers37/benzo/rules/13642556) requires one approval/code-owner review and blocks deletion/non-fast-forward changes, but contains no required-status-check rule. Classic branch protection is absent. Preserve all current rules and bypass settings; do not silently change policy. #71 remains `Refs`, along with the other partially resolved issues.
+- No issue was closed. No local native app/test, host power/auth/login/fleet operation, production deployment or P2 implementation occurred. Browser policy remains denied; no alternate route was attempted.
