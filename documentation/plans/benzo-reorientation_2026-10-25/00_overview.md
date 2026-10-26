@@ -4,7 +4,7 @@ type: plan
 status: active
 owner: claudna:forge
 created: 2026-10-25
-updated: 2026-10-25
+updated: 2026-10-26
 tags: [enhancement, security, reliability]
 repos: chrisrogers37/benzo
 ---
@@ -13,7 +13,7 @@ repos: chrisrogers37/benzo
 
 Re-orient Benzo around a small, explicit promise: **request sleep, see what changed, and return to prior supported settings without guessing.** This is an eight-PR delivery epic within the user's required ordering: structure/build (P1–P3), features (P4–P6), then UX/UI (P7–P8). The user approved Phase 3 implementation with recommended F1–F7 choices and their conditions on 2026-10-25. Publication, permission installation and deployment retain their separate scoped gates.
 
-Phase 1 is complete and the owner approved planning on October 25. Product choices F1–F7 below were explicitly ratified with their conditions on 2026-10-25, together with Phase 3 approval. See [delivery run](RUN_LOG.md) for current gates and per-PR evidence. The existing compact app and landing-page identity remain, with reliability and truthful scope before additional features. P1 implementation and independent source review are complete in draft PR #95. Remote full-Xcode and web/security CI passed at implementation SHA 776c08d; browser evidence and required-check repository policy remain outstanding. P2 has not started.
+Phase 1 is complete and the owner approved planning on October 25. Product choices F1–F7 below were explicitly ratified with their conditions on 2026-10-25, together with Phase 3 approval. See [delivery run](RUN_LOG.md) for current gates and per-PR evidence. The existing compact app and landing-page identity remain, with reliability and truthful scope before additional features. P1 implementation and independent source review are complete in draft PR #95. Remote full-Xcode and web/security CI passed through SHA eb85cf3. The owner-approved required-check policy is applied. A requested Claude simplification pass found no worthwhile runtime change; independent Sonnet and Opus reviews found no Critical/Important defects. One existing timer test assertion was strengthened from Opus feedback and awaits CI at the resulting head. Browser evidence remains outstanding. P2 has not started.
 
 ## Goal
 

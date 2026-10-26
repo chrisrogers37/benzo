@@ -4,7 +4,7 @@ type: plan
 status: active
 owner: claudna:build-all
 created: 2026-10-25
-updated: 2026-10-25
+updated: 2026-10-26
 tags: [reliability, security]
 repos: chrisrogers37/benzo
 ---
@@ -44,7 +44,7 @@ Single repo, no stacked branches. P1 uses codex/benzo-build-foundation in the at
 
 | Phase | Plan | Issues | State | PR / CI |
 |---|---|---|---|---|
-| P1 | [Foundation](01_build-foundation.md) | #22 #23 #71; partial #72 #82 | Draft; automated checks passed, browser/policy acceptance pending | [PR #95](https://github.com/chrisrogers37/benzo/pull/95), source commit 776c08d green |
+| P1 | [Foundation](01_build-foundation.md) | #22 #23 #71; partial #72 #82 | Draft; reviewed test assertion update, browser acceptance and new-head CI pending | [PR #95](https://github.com/chrisrogers37/benzo/pull/95), source commit 776c08d green |
 | P2 | [Distribution](02_distribution-build.md) | Per epic | Queued on P1 merge | — |
 | P3 | [Commands](03_command-permissions.md) | Per epic | Queued on P2 merge | — |
 | P4 | [Recovery](04_recovery-engine.md) | Per epic | Queued on P3 merge | — |
@@ -67,7 +67,7 @@ The integrated source and four simplification lenses are complete. Independent r
 
 1. P1 automatic preview/push/PR approved by the user. Observe its actual deployment and CI outcome; this does not authorize production deployment or a merge.
 2. Resolve saved local-browser denial for required visual acceptance; user authorization already exists but tool policy still denies.
-3. #71 requires the build jobs on PRs. Existing ruleset 13642556 requires review but has no status-check rule. A repository-policy update needs separate scoped approval; no rules were changed.
+3. Required-check policy is complete: explicit owner approval applied native, web, npm-audit and gitleaks checks (GitHub Actions integration 15368), plus an up-to-date branch, to ruleset 13642556. API readback verified all existing protections/bypass settings unchanged. #71 awaits owner merge.
 4. User merges each verified PR in order. No successor branch before that merge.
 5. Future dedicated native, exact signed artifacts, release/deployment and F7 rights/reporting prerequisites remain as recorded in the epic.
 
@@ -113,13 +113,13 @@ Independent `claudna:review-work changes` ran as `/root/p1_review_work` with no 
 |---|---|---|
 | #22 / #81 BZ-038 | Component/state/fixture extraction and shared-caller behavior tests complete locally. | Required browser parity; keep open. |
 | #23 | Repeated boundary paths and preference strings centralized without changing persisted values. | P2 bundle-derived footer/version policy; keep open. |
-| #71 | Web/native workflows now run and pass in [PR #95](https://github.com/chrisrogers37/benzo/pull/95), including full Xcode. | Existing Protect Main ruleset does not require status checks. Keep open pending approved required-check configuration and owner merge. |
+| #71 | Web/native workflows now run and pass in [PR #95](https://github.com/chrisrogers37/benzo/pull/95), including full Xcode. | Required-check policy applied and verified; keep open pending owner merge. |
 | #72 / #82 BZ-037 | Explicit dependency seams, fake-only target and 11 XCTest cases pass remotely. | Parser/policy/recovery/diagnostic regression scope in P3–P6; no umbrella closure. |
 | #80 BZ-042 env | Ignore rules and tracked-path inspection complete locally; templates remain eligible. | Owner-merged implementation receipt; umbrella includes other items. |
 | #82 BZ-045 | Replaced the content-controller force unwrap with one optional binding. `statusItem`/`popover` are assigned before their callbacks are registered; no reachable nil crash was established for those IUOs. Existing Application Support `.first!` assumption was moved to app composition, not introduced or proven safe for every hypothetical environment. | Do not claim every IUO removed or an observed crash fixed. No speculative fallback directory that could lose originals. |
 | #82 BZ-046 | Removed the extracted web demo's unused `activeCount`; retained native `capturedAt` as persisted recovery provenance, covered by a round-trip test that passed in remote XCTest. `killCaffeinateProcesses` is reachable, so it is not dead code; removing that behavior belongs to P5. Native `MasterToggleView.activeCount` is an unused input spanning untouched view files. | P7 may remove that native input during the owned UI change; no broad dead-code-complete claim. |
 
-P1 is not accepted or ready to merge. Full-Xcode CI passed; browser evidence and the required-check repository policy remain. The user approved P1 preview publication. P2–P8 remain queued behind their predecessor merges.
+P1 is not accepted or ready to merge. Full-Xcode CI passed at eb85cf3; browser evidence remains, and the October 26 test assertion update requires CI at its resulting head. Required-check repository policy is applied and verified. The user approved P1 preview publication. P2–P8 remain queued behind their predecessor merges.
 
 ### Authorized publication
 
@@ -134,3 +134,17 @@ User replied “Yes” to the explicit request to allow P1's automatic Vercel pr
 - Independent source review still applies: no runtime source changed after its frozen manifest. This follow-up updates only delivery documents; CI must also pass at the resulting PR head. Current results remain visible on the PR Checks tab.
 - Read-only repository-policy inspection found the active [Protect Main ruleset](https://github.com/chrisrogers37/benzo/rules/13642556) requires one approval/code-owner review and blocks deletion/non-fast-forward changes, but contains no required-status-check rule. Classic branch protection is absent. Preserve all current rules and bypass settings; do not silently change policy. #71 remains `Refs`, along with the other partially resolved issues.
 - No issue was closed. No local native app/test, host power/auth/login/fleet operation, production deployment or P2 implementation occurred. Browser policy remains denied; no alternate route was attempted.
+
+
+## Requested Claude simplification and model reviews — 2026-10-26
+
+The owner requested Claude simplification followed by independent Sonnet and Opus reviews, keeping development tooling lean. All three ran through `claudna:delegate` with the existing native Claude account and permissions, in sequence; parent writes were paused during each worker. Reviews used the same frozen base `a0c12f1` and head `eb85cf3`, full P1 diff, source files and verification evidence, without other reviewers' conclusions.
+
+- **Claude simplification:** native child `d9f047af-de85-4144-90bf-20f711cbb676`, job `74e481d9-7d03-43f1-85d2-4d65a3885d31`; the configured default served Opus. No worthwhile behavior-preserving simplification was found. The sole cosmetic edit removed two blank lines and was deliberately excluded. All 41 snapshot hashes returned to their original values.
+- **Sonnet review:** native child `2b70eb69-d7e7-4d6a-a092-3671e323413b`, job `33618b46-cadc-491f-93e3-b1e1a55122e3`. No Critical or Important defects. Optional whitespace, main-run cancellation/timeout preferences and a pre-existing app-only diagnostic constructor observation were left unchanged; no new framework, harness or out-of-phase work was added. Aggregate-diff line references in that report were mapped to actual source before assessing suggestions.
+- **Opus review:** native child `738204dc-19ba-4bb5-b60d-d980b33986af`, job `136c3a2a-03a0-434b-b3df-0c5701be4a92`. No Critical or Important defects. One Minor finding was validated: `allSatisfy` could pass with no fake repeating timer. Added `XCTAssertEqual(harness.clock.repeating.count, 1)` immediately after scheduling in the existing cancellation test. A sweep of `allSatisfy` in `Benzo/BenzoTests` and `src` found exactly this one instance. No runtime behavior changed.
+- Each worker completed with native exit 0, no permission denials, automatic cleanup complete and explicit parent settlement. Both model reviews were read-only and inspected supplied test/CI evidence; neither claimed personally executing those checks. Native execution remains confined to GitHub CI.
+- Parent independently reran the existing web suite (17/17 passed) and production build (20 modules, Vite 8.3.5) on the unchanged reviewed source. The new native assertion must pass full CI at the resulting PR head before merge; use the current PR Checks for that result. No local native app/test, host-settings mutation or browser workaround occurred.
+- Browser before/after acceptance remains unresolved. The approved required-check rule has been applied and verified; all four required checks passed on eb85cf3. User merge and predecessor order remain binding. No issue was closed and no GitHub review was posted.
+
+Focused Opus follow-up (child `198e6989-526a-454b-a935-869467b68490`, job `8c3dba4d-9b3f-4c3e-a273-385df99d8be4`) confirmed the assertion addresses the empty-list gap without runtime changes and that the receipt edits preserve acceptance gates. Its one Minor stale #71 table cell was corrected to match the applied policy. Native completion/cleanup succeeded with no denials; parent verified the reviewed file hashes and the exact correction.

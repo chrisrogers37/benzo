@@ -134,6 +134,7 @@ final class BenzoCoreTests: XCTestCase {
         let viewModel = harness.makeViewModel()
 
         viewModel.scheduleSleep(after: 60)
+        XCTAssertEqual(harness.clock.repeating.count, 1)
         viewModel.cancelScheduledSleep()
         harness.clock.advance(by: 120)
 
