@@ -21,7 +21,7 @@ Epic: [approved re-orientation](00_overview.md). User ratified recommended F1–
 | Source base | Passed: fetched origin/main at a0c12f1ddde45a36be2b89e603d3a4ae080871cd. 56 open issues; dependency PRs #92–94 remain open. |
 | Host safety | Binding: do not launch production Benzo or change power settings, permission rules, login registration, blockers or fleet processes. |
 | Full Xcode | Passed remotely at implementation commit 776c08d: Xcode 16.4 (16F6), Debug/Release and 11 unhosted tests. Still absent locally; no installation/system developer-path change. |
-| Browser visual parity | Blocked: authorized retry of http://127.0.0.1:4173 rejected by saved browser security policy. No alternate surface or policy bypass. Temporary baseline server stopped. |
+| Browser visual parity | Owner manual visual/interaction check passed on October 26 at 0409b790; owner explicitly waived before/after screenshots. Agent browser access remains denied, with no policy bypass. This is regression acceptance, not conversion/design approval. |
 | Push / automatic preview | Passed for P1: user explicitly approved the automatic Vercel preview, branch push and PR. Integration rechecked before publication. Releases and production/main deployment remain separately gated. |
 | Dedicated native acceptance | Not invoked in P1; separately approved isolated hardware required for later privileged/lifecycle acceptance. |
 
@@ -30,7 +30,7 @@ Epic: [approved re-orientation](00_overview.md). User ratified recommended F1–
 | Invariant | Check and failure action |
 |---|---|
 | Always-on host untouched | Review commands and test composition; no production App target in test source/build dependencies, no live adapters linked. Stop if a test can reach host mutation. |
-| Native/demo behavior parity | Behavioral changes carry matching demo states in same PR; P1 mechanical extraction keeps existing defaults and interactions. Browser denial leaves visual acceptance blocked. |
+| Native/demo behavior parity | Behavioral changes carry matching demo states in same PR; P1 mechanical extraction keeps existing defaults and interactions. Owner accepted manual visual/interaction parity and waived screenshots for P1 only. |
 | No premature issue closure | Compare PR keywords/ledger to epic issue and umbrella matrix; use Refs until all scope/evidence is met. |
 | Sequential independent PRs | git merge-base and diff against fresh origin/main; start each phase only after user's predecessor merge. |
 | Current checks and review | Capture tested source/commit and exact checks; changed runtime inputs invalidate affected evidence. |
@@ -44,7 +44,7 @@ Single repo, no stacked branches. P1 uses codex/benzo-build-foundation in the at
 
 | Phase | Plan | Issues | State | PR / CI |
 |---|---|---|---|---|
-| P1 | [Foundation](01_build-foundation.md) | #22 #23 #71; partial #72 #82 | Draft; reviewed test assertion update, browser acceptance and new-head CI pending | [PR #95](https://github.com/chrisrogers37/benzo/pull/95), source commit 776c08d green |
+| P1 | [Foundation](01_build-foundation.md) | #22 #23 #71; partial #72 #82 | Reviews and owner manual parity acceptance complete; documentation-only update needs PR-head CI, then owner merge | [PR #95](https://github.com/chrisrogers37/benzo/pull/95), tested and owner-accepted source 0409b790 |
 | P2 | [Distribution](02_distribution-build.md) | Per epic | Queued on P1 merge | — |
 | P3 | [Commands](03_command-permissions.md) | Per epic | Queued on P2 merge | — |
 | P4 | [Recovery](04_recovery-engine.md) | Per epic | Queued on P3 merge | — |
@@ -61,12 +61,12 @@ Runtime selection: Node 24.22.1, verified from official Node distribution checks
 
 ## Review rounds
 
-The integrated source and four simplification lenses are complete. Independent review found no actionable source defects; full-Xcode CI subsequently passed, while browser acceptance remains blocked. Exact checks, scope, reviewers and dispositions are recorded below.
+The integrated source and four simplification lenses are complete. Independent review found no actionable source defects; full-Xcode CI subsequently passed. The owner's October 26 manual parity acceptance and screenshot waiver resolve P1's visual gate. Exact checks, scope, reviewers and dispositions are recorded below; earlier receipts retain their historical evidence limits.
 
 ## Owner-decision queue
 
 1. P1 automatic preview/push/PR approved by the user. Observe its actual deployment and CI outcome; this does not authorize production deployment or a merge.
-2. Resolve saved local-browser denial for required visual acceptance; user authorization already exists but tool policy still denies.
+2. P1 visual gate resolved: owner manual check accepted and screenshot requirement explicitly waived on October 26. Saved browser policy remains unchanged; later browser/design acceptance is still required in its owning phase.
 3. Required-check policy is complete: explicit owner approval applied native, web, npm-audit and gitleaks checks (GitHub Actions integration 15368), plus an up-to-date branch, to ruleset 13642556. API readback verified all existing protections/bypass settings unchanged. #71 awaits owner merge.
 4. User merges each verified PR in order. No successor branch before that merge.
 5. Future dedicated native, exact signed artifacts, release/deployment and F7 rights/reporting prerequisites remain as recorded in the epic.
@@ -111,7 +111,7 @@ Independent `claudna:review-work changes` ran as `/root/p1_review_work` with no 
 
 | Issue/item | P1 result | Remaining evidence / owner |
 |---|---|---|
-| #22 / #81 BZ-038 | Component/state/fixture extraction and shared-caller behavior tests complete locally. | Required browser parity; keep open. |
+| #22 / #81 BZ-038 | Extraction and shared-caller tests complete; owner accepted manual visual parity and waived screenshots on October 26. | #22 awaits owner merge; #81 remains open for its later subitems. |
 | #23 | Repeated boundary paths and preference strings centralized without changing persisted values. | P2 bundle-derived footer/version policy; keep open. |
 | #71 | Web/native workflows now run and pass in [PR #95](https://github.com/chrisrogers37/benzo/pull/95), including full Xcode. | Required-check policy applied and verified; keep open pending owner merge. |
 | #72 / #82 BZ-037 | Explicit dependency seams, fake-only target and 11 XCTest cases pass remotely. | Parser/policy/recovery/diagnostic regression scope in P3–P6; no umbrella closure. |
@@ -119,7 +119,7 @@ Independent `claudna:review-work changes` ran as `/root/p1_review_work` with no 
 | #82 BZ-045 | Replaced the content-controller force unwrap with one optional binding. `statusItem`/`popover` are assigned before their callbacks are registered; no reachable nil crash was established for those IUOs. Existing Application Support `.first!` assumption was moved to app composition, not introduced or proven safe for every hypothetical environment. | Do not claim every IUO removed or an observed crash fixed. No speculative fallback directory that could lose originals. |
 | #82 BZ-046 | Removed the extracted web demo's unused `activeCount`; retained native `capturedAt` as persisted recovery provenance, covered by a round-trip test that passed in remote XCTest. `killCaffeinateProcesses` is reachable, so it is not dead code; removing that behavior belongs to P5. Native `MasterToggleView.activeCount` is an unused input spanning untouched view files. | P7 may remove that native input during the owned UI change; no broad dead-code-complete claim. |
 
-P1 is not accepted or ready to merge. Full-Xcode CI passed at eb85cf3; browser evidence remains, and the October 26 test assertion update requires CI at its resulting head. Required-check repository policy is applied and verified. The user approved P1 preview publication. P2–P8 remain queued behind their predecessor merges.
+P1 source checks/reviews and owner manual parity acceptance are complete at 0409b790; before/after screenshots were explicitly waived. Required-check repository policy is applied and verified. This documentation-only acceptance update requires passing checks at its resulting PR head, then owner merge. The user approved P1 preview publication. P2–P8 remain queued behind their predecessor merges.
 
 ### Authorized publication
 
@@ -148,3 +148,11 @@ The owner requested Claude simplification followed by independent Sonnet and Opu
 - Browser before/after acceptance remains unresolved. The approved required-check rule has been applied and verified; all four required checks passed on eb85cf3. User merge and predecessor order remain binding. No issue was closed and no GitHub review was posted.
 
 Focused Opus follow-up (child `198e6989-526a-454b-a935-869467b68490`, job `8c3dba4d-9b3f-4c3e-a273-385df99d8be4`) confirmed the assertion addresses the empty-list gap without runtime changes and that the receipt edits preserve acceptance gates. Its one Minor stale #71 table cell was corrected to match the applied policy. Native completion/cleanup succeeded with no denials; parent verified the reviewed file hashes and the exact correction.
+
+## Owner manual visual acceptance — 2026-10-26
+
+- Tested source: `0409b79081d7d8dbab8347faa49aa06a7074b372`. Fresh readback found [build run 40273064180](https://github.com/chrisrogers37/benzo/actions/runs/40273064180) and [security run 40273064236](https://github.com/chrisrogers37/benzo/actions/runs/40273064236) successful; `gh pr checks 95 --required` identified native, web, npm-audit and gitleaks as passing. Native evidence includes Debug/Release builds and 11 tests; web evidence includes 17 tests.
+- The owner received the [exact-head preview](https://benzo-n9pney4fh-chrisrogers37.vercel.app), [current site](https://benzo-gules.vercel.app) and a checklist covering layout/narrow viewport, pill/master/options controls, diagnostics, simulated timer/cancel and help. Their result was “That all seems to work!” This is owner-reported acceptance; the agent did not observe the browser session or establish its exact viewport.
+- The owner explicitly answered “Yes—use my manual check” when asked to use that result as final visual acceptance and waive matching before/after screenshots. No screenshots were captured or supplied. Residual limitation: reviewers have no retained pixel comparison. Browser permissions, host settings and fleet processes were not changed.
+- Scope clarified with the owner: this is a regression/parity check only. A focused visual critique of messaging, hierarchy, trust, calls to action and the download-to-first-use path has not been completed. P8's existing accessibility/trust plan must not be described as a completed conversion review; design recommendations and measured conversion improvement are separate claims. No analytics, redesign or extra harness is added by this receipt.
+- This follow-up changes only four delivery documents. Runtime source, tests, build configuration and assets remain identical to the accepted source, so the prior code reviews and manual check remain applicable. PR-head CI must pass for the documentation commit; the PR Checks tab and description carry that final receipt. No merge, issue closure, P2 implementation or production deployment occurred.

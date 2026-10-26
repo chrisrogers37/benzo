@@ -52,13 +52,13 @@ xcodebuild -project Benzo/Benzo.xcodeproj -scheme Benzo -configuration Release -
 xcodebuild -project Benzo/Benzo.xcodeproj -scheme BenzoCoreTests -destination 'platform=macOS' -derivedDataPath "$BENZO_TEST_DERIVED" CODE_SIGNING_ALLOWED=NO test
 ```
 
-Set `BENZO_TEST_DERIVED` to a newly created task-owned temporary directory, not a shared build directory. Check test target metadata excludes the app host and live login adapter, and fake logs contain no real pmset/sudo/login calls. Use authorized browser before/after screenshots at the same viewport and interactions for extraction; denial means acceptance incomplete. No arbitrary coverage target.
+Set `BENZO_TEST_DERIVED` to a newly created task-owned temporary directory, not a shared build directory. Check test target metadata excludes the app host and live login adapter, and fake logs contain no real pmset/sudo/login calls. The original extraction check required authorized browser before/after screenshots at the same viewport plus interactions. On October 26 the owner explicitly accepted their manual check instead and waived screenshots; see the delivery receipt. This P1 waiver does not waive later browser/design acceptance. No arbitrary coverage target.
 
 ## Verification Checklist
 
 - [ ] Clean installation, web behavior/build/security jobs and full-Xcode Debug/Release/core tests pass at PR head.
 - [x] Unit-test composition excludes production startup/live adapters; fake-boundary cases passed in unhosted XCTest at 776c08d.
-- [ ] Extracted demo preserves outside diagnostics caller, initial state and visible interaction behavior with browser evidence.
+- [x] Extracted demo parity accepted by owner manual visual/interaction check at 0409b790; screenshot requirement explicitly waived. No conversion/design approval is implied.
 - [x] Current advisories resolved; local and remote audit at 776c08d pass without suppression.
 - [ ] #22/#23/#71 scopes have evidence; #72/#82 partial rows use `Refs`, not premature closure.
 - [ ] Independent `claudna:review-work` findings addressed; plan receipts updated; user merges.
@@ -67,7 +67,7 @@ Set `BENZO_TEST_DERIVED` to a newly created task-owned temporary directory, not 
 
 Implementation and independent `claudna:review-work` are complete with no actionable source defects. Draft [PR #95](https://github.com/chrisrogers37/benzo/pull/95) is published with explicit approval for its automatic Vercel preview. At implementation SHA `776c08d99077d33f25a39462517fe12bd3d66139`, remote clean install, 17 web tests/build, audit, Gitleaks, full-Xcode Debug/Release and all 11 unhosted XCTest cases passed. Xcode was 16.4 (16F6) on macos-15; no production app or native test was run on the fleet Mac. Delivery-only follow-up commits require green checks at their resulting PR head.
 
-Required browser screenshots remain blocked by saved policy. The owner-approved ruleset now requires native, web, npm-audit and gitleaks checks from GitHub Actions, with an up-to-date branch; existing protections and bypass settings were verified unchanged. #71 remains open until owner merge. The October 26 Claude simplification and Sonnet/Opus reviews found no Critical/Important defects; one existing native timer test now asserts that the injected timer was actually created, with CI required at its resulting head. P1 is not ready to merge while browser evidence remains outstanding. See [RUN_LOG](RUN_LOG.md) for exact checks/review identities, deployment, issue/#82 dispositions and limitations. P2 remains queued on the owner's P1 merge.
+The owner-approved ruleset requires native, web, npm-audit and gitleaks checks from GitHub Actions, with an up-to-date branch; existing protections and bypass settings were verified unchanged. #71 remains open until owner merge. The October 26 Claude simplification and Sonnet/Opus reviews found no Critical/Important defects; the strengthened native timer test passed in CI at 0409b790 along with all other checks. The owner then reported “That all seems to work!” after the manual visual/interaction checklist and explicitly answered “Yes—use my manual check” to accepting it in place of before/after screenshots. No screenshots were captured or supplied; agent browser policy remains unchanged. Acceptance covers P1 regression parity, not design optimization or improved download conversion. This documentation-only update must retain green PR-head checks before owner merge. See [RUN_LOG](RUN_LOG.md) for exact checks/review identities, deployment, issue/#82 dispositions and limitations. P2 remains queued on the owner's P1 merge.
 
 ## What NOT To Do
 
