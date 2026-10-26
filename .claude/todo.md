@@ -1,5 +1,17 @@
 # Benzo Open Work
 
+## Current gated work — 2026-10-25
+
+- [x] Phase 1 evaluation: `documentation/plans/00_benzo-evaluation_2026-10-25.md`.
+- [x] Phase 2 plan and ironclad hardening: `documentation/plans/benzo-reorientation_2026-10-25/00_overview.md`; document corrections independently verified; recommended F1–F7 and Phase 3 approved with conditions on 2026-10-25.
+- [ ] Phase 3 delivery: P1 PR #95 on `codex/benzo-build-foundation` has independent reviews and passing native/web/security CI at 0409b790, including the strengthened timer assertion. On October 26 the owner passed the manual visual/interaction check and explicitly waived before/after screenshots. This accepts regression parity, not conversion/design optimization. Required-check policy is applied; this documentation-only update still requires green PR-head checks, then user merge. P2 waits for that merge. See `documentation/plans/benzo-reorientation_2026-10-25/RUN_LOG.md`; one feature branch/PR per phase, user merges.
+
+The Mac Mini is an always-on fleet host. Leave power settings, permission rules, login items and fleet processes untouched. Privileged/physical acceptance requires a separately approved test Mac. Outward and destructive actions retain their explicit approval gates.
+
+## Historical backlog snapshot
+
+The list below is retained as context. Its monetization, updater, release and hardware claims are not current authorization; the new plan records proposed issue dispositions.
+
 Live tracker: **GitHub issues [#53–#82](https://github.com/chrisrogers37/benzo/issues?q=is%3Aissue+is%3Aopen+BZ-)**.
 Archive + cross-reference: `documentation/planning/system-review_2026-07-07/04_github-issue-index.md`.
 

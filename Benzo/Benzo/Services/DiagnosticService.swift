@@ -1,26 +1,11 @@
 import Foundation
 
-struct SleepBlocker: Identifiable {
-    let id = UUID()
-    let processName: String
-    let displayName: String
-}
-
-struct SettingVerification: Identifiable {
-    let id = UUID()
-    let setting: SleepSetting
-    let key: String
-    let expectedValue: String
-    let actualValue: String
-    let matches: Bool
-}
-
 enum DiagnosticService {
 
     // MARK: - Sleep Data (single log parse)
 
     static func fetchSleepData(limit: Int = 5) -> (sessions: [SleepSession], lastWakeReason: String?) {
-        guard let log = try? ShellExecutor.runDirect("/usr/bin/pmset", ["-g", "log"]) else { return ([], nil) }
+        guard let log = try? ShellExecutor.runDirect(BenzoPaths.pmset, ["-g", "log"]) else { return ([], nil) }
 
         var sleepEvents: [(date: Date, battery: Int?)] = []
         var wakeEvents: [(date: Date, battery: Int?, reason: String?)] = []
@@ -104,7 +89,7 @@ enum DiagnosticService {
     ]
 
     static func fetchSleepBlockers() -> [SleepBlocker] {
-        guard let output = try? ShellExecutor.runDirect("/usr/bin/pmset", ["-g", "assertions"]) else { return [] }
+        guard let output = try? ShellExecutor.runDirect(BenzoPaths.pmset, ["-g", "assertions"]) else { return [] }
 
         var seen = Set<String>()
         var blockers: [SleepBlocker] = []
@@ -130,7 +115,7 @@ enum DiagnosticService {
     // MARK: - Settings Verification
 
     static func verifySettings(settingStates: [SleepSetting: Bool], isActive: Bool) -> [SettingVerification] {
-        guard let state = try? PMSetService.readCurrentState() else { return [] }
+        guard let state = try? PMSetService(runner: ShellCommandRunner()).readCurrentState() else { return [] }
 
         var verifications: [SettingVerification] = []
         for setting in SleepSetting.allCases {

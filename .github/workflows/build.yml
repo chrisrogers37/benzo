@@ -1,0 +1,41 @@
+name: build
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: build-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  web:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - run: npm test
+      - run: npm run build
+
+  native:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v7
+      - name: Record Xcode and isolate build output
+        run: |
+          xcodebuild -version
+          echo "BENZO_TEST_DERIVED=$(mktemp -d "$RUNNER_TEMP/benzo-derived.XXXXXX")" >> "$GITHUB_ENV"
+      - name: Debug app build (no launch)
+        run: xcodebuild -project Benzo/Benzo.xcodeproj -scheme Benzo -configuration Debug -derivedDataPath "$BENZO_TEST_DERIVED" CODE_SIGNING_ALLOWED=NO build
+      - name: Release app build (no launch)
+        run: xcodebuild -project Benzo/Benzo.xcodeproj -scheme Benzo -configuration Release -derivedDataPath "$BENZO_TEST_DERIVED" CODE_SIGNING_ALLOWED=NO build
+      - name: Unhosted core tests
+        run: xcodebuild -project Benzo/Benzo.xcodeproj -scheme BenzoCoreTests -destination 'platform=macOS' -derivedDataPath "$BENZO_TEST_DERIVED" CODE_SIGNING_ALLOWED=NO test

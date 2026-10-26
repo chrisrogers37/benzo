@@ -4,9 +4,35 @@ import SwiftUI
 final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
     private var statusItem: NSStatusItem!
     private var popover: NSPopover!
-    private let viewModel = BenzoViewModel()
+    private let viewModel = AppDelegate.makeViewModel()
     private var eventMonitor: Any?
     private var sizeObserver: NSObjectProtocol?
+
+    /// The only production composition root; it is never compiled into BenzoCoreTests.
+    private static func makeViewModel() -> BenzoViewModel {
+        let clock = LiveBenzoClock()
+        let backupURL = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
+            .appendingPathComponent(BenzoPaths.supportDirectory, isDirectory: true)
+            .appendingPathComponent(BenzoPaths.backupFilename)
+        let dependencies = BenzoDependencies(
+            commands: ShellCommandRunner(),
+            backup: BackupService(fileURL: backupURL, clock: clock),
+            preferences: UserDefaults.standard,
+            clock: clock,
+            loginItem: LiveLoginItemClient(),
+            isSetupComplete: { ShellExecutor.isSetupComplete },
+            needsSudoersUpdate: { ShellExecutor.needsSudoersUpdate },
+            installSudoersRule: { try ShellExecutor.installSudoersRule() },
+            fetchSleepData: { DiagnosticService.fetchSleepData() },
+            fetchUSBDevices: { DiagnosticService.fetchUSBDevices() },
+            fetchSleepBlockers: { DiagnosticService.fetchSleepBlockers() },
+            verifySettings: { DiagnosticService.verifySettings(settingStates: $0, isActive: $1) },
+            runInBackground: { DispatchQueue.global(qos: .userInitiated).async(execute: $0) },
+            runOnMain: { DispatchQueue.main.async(execute: $0) },
+            terminate: { NSApplication.shared.terminate(nil) }
+        )
+        return BenzoViewModel(dependencies: dependencies, startupPolicy: .automatic)
+    }
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         statusItem = NSStatusBar.system.statusItem(withLength: 44)
@@ -42,9 +68,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
     }
 
     private func adjustPopoverFrame() {
-        guard let window = popover.contentViewController?.view.window else { return }
+        guard let contentController = popover.contentViewController,
+              let window = contentController.view.window else { return }
         let oldFrame = window.frame
-        let newContentSize = popover.contentViewController!.view.fittingSize
+        let newContentSize = contentController.view.fittingSize
         let newHeight = newContentSize.height + 20 // account for popover chrome/arrow
 
         if abs(oldFrame.height - newHeight) > 1 {
@@ -121,5 +148,31 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
             NSEvent.removeMonitor(monitor)
             eventMonitor = nil
         }
+    }
+}
+
+// These adapters live at the app boundary so core tests cannot accidentally select them.
+extension UserDefaults: PreferenceStoring {}
+
+private struct LiveBenzoClock: BenzoClock {
+    var now: Date { Date() }
+
+    func schedule(after delay: TimeInterval, perform: @escaping () -> Void) {
+        DispatchQueue.main.asyncAfter(deadline: .now() + delay, execute: perform)
+    }
+
+    func scheduleRepeating(every interval: TimeInterval, perform: @escaping (any BenzoCancellation) -> Void) -> any BenzoCancellation {
+        let timer = Timer.scheduledTimer(withTimeInterval: interval, repeats: true) { timer in
+            perform(TimerCancellation(timer: timer))
+        }
+        return TimerCancellation(timer: timer)
+    }
+}
+
+private struct TimerCancellation: BenzoCancellation {
+    let timer: Timer
+
+    func cancel() {
+        timer.invalidate()
     }
 }

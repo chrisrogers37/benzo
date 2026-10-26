@@ -1,10 +1,9 @@
-import AppKit
+import Combine
 import Foundation
-import ServiceManagement
 
 final class BenzoViewModel: ObservableObject {
     @Published var isActive: Bool {
-        didSet { UserDefaults.standard.set(isActive, forKey: "isActive") }
+        didSet { dependencies.preferences.set(isActive, forKey: BenzoPreferenceKey.isActive) }
     }
     @Published var settingStates: [SleepSetting: Bool] {
         didSet { persistSettingStates() }
@@ -31,12 +30,16 @@ final class BenzoViewModel: ObservableObject {
 
     var onStateChange: ((Bool) -> Void)?
     private var isInitialized = false
-    private var sleepTimer: Timer?
+    private var sleepTimer: (any BenzoCancellation)?
+    private let dependencies: BenzoDependencies
+    private let pmset: PMSetService
 
-    init() {
-        let savedActive = UserDefaults.standard.bool(forKey: "isActive")
+    init(dependencies: BenzoDependencies, startupPolicy: BenzoStartupPolicy) {
+        self.dependencies = dependencies
+        self.pmset = PMSetService(runner: dependencies.commands)
+        let savedActive = dependencies.preferences.bool(forKey: BenzoPreferenceKey.isActive)
 
-        if let data = UserDefaults.standard.dictionary(forKey: "settingStates") as? [String: Bool] {
+        if let data = dependencies.preferences.dictionary(forKey: BenzoPreferenceKey.settingStates) as? [String: Bool] {
             var states: [SleepSetting: Bool] = [:]
             for setting in SleepSetting.allCases {
                 states[setting] = data[setting.rawValue] ?? setting.defaultEnabled
@@ -52,23 +55,22 @@ final class BenzoViewModel: ObservableObject {
 
         self.isActive = savedActive
 
-        if #available(macOS 13.0, *) {
-            self.launchAtLogin = SMAppService.mainApp.status == .enabled
-        }
-
-        self.needsSetup = !ShellExecutor.isSetupComplete
+        self.launchAtLogin = dependencies.loginItem.isEnabled
         self.isInitialized = true
 
-        if ShellExecutor.needsSudoersUpdate {
-            DispatchQueue.main.async {
-                try? ShellExecutor.installSudoersRule()
+        if startupPolicy == .automatic {
+            self.needsSetup = !dependencies.isSetupComplete()
+            if dependencies.needsSudoersUpdate() {
+                dependencies.runOnMain {
+                    try? dependencies.installSudoersRule()
+                }
             }
         }
     }
 
     func runSetup() {
         do {
-            try ShellExecutor.installSudoersRule()
+            try dependencies.installSudoersRule()
             needsSetup = false
             errorMessage = nil
         } catch ShellError.userCancelled {
@@ -98,12 +100,12 @@ final class BenzoViewModel: ObservableObject {
     }
 
     func revertToDefaults() {
-        guard let backup = try? BackupService.load() else {
+        guard let backup = try? dependencies.backup.load() else {
             errorMessage = "Nothing to revert — activate Benzo first."
             return
         }
         do {
-            try PMSetService.restoreValues(backup)
+            try pmset.restoreValues(backup)
             isActive = false
             onStateChange?(false)
             errorMessage = nil
@@ -115,10 +117,10 @@ final class BenzoViewModel: ObservableObject {
     }
 
     func quit() {
-        if isActive, let backup = try? BackupService.load() {
-            try? PMSetService.restoreValues(backup)
+        if isActive, let backup = try? dependencies.backup.load() {
+            try? pmset.restoreValues(backup)
         }
-        NSApplication.shared.terminate(nil)
+        dependencies.terminate()
     }
 
     func sleepNow() {
@@ -128,20 +130,21 @@ final class BenzoViewModel: ObservableObject {
         do {
             // If Deep Sleep isn't active, enable it first
             if !isActive {
-                if !BackupService.hasBackup() {
-                    let state = try PMSetService.readCurrentState()
-                    try BackupService.save(state)
+                if !dependencies.backup.hasBackup() {
+                    let state = try pmset.readCurrentState()
+                    try dependencies.backup.save(state)
                 }
                 let enabled = SleepSetting.allCases.filter { settingStates[$0] == true }
-                try PMSetService.applySettings(enabled)
+                try pmset.applySettings(enabled)
                 isActive = true
                 onStateChange?(true)
             }
 
             // Brief delay to let settings propagate, then sleep
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
+            let pmset = self.pmset
+            dependencies.clock.schedule(after: 0.5) { [weak self] in
                 do {
-                    try PMSetService.sleepNow()
+                    try pmset.sleepNow()
                 } catch {
                     self?.errorMessage = error.localizedDescription
                 }
@@ -159,14 +162,14 @@ final class BenzoViewModel: ObservableObject {
 
     func scheduleSleep(after seconds: TimeInterval) {
         cancelScheduledSleep()
-        let fireDate = Date().addingTimeInterval(seconds)
+        let fireDate = dependencies.clock.now.addingTimeInterval(seconds)
         sleepTimerRemaining = seconds
 
-        sleepTimer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] timer in
-            guard let self else { timer.invalidate(); return }
-            let remaining = fireDate.timeIntervalSinceNow
+        sleepTimer = dependencies.clock.scheduleRepeating(every: 1) { [weak self] timer in
+            guard let self else { timer.cancel(); return }
+            let remaining = fireDate.timeIntervalSince(self.dependencies.clock.now)
             if remaining <= 0 {
-                timer.invalidate()
+                timer.cancel()
                 self.sleepTimer = nil
                 self.sleepTimerRemaining = nil
                 self.executeSleepWithBlockerKill()
@@ -177,13 +180,13 @@ final class BenzoViewModel: ObservableObject {
     }
 
     func cancelScheduledSleep() {
-        sleepTimer?.invalidate()
+        sleepTimer?.cancel()
         sleepTimer = nil
         sleepTimerRemaining = nil
     }
 
     private func executeSleepWithBlockerKill() {
-        PMSetService.killCaffeinateProcesses()
+        pmset.killCaffeinateProcesses()
         sleepNow()
     }
 
@@ -200,8 +203,10 @@ final class BenzoViewModel: ObservableObject {
         let enabled = SleepSetting.allCases.filter { settingStates[$0] == true }
         guard !enabled.isEmpty else { return }
 
-        DispatchQueue.global(qos: .userInitiated).async { [weak self] in
-            guard let currentState = try? PMSetService.readCurrentState() else { return }
+        let dependencies = self.dependencies
+        let pmset = self.pmset
+        dependencies.runInBackground { [weak self] in
+            guard let currentState = try? pmset.readCurrentState() else { return }
 
             var drifted = false
             for setting in enabled {
@@ -214,9 +219,9 @@ final class BenzoViewModel: ObservableObject {
                 if drifted { break }
             }
 
-            let blockers = DiagnosticService.fetchSleepBlockers()
+            let blockers = dependencies.fetchSleepBlockers()
 
-            DispatchQueue.main.async {
+            dependencies.runOnMain {
                 if drifted {
                     self?.applyCurrentSettings()
                 }
@@ -229,19 +234,17 @@ final class BenzoViewModel: ObservableObject {
 
     func loadDiagnostics() {
         isLoadingDiagnostics = true
-        DispatchQueue.global(qos: .userInitiated).async { [weak self] in
-            let (sessions, wakeReason) = DiagnosticService.fetchSleepData()
-            let usb = DiagnosticService.fetchUSBDevices()
+        let dependencies = self.dependencies
+        dependencies.runInBackground { [weak self] in
+            let (sessions, wakeReason) = dependencies.fetchSleepData()
+            let usb = dependencies.fetchUSBDevices()
 
-            DispatchQueue.main.async {
+            dependencies.runOnMain {
                 guard let self else { return }
                 self.sleepSessions = sessions
                 self.lastWakeReason = wakeReason.map { SleepSession.humanReadableReason($0) }
                 self.usbDevices = usb
-                self.settingsVerification = DiagnosticService.verifySettings(
-                    settingStates: self.settingStates,
-                    isActive: self.isActive
-                )
+                self.settingsVerification = dependencies.verifySettings(self.settingStates, self.isActive)
                 self.isLoadingDiagnostics = false
             }
         }
@@ -252,13 +255,13 @@ final class BenzoViewModel: ObservableObject {
     private func activate() {
         do {
             // Backup current values on first activation
-            if !BackupService.hasBackup() {
-                let state = try PMSetService.readCurrentState()
-                try BackupService.save(state)
+            if !dependencies.backup.hasBackup() {
+                let state = try pmset.readCurrentState()
+                try dependencies.backup.save(state)
             }
 
             let enabled = SleepSetting.allCases.filter { settingStates[$0] == true }
-            try PMSetService.applySettings(enabled)
+            try pmset.applySettings(enabled)
             isActive = true
             onStateChange?(true)
             errorMessage = nil
@@ -270,14 +273,14 @@ final class BenzoViewModel: ObservableObject {
     }
 
     private func deactivate() {
-        guard let backup = try? BackupService.load() else {
+        guard let backup = try? dependencies.backup.load() else {
             // No backup — just toggle off visually
             isActive = false
             onStateChange?(false)
             return
         }
         do {
-            try PMSetService.restoreValues(backup)
+            try pmset.restoreValues(backup)
             isActive = false
             onStateChange?(false)
             errorMessage = nil
@@ -292,8 +295,8 @@ final class BenzoViewModel: ObservableObject {
         do {
             let enabled = SleepSetting.allCases.filter { settingStates[$0] == true }
             let disabled = SleepSetting.allCases.filter { settingStates[$0] != true }
-            let backup = try? BackupService.load()
-            try PMSetService.applySettingsWithRestore(enabled, disabledSettings: disabled, backup: backup)
+            let backup = try? dependencies.backup.load()
+            try pmset.applySettingsWithRestore(enabled, disabledSettings: disabled, backup: backup)
             errorMessage = nil
         } catch ShellError.userCancelled {
             // Revert toggle
@@ -307,20 +310,18 @@ final class BenzoViewModel: ObservableObject {
         for (setting, enabled) in settingStates {
             dict[setting.rawValue] = enabled
         }
-        UserDefaults.standard.set(dict, forKey: "settingStates")
+        dependencies.preferences.set(dict, forKey: BenzoPreferenceKey.settingStates)
     }
 
     private func updateLaunchAtLogin() {
-        if #available(macOS 13.0, *) {
-            do {
-                if launchAtLogin {
-                    try SMAppService.mainApp.register()
-                } else {
-                    try SMAppService.mainApp.unregister()
-                }
-            } catch {
-                errorMessage = "Failed to update launch at login: \(error.localizedDescription)"
+        do {
+            if launchAtLogin {
+                try dependencies.loginItem.register()
+            } else {
+                try dependencies.loginItem.unregister()
             }
+        } catch {
+            errorMessage = "Failed to update launch at login: \(error.localizedDescription)"
         }
     }
 }
