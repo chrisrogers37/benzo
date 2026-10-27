@@ -1,0 +1,6 @@
+{
+  "redirects": [
+    { "source": "/draft", "destination": "/", "permanent": true },
+    { "source": "/draft/", "destination": "/", "permanent": true }
+  ]
+}
