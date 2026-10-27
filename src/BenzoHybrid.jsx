@@ -1,18 +1,27 @@
-import { useReducer, useState } from "react";
+import { useEffect, useReducer, useState } from "react";
 import BenzoMockup from "./components/BenzoMockup";
 import { demoReducer, initialDemoState } from "./demo/state";
 import { pink, pinkSoft, pinkGlow, pinkBorder } from "./demo/fixtures";
 
-const GITHUB_URL = "https://github.com/chrisrogers37/benzo";
-const RELEASES_URL = "https://github.com/chrisrogers37/benzo/releases";
+import { siteCopy } from './design/siteCopy';
+const GITHUB_URL = siteCopy.links.repository;
+const RELEASES_URL = siteCopy.links.releases;
 
 const BenzoHybrid = () => {
   const [demo, dispatch] = useReducer(demoReducer, initialDemoState);
   const { isActive, showDiagnostics } = demo;
   const [showGatekeeper, setShowGatekeeper] = useState(false);
 
+  useEffect(() => {
+    const font = document.createElement('link');
+    font.rel = 'stylesheet';
+    font.href = 'https://fonts.googleapis.com/css2?family=Instrument+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500;1,600;1,700&family=IBM+Plex+Mono:wght@400;500&display=swap';
+    document.head.appendChild(font);
+    return () => font.remove();
+  }, []);
+
   return (
-    <div
+    <div className="benzo-legacy"
       style={{
         minHeight: "100vh",
         background: "#f6f5f3",

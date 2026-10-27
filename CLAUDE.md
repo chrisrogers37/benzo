@@ -77,9 +77,12 @@ Benzo/Benzo/                     — Swift macOS menubar app
 └── Theme/
     └── BenzoTheme.swift         — colors (accent: #d4749c)
 
-src/BenzoHybrid.jsx              — marketing wrapper and shared demo state
+src/BenzoHybrid.jsx              — unbundled historical page; legacy layout/copy only
 src/components/BenzoMockup.jsx   — interactive mockup; keep native UI parity here
-src/demo/                       — pure reducer and demonstration fixtures
+src/landing/NativeAppDemo.jsx      — source-based interactive reproduction; original mockup retained as historical source
+src/landing/BenzoLanding.jsx         — public landing page; single owner of interactive demo state
+src/design/                     — core web tokens, CSS, copy, metadata, icons and app presentation
+src/demo/                       — browser state/hooks and legacy compatibility fixture exports
 Benzo/BenzoTests/                — unhosted core XCTest bundle; fakes only
 scripts/build-dmg.sh             — archive, sign, notarize, and package as DMG
 Casks/benzo.rb                   — Homebrew cask formula
@@ -88,6 +91,8 @@ Casks/benzo.rb                   — Homebrew cask formula
 ### Key Principles
 
 - **Mockup sync**: Any UI or behavioral change to the native app must also be reflected in `src/components/BenzoMockup.jsx` and the shared demo state in `src/BenzoHybrid.jsx` / `src/demo/`.
+- **Draft fidelity**: Marketing redesigns must preserve the native UI and interactive controls in `src/landing/NativeAppDemo.jsx`; keep demo navigation/disclosures outside the app panel. Verify against current Swift source, and reserve pixel-parity claims for comparison with an approved native screenshot.
+- **Core web design**: Import redesigned page/demo presentation from `src/design/`. Keep one `useBenzoDemo` state in `BenzoLanding` for panel and page theme; never mirror the master switch in a second state. Marketing copy and native UI copy have separate owners inside the module. See `src/design/README.md`.
 - **Recovery scope**: The current app attempts backup restoration on quit, with known failure paths tracked in P4/P5. Never claim defaults or successful restoration without evidence.
 - **Not App Store**: Benzo requires root access for pmset, incompatible with App Store sandboxing.
 
@@ -125,8 +130,8 @@ npm run build        # Production build
 
 - SwiftUI for all views, `@ObservedObject`/`@Published` for state
 - Pink accent `#d4749c` throughout — see `BenzoTheme.swift`
-- Fonts: Instrument Sans (body), IBM Plex Mono (code) on landing page
-- Landing page uses inline React styles, no CSS framework
+- Draft fonts: system sans for reading; system mono for technical values. Typography and styling live in `src/design/`, without a CSS framework.
+- The public `/` route uses the approved design and system fonts; `/draft` redirects to it. Historical page files remain unbundled, and their old copy is not approved product guidance. Site publication does not complete broader P8/native acceptance.
 - New `.swift` files must be registered in `project.pbxproj` in 4 places:
   1. `PBXBuildFile` section
   2. `PBXFileReference` section

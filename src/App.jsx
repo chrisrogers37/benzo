@@ -1,5 +1,5 @@
-import BenzoHybrid from './BenzoHybrid'
+import BenzoLanding from './landing/BenzoLanding'
 
 export default function App() {
-  return <BenzoHybrid />
+  return <BenzoLanding />
 }

@@ -1,0 +1,110 @@
+/* Match the current SwiftUI surface, independently of landing-page typography. */
+.benzo-site .bz-native-demo { position: relative; width: var(--layout-demo); max-width: 100%; margin: 0 auto; }
+.benzo-site .bn-demo-toolbar { display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); margin-bottom: var(--space-4); font-size: var(--type-secondary); color: var(--muted); }
+.benzo-site .bn-demo-toolbar > span { font-family: var(--type-sans); }
+.benzo-site .bn-demo-toolbar > div { display: flex; gap: 10px; }
+.benzo-site .bn-demo-toolbar button, .benzo-site .bn-closed button { border: 0; background: none; font-size: var(--type-secondary); min-height: var(--layout-control); text-decoration: underline; text-underline-offset: 3px; }
+.benzo-site .bn-stage { color: var(--native-ink); font-family: var(--type-sans); font-size: var(--native-base); line-height: normal; }
+.benzo-site .bn-stage button { border: 0; background: none; padding: 0; border-radius: 0; font-family: inherit; font-size: inherit; line-height: inherit; text-align: inherit; }
+.benzo-site .bn-stage button:disabled { cursor: default; }
+.benzo-site .bn-stage button:focus-visible { outline: 2px solid var(--rose); outline-offset: 3px; }
+.benzo-site .bn-menubar { display: flex; justify-content: space-between; align-items: center; height: 32px; padding: 0 12px; background: var(--native-menubar); border: 1px solid var(--native-menubar-border); border-radius: 7px; font-size: var(--native-secondary); }
+.benzo-site .bn-menubar > div { display: flex; gap: 12px; align-items: center; }
+.benzo-site .bn-menubar .bn-menu-button { width: 44px; height: 28px; display: grid; place-items: center; border-radius: 4px; }
+.benzo-site .bn-menu-button[aria-expanded=true] { background: var(--native-black-pressed); }
+.benzo-site .bn-popover { position: relative; width: var(--layout-demo); max-width: 100%; margin-top: 12px; background: var(--white); border-radius: var(--native-popover-radius); box-shadow: 0 0 0 1px var(--native-black-outline), 0 12px 36px var(--native-black-shadow); }
+.benzo-site .bn-popover::before { content: ''; position: absolute; width: 14px; height: 14px; background: var(--white); top: -7px; right: 117px; transform: rotate(45deg); border-top: 1px solid var(--native-black-outline); border-left: 1px solid var(--native-black-outline); }
+.benzo-site .bn-master { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 14px 20px; }
+.benzo-site .bn-master strong { display: block; font-size: var(--native-title); font-weight: 600; }
+.benzo-site .bn-master p { margin-top: 2px; color: var(--native-faint); font-size: var(--native-secondary); }
+.benzo-site .bn-stage .bn-toggle { position: relative; width: var(--native-toggle-width); height: var(--native-toggle-height); flex-shrink: 0; border-radius: 13px; background: var(--native-toggle-off); }
+.benzo-site .bn-stage .bn-toggle.bn-on { background: var(--pink); box-shadow: 0 2px 8px var(--native-pink-shadow); }
+.benzo-site .bn-toggle > span { position: absolute; width: var(--native-toggle-thumb); height: var(--native-toggle-thumb); top: 3px; left: 3px; border-radius: 50%; background: var(--white); box-shadow: 0 1px 2px var(--native-thumb-shadow); transition: left var(--motion-normal); }
+.benzo-site .bn-toggle.bn-on > span { left: 21px; }
+.benzo-site .bn-sleep-wrap { padding: 0 20px 14px; }
+.benzo-site .bn-sleep-capsule { display: flex; align-items: center; overflow: hidden; background: var(--pink); color: var(--white); border-radius: var(--radius-pill); box-shadow: 0 2px 6px var(--native-pink-shadow-soft); }
+.benzo-site .bn-sleep-capsule:hover { box-shadow: 0 2px 12px var(--native-pink-shadow-strong); }
+.benzo-site .bn-sleep-capsule > button { display: flex; align-items: center; justify-content: center; gap: 8px; padding: 10px 0; color: var(--white); font-size: var(--native-base); font-weight: 600; }
+.benzo-site .bn-sleep-now, .benzo-site .bn-status { flex: 1; }
+.benzo-site .bn-sleeping > button { opacity: .7; }
+.benzo-site .bn-sleep-divider { width: 1px; height: 16px; background: var(--native-white-line); }
+.benzo-site .bn-clock { width: 38px; flex-shrink: 0; align-self: stretch; }
+.benzo-site .bn-sleep-capsule button:focus-visible { outline-offset: -3px; border-radius: var(--radius-pill); }
+.benzo-site .bn-timer-picker { display: flex; justify-content: center; align-items: center; flex: 1; gap: 8px; padding: 10px 0; }
+.benzo-site .bn-timer-picker button { color: var(--pink); background: var(--native-white-soft); border-radius: var(--radius-pill); padding: 4px 10px; font-size: var(--native-secondary); font-weight: 600; }
+.benzo-site .bn-spinner { width: 12px; height: 12px; border: 1.5px solid var(--native-white-faint); border-top-color: var(--white); border-radius: 50%; animation: bn-spin .8s linear infinite; }
+@keyframes bn-spin { to { transform: rotate(360deg); } }
+.benzo-site .bn-blockers { padding: 0 20px 10px; text-align: center; color: var(--native-muted); font-size: var(--native-small); }
+.benzo-site .bn-blockers > div:first-child { display: flex; align-items: center; justify-content: center; gap: 4px; font-size: var(--native-secondary); margin-bottom: 2px; }
+.benzo-site .bn-options { border-top: 1px solid var(--native-black-line); }
+.benzo-site .bn-options > button { display: flex; justify-content: space-between; align-items: center; width: 100%; padding: 10px 20px; font-size: var(--native-secondary); font-weight: 500; color: var(--native-muted); }
+.benzo-site .bn-options > button > span:last-child { color: var(--native-faint); }
+.benzo-site .bn-expanded { transform: rotate(90deg); }
+.benzo-site .bn-stage .bn-setting { width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 9px 20px; }
+.benzo-site .bn-setting:hover { background: var(--native-black-faint); }
+.benzo-site .bn-setting[aria-checked=true]:hover { background: var(--native-pink-hover); }
+.benzo-site .bn-setting strong { display: block; font-size: var(--native-setting); font-weight: 500; }
+.benzo-site .bn-setting small { display: block; margin-top: 1px; color: var(--native-description); font-size: var(--native-caption); }
+.benzo-site .bn-checkbox { display: grid; place-items: center; width: 15px; height: 15px; border: 1.5px solid var(--native-toggle-off); border-radius: 3px; flex-shrink: 0; }
+.benzo-site .bn-checkbox.bn-checked { background: var(--pink); color: var(--white); border-color: transparent; box-shadow: 0 0 4px var(--native-pink-checkbox-glow); }
+.benzo-site .bn-error { color: var(--native-red); font-size: var(--native-small); padding: 6px 16px; }
+.benzo-site .bn-footer { border-top: 1px solid var(--native-black-faint); color: var(--native-muted); font-size: var(--native-small); }
+.benzo-site .bn-login { display: flex; align-items: center; justify-content: space-between; padding: 8px 20px 0; }
+.benzo-site .bn-stage .bn-login-toggle { width: 23px; height: 14px; position: relative; border-radius: 8px; background: var(--native-login-off); margin: 2px 6.5px; box-shadow: inset 0 0 0 1px var(--native-black-line); }
+.benzo-site .bn-login-toggle > span { width: 12px; height: 12px; position: absolute; left: 1px; top: 1px; border-radius: 50%; background: var(--white); box-shadow: 0 1px 1px var(--native-thumb-shadow); }
+.benzo-site .bn-stage .bn-login-toggle.bn-on { background: var(--native-blue); }
+.benzo-site .bn-login-toggle.bn-on > span { left: 10px; }
+.benzo-site .bn-footer-actions { display: flex; align-items: center; gap: 8px; padding: 8px 20px 10px; }
+.benzo-site .bn-footer-actions > span { margin-right: auto; color: var(--native-version); }
+.benzo-site .bn-footer-actions button:hover { color: var(--native-hover-text); }
+.benzo-site .bn-setup { min-height: 320px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 16px; padding: 20px 0; text-align: center; }
+.benzo-site .bn-setup-pill { font-size: 36px; }
+.benzo-site .bn-setup h3 { font-size: var(--native-setup-title); font-weight: 600; }
+.benzo-site .bn-setup p { padding: 0 20px; color: var(--native-muted); font-size: var(--native-base); }
+.benzo-site .bn-setup > button { font-size: var(--native-base); font-weight: 600; padding: 8px 24px; border-radius: 6px; background: var(--pink); color: var(--white); }
+.benzo-site .bn-setup .bn-setup-note { color: var(--native-faint); font-size: var(--native-small); }
+.benzo-site .bn-diagnostic-header { display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; border-bottom: 1px solid var(--native-black-line); }
+.benzo-site .bn-diagnostic-header button { display: flex; align-items: center; gap: 4px; color: var(--pink); font-size: var(--native-secondary); font-weight: 500; }
+.benzo-site .bn-diagnostic-header strong { font-size: var(--native-title); font-weight: 600; }
+.benzo-site .bn-diagnostic-header > span { width: 40px; }
+.benzo-site .bn-diagnostic-scroll { max-height: var(--native-diagnostic-height); overflow-y: auto; border-radius: 0 0 10px 10px; }
+.benzo-site .bn-diagnostic-scroll:focus-visible { outline: 2px solid var(--rose); outline-offset: 3px; }
+.benzo-site .bn-panel { border-bottom: 1px solid var(--native-black-faint); }
+.benzo-site .bn-panel h3 { color: var(--native-faint); font-size: var(--native-tiny); font-weight: 700; text-transform: uppercase; letter-spacing: .8px; padding: 12px 16px 6px; }
+.benzo-site .bn-mono { font-family: var(--type-mono); }
+.benzo-site .bn-faint { color: var(--native-faint); }
+.benzo-site .bn-session { padding: 6px 16px; }
+.benzo-site .bn-session > div:first-child { font-size: var(--native-secondary); font-weight: 500; }
+.benzo-site .bn-session > div:last-child { display: flex; gap: 8px; font-size: var(--native-small); color: var(--native-muted); margin-top: 3px; }
+.benzo-site .bn-green { color: var(--native-green); }
+.benzo-site .bn-wake { display: flex; align-items: center; gap: 8px; padding: 6px 16px; font-size: var(--native-base); font-weight: 500; }
+.benzo-site .bn-wake svg { color: var(--pink); }
+.benzo-site .bn-usb { display: flex; align-items: center; justify-content: space-between; padding: 4px 16px; font-size: var(--native-secondary); font-weight: 500; }
+.benzo-site .bn-usb .bn-mono { color: var(--native-muted); font-size: var(--native-small); font-weight: 400; }
+.benzo-site .bn-verification { display: flex; align-items: center; gap: 6px; padding: 3px 16px; font-size: var(--native-secondary); }
+.benzo-site .bn-result { width: 10px; height: 10px; border-radius: 50%; display: grid; place-items: center; color: var(--white); }
+.benzo-site .bn-success { background: var(--native-green); }
+.benzo-site .bn-failure { background: var(--native-red); }
+.benzo-site .bn-value { margin-left: auto; color: var(--native-muted); }
+.benzo-site .bn-verification small { color: var(--native-red-muted); font-size: var(--native-tiny); }
+.benzo-site .bn-red { color: var(--native-red); }
+.benzo-site .bn-verification-summary { padding: 6px 0; text-align: center; font-size: var(--native-small); font-weight: 500; }
+.benzo-site .bn-demo-caption { margin-top: var(--space-5); color: var(--muted); text-align: left; font-size: var(--type-secondary); line-height: var(--type-body-leading); }
+.benzo-site .bn-demo-actions { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 0 var(--space-3); margin-top: var(--space-2); }
+.benzo-site .bn-demo-actions button { display: inline-flex; align-items: center; gap: var(--space-2); min-height: var(--layout-control); border: 0; padding: 0; background: none; font-size: inherit; }
+.benzo-site .bn-demo-actions button:first-child { color: var(--ink); font-weight: 550; }
+.benzo-site .bn-demo-actions button:hover { color: var(--rose); text-decoration: underline; text-underline-offset: 3px; }
+.benzo-site .bn-demo-actions button > span { display: inline-flex; }
+.benzo-site .bn-demo-caption .bn-demo-about { border-top: 1px solid var(--line); padding-top: var(--space-3); margin-top: var(--space-2); }
+.benzo-site .bn-demo-caption .bn-demo-notice:not(:empty) { margin-top: var(--space-3); color: var(--accent-hover); }
+.benzo-site .bn-closed { padding: 60px 15px; text-align: center; color: var(--muted); font-size: var(--native-base); }
+.benzo-site .bn-closed > button { display: block; margin: 12px auto; text-decoration: underline; font-size: var(--native-base); }
+@media (prefers-reduced-motion: reduce) { .benzo-site .bn-spinner { animation: none; } }
+
+.benzo-site .bn-demo-toolbar { flex-wrap: wrap; }
+
+/* Keep every timer control inside the capsule on narrower-than-native panels. */
+@media (max-width: 359px) {
+  .benzo-site .bn-timer-picker { gap: 6px; }
+  .benzo-site .bn-timer-picker button { padding-inline: 8px; }
+}
