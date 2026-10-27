@@ -1,10 +1,10 @@
 ---
 title: "[plan] P8 — Accessible landing page and accurate trust documentation"
 type: plan
-status: draft
+status: partially-complete
 owner: claudna:forge
 created: 2026-10-25
-updated: 2026-10-25
+updated: 2026-10-27
 tags: [enhancement, security, reliability]
 repos: chrisrogers37/benzo
 ---
@@ -13,15 +13,29 @@ repos: chrisrogers37/benzo
 
 Part of the [epic](00_overview.md). Size M, risk medium. Complete site interaction/accessibility and make installation, privacy, support, licensing and hardware claims match the actual product and distribution evidence. One PR on `codex/benzo-site-trust`; local source acceptance is distinct from public deployment and production-link acceptance.
 
+The owner-authorized [design remediation supplement](../benzo-design-remediation_2026-10-26/00_overview.md) is now shipped, not awaiting design review. [PR #97](https://github.com/chrisrogers37/benzo/pull/97) merged as `eed0a969b097142042dc4412424fbc71a04d2c0d` on October 27. The public page uses `src/landing/BenzoLanding.jsx`, both draft paths redirect to `/`, and Git-based Vercel production serves this commit at https://benzo.work/. All post-merge web/native/audit/Gitleaks checks passed.
+
+## Completed site subset
+
+- [x] Approved hierarchy/copy/system fonts and shared `src/design/` presentation module.
+- [x] One demo state drives master switch, page theme, settings/timers/setup/restore/quit/restart; 33 web tests pass.
+- [x] Responsive copy/spacing and demo controls checked at 1440, 768, 375 and 320px; measured marketing text/CTA/focus colors pass.
+- [x] Removed unsupported physical promises, external font dependency and nonexistent social-image references from the public page; retained current-product caveats.
+- [x] Releases/contact links, public canonical/og:url, draft/www redirects, owner review, PR merge and live deployment verified.
+
+## Remaining P8 acceptance
+
+Keep the full verification checklist below open until its complete scope is met. Remaining work is final P2–P7 product/artifact reconciliation; native-panel contrast and native reference comparison; reduced-motion preference, zoom/large text, screen-reader and full focus/state checks; a reproducible performance trace; social image/remaining metadata; privacy, rights/license, security-reporting and final support/recovery documentation; and item-level issue reconciliation. Website publication does not establish an accepted native artifact, successful install, physical sleep benefit or conversion gain.
+
 ## Evidence
 
-`src/BenzoHybrid.jsx` contains click-only controls, a hard-coded countdown, misleading OS/physical claims and a command recipe omitting womp. The evaluation measured 2.323:1 body/link and 3.098:1 CTA combinations requiring contextual correction. `index.html:13,19` refers to an absent social image; site requests Google Fonts. README advertises MIT while no LICENSE exists. Missing vercel.json alone does not prove broken deployment.
+Historical audit at `a0c12f1` (not the current public route): `src/BenzoHybrid.jsx` contained click-only controls, a hard-coded countdown, misleading OS/physical claims and a command recipe omitting womp. The evaluation measured 2.323:1 body/link and 3.098:1 CTA combinations requiring contextual correction. `index.html:13,19` refers to an absent social image; site requests Google Fonts. README advertises MIT while no LICENSE exists. Missing vercel.json alone does not prove broken deployment.
 
 ## Implementation Plan
 
 ### Dependencies
 
-P7 merged. F6/F7 accepted or claims explicitly withheld while outcome issues stay open. Browser policy must permit local acceptance; do not bypass a saved denial. Deployment authority remains separate, including automatic PR previews/main deploys.
+For final P8 completion: P7 merged. The separately approved site subset above is already published and does not waive this dependency. F6/F7 accepted or claims explicitly withheld while outcome issues stay open. Browser policy must permit local acceptance; do not bypass a saved denial. Deployment authority remains separate, including automatic PR previews/main deploys.
 
 ### Blocks
 
@@ -29,7 +43,7 @@ Final web/trust acceptance and closure of #43/#81. Epic completion still depends
 
 ### Steps
 
-1. **Own files:** `src/BenzoHybrid.jsx`, extracted demo/components/styles/state/fixtures/tests, `src/App.jsx` only as necessary, `index.html`, `public/` metadata/social assets, README, new `SECURITY.md`, `PRIVACY.md`, conditional `LICENSE`, build/recovery/support docs and capability matrix; `Casks/benzo.rb` description/license metadata only if verified; native About/license surface only if needed to fulfill #40 without adding a new product surface. No framework migration.
+1. **Own files:** `src/landing/`, `src/design/`, demo/components/state/fixtures/tests; `src/BenzoHybrid.jsx` only as historical compatibility requires, `src/App.jsx` only as necessary, `index.html`, `public/` metadata/social assets, README, new `SECURITY.md`, `PRIVACY.md`, conditional `LICENSE`, build/recovery/support docs and capability matrix; `Casks/benzo.rb` description/license metadata only if verified; native About/license surface only if needed to fulfill #40 without adding a new product surface. No framework migration.
 2. Replace click-only noninteractive elements with native semantic buttons/toggles/links, meaningful accessible names/state, visible keyboard focus, Escape/return focus behavior for dialogs and no nested interactive download CTA. Preserve P7 state parity. Preserve and reverify P5’s injected-clock selected-duration/frozen-intent/countdown/cancel/system-sleep behavior; do not introduce it for the first time here or restore a hard-coded 04:32 display. Mark simulation as demonstration, not actual Mac control.
 3. Apply measured contrast corrections, reduced-motion behavior and responsive layout at 375px phone, 768px tablet and 1440px desktop plus narrow/large-text overflow checks. Validate keyboard and screen-reader semantics in a real authorized browser; automated DOM checks supplement them. Capture baseline production bundle/network and a reproducible throttled local performance trace before optimizing. Change blur/animation/font loading only for observed costs; no arbitrary memoization, code splitting or unsupported field scores.
 4. Align OS copy with the actual deployment target (currently macOS 13+); make sleep/USB/network claims conditional on declared capability evidence. Explain requested versus observed configuration and restore scope. Remove the unsupported exact command recipe or generate its seven-key content from a single presentation policy fixture; if retained, womp means Wake-on-LAN, not guaranteed USB wake prevention. Keep tcpkeepalive opt-in consequences clear. The site must not say arbitrary blocker termination remains a feature. Follow the owner-ratified F1/F3 success promise: configuration/recovery claims alone unless physical benefit has been observed on the named qualified target; failed required physical acceptance returns to the owner for the specified narrower-scope decision.

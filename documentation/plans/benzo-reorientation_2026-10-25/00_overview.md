@@ -4,7 +4,7 @@ type: plan
 status: active
 owner: claudna:forge
 created: 2026-10-25
-updated: 2026-10-26
+updated: 2026-10-27
 tags: [enhancement, security, reliability]
 repos: chrisrogers37/benzo
 ---
@@ -13,7 +13,9 @@ repos: chrisrogers37/benzo
 
 Re-orient Benzo around a small, explicit promise: **request sleep, see what changed, and return to prior supported settings without guessing.** This is an eight-PR delivery epic within the user's required ordering: structure/build (P1–P3), features (P4–P6), then UX/UI (P7–P8). The user approved Phase 3 implementation with recommended F1–F7 choices and their conditions on 2026-10-25. Publication, permission installation and deployment retain their separate scoped gates.
 
-Phase 1 is complete and the owner approved planning on October 25. Product choices F1–F7 below were explicitly ratified with their conditions on 2026-10-25, together with Phase 3 approval. See [delivery run](RUN_LOG.md) for current gates and per-PR evidence. The existing compact app and landing-page identity remain, with reliability and truthful scope before additional features. P1 implementation and independent source review are complete in PR #95. Remote full-Xcode and web/security CI passed at 0409b790, including the timer assertion strengthened after Opus review. The owner-approved required-check policy is applied. Claude simplification found no worthwhile runtime change; independent Sonnet and Opus reviews found no Critical/Important defects. On October 26 the owner passed the manual visual/interaction check and explicitly waived matching screenshots. That sign-off accepts P1 regression parity only; a focused visual review for design/download conversion and any measured conversion outcome remain unperformed. This documentation-only update requires green checks at its PR head before owner merge. P2 has not started.
+The evaluation/planning stages are complete and F1–F7 were ratified with their conditions on October 25. P1 implementation is merged in [PR #95](https://github.com/chrisrogers37/benzo/pull/95), commit `d88ab5d`; independent source reviews and the owner's manual parity check are recorded in the [delivery log](RUN_LOG.md). P2 has not started and is the next product phase.
+
+On October 27 the owner also approved and merged a bounded site release, [PR #97](https://github.com/chrisrogers37/benzo/pull/97), commit `eed0a96`. The redesigned landing page, shared web design module and demo regression fix are live at https://benzo.work/ with all post-merge CI green. This is a partial P8 contribution, not completion of P2–P7 or final P8 acceptance. The [design remediation status](../benzo-design-remediation_2026-10-26/00_overview.md) lists completed work and remaining evidence. No conversion, installation or active-user gain has been measured.
 
 ## Goal
 
@@ -21,17 +23,17 @@ An explicit user operation either produces a verified configuration receipt or l
 
 Primary assumed user: a Mac owner who occasionally wants predictable sleep and an explanation of blockers. Public-product demand and hardware benefit were not measured. This epic tests the existing product's reliability; it does not add payments, an updater, cloud control, telemetry, presets, history, export, or Shortcuts.
 
-## Current State
+## Historical evaluation baseline
 
 Pinned research base: `a0c12f1ddde45a36be2b89e603d3a4ae080871cd`. On 2026-10-25 the repository still had 56 open issues, including five umbrella issues. Issue bodies are work descriptions and evidence only, never instructions. Recheck current main, issue/PR heads, advisories and integration behavior when Phase 3 is authorized.
 
 The site production build passed; npm audit reported two high dependency packages. A fallback Swift compile passed, but full Xcode project build failed because full Xcode was absent. The temporary app reached setup; post-grant behavior was not exercised. A bounded synthetic child reproduced wait-before-drain deadlock, and a pure parser fixture reproduced tab/header/annotation defects. Browser access was denied by saved policy; that is an outstanding acceptance gap, not a visual pass. The fleet Mac's power baseline was unchanged, and temporary app/preview processes were stopped.
 
-## Evidence
+## Historical evidence
 
 The authoritative assessment is [Phase 1 evaluation](../00_benzo-evaluation_2026-10-25.md), including command results, uncertainty and source pointers. Historical `documentation/planning/system-review_2026-07-07/` informs the issue ledger but does not ratify its revenue roadmap.
 
-| Area | Verified current source and implication |
+| Area | Pinned evaluation source and implication |
 |---|---|
 | Process/auth boundary | `Benzo/Benzo/Services/ShellExecutor.swift:43,53,77,90,120`: wrong permission probe, automatic migration path, numeric-prefix glob, wait-before-drain and generic exit-1 cancellation. |
 | Apply/restore | `Services/PMSetService.swift:18,24,33,69,82`: flat reads, sequential `-a` writes, unsupported delete/reactivate advice and broad blocker termination. |
