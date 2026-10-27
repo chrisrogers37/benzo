@@ -4,7 +4,7 @@ type: plan
 status: active
 owner: claudna:build-all
 created: 2026-10-25
-updated: 2026-10-26
+updated: 2026-10-27
 tags: [reliability, security]
 repos: chrisrogers37/benzo
 ---
@@ -13,7 +13,17 @@ repos: chrisrogers37/benzo
 
 Epic: [approved re-orientation](00_overview.md). User ratified recommended F1–F7 with their conditions and authorized Phase 3 on 2026-10-25. User merges; no push to main. Goal: all eight ordered PRs accepted with their specified tests, build, independent review and outcome evidence; issue dispositions recorded honestly. The goal is not yet met.
 
-## Kickoff gates
+## Current checkpoint — 2026-10-27
+
+- P1 is merged through [PR #95](https://github.com/chrisrogers37/benzo/pull/95), `d88ab5d`. Issues #22 and #71 are closed; #23 remains open for its P2 version-policy work. P2 is next; no P2–P7 delivery is established by this checkpoint.
+- The owner-approved site subset is merged through [PR #97](https://github.com/chrisrogers37/benzo/pull/97), `eed0a969b097142042dc4412424fbc71a04d2c0d`. All four post-merge checks passed: [web/native](https://github.com/chrisrogers37/benzo/actions/runs/40542235848), [npm audit/Gitleaks](https://github.com/chrisrogers37/benzo/actions/runs/40542235661). Native CI includes full-Xcode Debug/Release and unhosted tests; it is not physical sleep/install acceptance.
+- Vercel Git production `dpl_4dmJ6tesPWax2tzv7i5eU5E2cXAG` is READY for that main commit and aliases `benzo.work` and `www.benzo.work`. The anonymous root/JS/CSS return 200; both draft paths and www redirect with 308; the canonical is `https://benzo.work/` and no noindex remains. Built public assets match the approved site (`index-Dhhqw1NX.js`, `index-DE1yYfEs.css`).
+- Site evidence: 33 web tests, source/native comparison, desktop/tablet/mobile/narrow visual checks and the full browser demo control pass. [Design acceptance](../benzo-design-remediation_2026-10-26/01_local-preview.md) records marketing contrast measurements and outstanding native/accessibility/device limits.
+- Remaining scope: ordered P2–P7, final P8 trust/accessibility/artifact acceptance, owner rights/reporting decisions and qualitative first-use validation. No full P8 or umbrella-issue completion is claimed. The protected fleet host was not changed.
+
+Earlier entries below retain their original evidence and approval scope; their pending-merge/local-preview statuses are superseded by this checkpoint.
+
+## Kickoff gates (historical)
 
 | Gate | Disposition |
 |---|---|
@@ -44,14 +54,14 @@ Single repo, no stacked branches. P1 uses codex/benzo-build-foundation in the at
 
 | Phase | Plan | Issues | State | PR / CI |
 |---|---|---|---|---|
-| P1 | [Foundation](01_build-foundation.md) | #22 #23 #71; partial #72 #82 | Reviews and owner manual parity acceptance complete; documentation-only update needs PR-head CI, then owner merge | [PR #95](https://github.com/chrisrogers37/benzo/pull/95), tested and owner-accepted source 0409b790 |
-| P2 | [Distribution](02_distribution-build.md) | Per epic | Queued on P1 merge | — |
+| P1 | [Foundation](01_build-foundation.md) | #22 #23 #71; partial #72 #82 | Complete and owner-merged | [PR #95](https://github.com/chrisrogers37/benzo/pull/95), merge d88ab5d |
+| P2 | [Distribution](02_distribution-build.md) | Per epic | Next; predecessor merged, implementation not started | — |
 | P3 | [Commands](03_command-permissions.md) | Per epic | Queued on P2 merge | — |
 | P4 | [Recovery](04_recovery-engine.md) | Per epic | Queued on P3 merge | — |
 | P5 | [Lifecycle](05_lifecycle-retirement.md) | Per epic | Queued on P4 merge | — |
 | P6 | [Diagnostics](06_diagnostics.md) | Per epic | Queued on P5 merge | — |
 | P7 | [Native UX](07_native-ux.md) | Per epic | Queued on P6 merge | — |
-| P8 | [Site](08_site-trust.md) | Per epic | Queued on P7 merge | — |
+| P8 | [Site](08_site-trust.md) | Per epic | Site subset shipped; final native/trust/accessibility acceptance waits for P7 | [PR #97](https://github.com/chrisrogers37/benzo/pull/97), merge eed0a96; green CI and production |
 
 ## P1 entry
 
