@@ -24,4 +24,4 @@ The current panel keeps native wording such as “USB ports disabled” so it do
 
 ## Validation
 
-Run the existing `npm test` and `npm run build` on Node 24. Interaction coverage includes real timer durations/cancellation, native-source transitions, and page integration after master/restore/first launch/sleep/quit/restart. Render desktop/mobile checks separately: jsdom cannot verify computed colors, wrapping or native pixel parity. Follow the design remediation plan under `documentation/plans/benzo-design-remediation_2026-10-26/` for release and outcome gates.
+Run the existing `npm test` and `npm run build` on Node 24. Interaction coverage includes real timer durations/cancellation, native-source transitions, and page integration after master/restore/first launch/sleep/quit/restart. Render desktop/mobile checks separately: jsdom cannot verify computed colors, wrapping or native pixel parity. Follow the [P8 site trust plan](../../documentation/plans/benzo-reorientation_2026-10-25/08_site-trust.md) for release and outcome gates.
