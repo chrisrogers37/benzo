@@ -574,6 +574,15 @@ sudo pmset -a proximitywake 0`}
           borderTop: "1px solid rgba(0,0,0,0.04)",
         }}
       >
+        <p style={{ fontSize: 13, color: "#666", marginBottom: 12 }}>
+          Questions or feedback?{" "}
+          <a
+            href="mailto:contact@benzo.work"
+            style={{ color: "#666", textUnderlineOffset: 3 }}
+          >
+            contact@benzo.work
+          </a>
+        </p>
         <div style={{ fontSize: 11, color: "#ccc", lineHeight: 1.8 }}>
           MIT License ·{" "}
           <a
