@@ -143,3 +143,7 @@ Media decision: **screenshots**, to check disabled/frozen affordances and wrappi
 The Vercel project `benzo` is connected; GitHub deployment records show recent `vercel[bot]` Preview deployments. Per `AGENTS.md`, branch push and its preview require separate scoped authority. No branch push, PR, merge, deployment, native launch or host power/grant/login/process change occurred at this checkpoint. The next dependent phase does not start before user merge.
 
 Exact web test command: `npm test -- src/landing/NativeAppDemo.test.jsx src/landing/BenzoLanding.test.jsx src/components/BenzoMockup.test.jsx`, using task-local Node 24.22.1. Results: active demo 13, landing 4, historical mockup 17; all 34 passed. Web runtime inputs remained unchanged through final native fixes and documentation edits.
+
+## Publication authorization — 2026-11-03
+
+The owner explicitly approved pushing `implement/benzo-containment`, opening a draft PR, and allowing its automatic Vercel preview. The reviewed implementation is `233bef6b09ae0d27f96e2141e7a47e402bff20e4`; this authorization update changes documentation only. Refresh final-head build/security results on the PR before considering merge. No main push, merge, native release, or privileged/physical acceptance is authorized.
