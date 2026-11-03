@@ -1,11 +1,12 @@
 // Compatibility exports for the original comparison route. New presentation data
 // belongs to the design module; only the legacy verification result is frozen.
 import { brandColors } from '../design/tokens'
-import { appPresentation, exampleReadings, settingOptions } from '../design/appPresentation'
+import { exampleReadings, settingOptions } from '../design/appPresentation'
 export const { pink, pinkSoft, pinkGlow, pinkBorder } = brandColors
 export const SLEEP_SESSIONS = exampleReadings.sleepSessions
 export const USB_DEVICES = exampleReadings.usbDevices
-export const SLEEP_TIMER_MINUTES = appPresentation.sleep.minutes
+// Historical mockup only; the active demo has no sleep timer.
+export const SLEEP_TIMER_MINUTES = [5, 15, 30, 60]
 export const SETTING_OPTIONS = settingOptions
 
 export const SETTINGS_VERIFICATION = [

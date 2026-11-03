@@ -28,11 +28,13 @@ function Setup({ onSetup }) {
 }
 
 export default function NativeAppDemo({ state, dispatch }) {
-  const { running, open, view, active, options, settings, login, picker, remaining, sleeping } = state
+  const { running, open, view, active, options, settings, login, backup } = state
   const [aboutOpen, setAboutOpen] = useState(false)
   const aboutId = useId()
 
-  const time = remaining === null ? '' : `${Math.floor(remaining / 60)}:${String(remaining % 60).padStart(2, '0')}`
+  const sleepUnavailableId = useId()
+  const selectionBlockedId = useId()
+  const selectionBlocked = active || backup
 
   return <div className="bz-native-demo" aria-label={copy.name}>
     <div className="bn-demo-toolbar" aria-label={copy.navigation}><span>{copy.title}</span><div><button onClick={() => dispatch({ type: 'firstLaunch' })}>{copy.firstLaunch}</button><button onClick={() => dispatch({ type: 'reset' })}>{running ? copy.reset : copy.restart}</button></div></div>
@@ -41,15 +43,11 @@ export default function NativeAppDemo({ state, dispatch }) {
       {running && open && <div className="bn-popover" aria-label={view === 'setup' ? app.setup.name : view === 'diagnostics' ? app.diagnostics.name : app.mainName}>
         {view === 'setup' ? <Setup onSetup={() => dispatch({ type: 'setup' })} /> : view === 'diagnostics' ? <Diagnostics active={active} settings={settings} onBack={() => dispatch({ type: 'back' })} /> : <>
           <div className="bn-master"><div><strong>{active ? app.master.on : app.master.off}</strong><p>{active ? app.master.activeDescription : app.master.inactiveDescription}</p></div><button className={`bn-toggle${active ? ' bn-on' : ''}`} role="switch" aria-label={app.master.name} aria-checked={active} onClick={() => dispatch({ type: 'active' })}><span /></button></div>
-          <div className="bn-sleep-wrap"><div className={`bn-sleep-capsule${sleeping ? ' bn-sleeping' : ''}`}>
-            {sleeping || remaining !== null ? <button className="bn-status" disabled={sleeping} onClick={() => dispatch({ type: 'cancel' })} title={sleeping ? undefined : copy.cancelTimer}>{sleeping ? <><span className="bn-spinner" />{app.sleep.sleeping}</> : <><AppSymbol name="sleepingMoon" size={11} />{app.sleep.countdown} {time}</>}</button> : <>
-              {picker ? <div className="bn-timer-picker">{app.sleep.minutes.map(minutes => <button key={minutes} onClick={() => dispatch({ type: 'timer', minutes, now: Date.now() })}>{minutes}m</button>)}</div> : <button className="bn-sleep-now" onClick={() => dispatch({ type: 'sleep' })}><AppSymbol name="moon" size={11} />{app.sleep.action}</button>}
-              <span className="bn-sleep-divider" /><button className="bn-clock" aria-label={picker ? app.sleep.closeTimer : app.sleep.openTimer} title={picker ? app.sleep.closeTimer : app.sleep.openTimer} onClick={() => dispatch({ type: 'picker' })}><AppSymbol name={picker ? 'x' : 'clock'} size={12} /></button>
-            </>}
-          </div></div>
-          {active && <div className="bn-blockers"><div><AppSymbol name="warning" size={9} />{app.blockers.singular}</div><div>{app.blockers.exampleName}</div></div>}
+          <div className="bn-sleep-wrap"><div className="bn-sleep-capsule">
+            <button className="bn-sleep-now" disabled aria-describedby={sleepUnavailableId}><AppSymbol name="moon" size={11} />{app.sleep.action}</button>
+          </div><p className="bn-control-reason" id={sleepUnavailableId}>{app.sleep.unavailable}</p></div>
           <div className="bn-options"><button aria-expanded={options} onClick={() => dispatch({ type: 'options' })}><span>{app.options}</span><span className={options ? 'bn-expanded' : ''}><AppSymbol name="chevron" size={9} /></span></button></div>
-          {options && <div className="bn-settings">{settingOptions.map(({ key, label, desc }) => <button className="bn-setting" role="checkbox" aria-checked={settings[key]} aria-label={label} key={key} onClick={() => dispatch({ type: 'setting', key })}><span><strong>{label}</strong><small>{desc}</small></span><span className={`bn-checkbox${settings[key] ? ' bn-checked' : ''}`}>{settings[key] && <AppSymbol name="check" size={8} />}</span></button>)}</div>}
+          {options && <div className="bn-settings">{selectionBlocked && <p className="bn-control-reason" id={selectionBlockedId}>{app.selectionBlocked}</p>}{settingOptions.map(({ key, label, desc }) => <button className="bn-setting" role="checkbox" aria-checked={settings[key]} aria-label={label} disabled={selectionBlocked} aria-describedby={selectionBlocked ? selectionBlockedId : undefined} key={key} onClick={() => dispatch({ type: 'setting', key })}><span><strong>{label}</strong><small>{desc}</small></span><span className={`bn-checkbox${settings[key] ? ' bn-checked' : ''}`}>{settings[key] && <AppSymbol name="check" size={8} />}</span></button>)}</div>}
           {state.error && <p className="bn-error" role="alert">{state.error}</p>}
           <div className="bn-footer"><div className="bn-login"><span>{app.footer.login}</span><button className={`bn-login-toggle${login ? ' bn-on' : ''}`} role="switch" aria-label={app.footer.login} aria-checked={login} onClick={() => dispatch({ type: 'login' })}><span /></button></div><div className="bn-footer-actions"><span>{app.version}</span><button onClick={() => dispatch({ type: 'restore' })}>{app.footer.restore}</button><button onClick={() => dispatch({ type: 'quit' })}>{app.footer.quit}</button></div></div>
         </>}

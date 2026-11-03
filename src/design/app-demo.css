@@ -22,27 +22,20 @@
 .benzo-site .bn-toggle > span { position: absolute; width: var(--native-toggle-thumb); height: var(--native-toggle-thumb); top: 3px; left: 3px; border-radius: 50%; background: var(--white); box-shadow: 0 1px 2px var(--native-thumb-shadow); transition: left var(--motion-normal); }
 .benzo-site .bn-toggle.bn-on > span { left: 21px; }
 .benzo-site .bn-sleep-wrap { padding: 0 20px 14px; }
-.benzo-site .bn-sleep-capsule { display: flex; align-items: center; overflow: hidden; background: var(--pink); color: var(--white); border-radius: var(--radius-pill); box-shadow: 0 2px 6px var(--native-pink-shadow-soft); }
-.benzo-site .bn-sleep-capsule:hover { box-shadow: 0 2px 12px var(--native-pink-shadow-strong); }
+.benzo-site .bn-sleep-capsule { display: flex; align-items: center; overflow: hidden; background: var(--pink); color: var(--white); border-radius: var(--radius-pill); opacity: .5; }
 .benzo-site .bn-sleep-capsule > button { display: flex; align-items: center; justify-content: center; gap: 8px; padding: 10px 0; color: var(--white); font-size: var(--native-base); font-weight: 600; }
-.benzo-site .bn-sleep-now, .benzo-site .bn-status { flex: 1; }
-.benzo-site .bn-sleeping > button { opacity: .7; }
-.benzo-site .bn-sleep-divider { width: 1px; height: 16px; background: var(--native-white-line); }
-.benzo-site .bn-clock { width: 38px; flex-shrink: 0; align-self: stretch; }
-.benzo-site .bn-sleep-capsule button:focus-visible { outline-offset: -3px; border-radius: var(--radius-pill); }
-.benzo-site .bn-timer-picker { display: flex; justify-content: center; align-items: center; flex: 1; gap: 8px; padding: 10px 0; }
-.benzo-site .bn-timer-picker button { color: var(--pink); background: var(--native-white-soft); border-radius: var(--radius-pill); padding: 4px 10px; font-size: var(--native-secondary); font-weight: 600; }
-.benzo-site .bn-spinner { width: 12px; height: 12px; border: 1.5px solid var(--native-white-faint); border-top-color: var(--white); border-radius: 50%; animation: bn-spin .8s linear infinite; }
-@keyframes bn-spin { to { transform: rotate(360deg); } }
-.benzo-site .bn-blockers { padding: 0 20px 10px; text-align: center; color: var(--native-muted); font-size: var(--native-small); }
-.benzo-site .bn-blockers > div:first-child { display: flex; align-items: center; justify-content: center; gap: 4px; font-size: var(--native-secondary); margin-bottom: 2px; }
+.benzo-site .bn-sleep-now { flex: 1; }
+.benzo-site .bn-control-reason { color: var(--native-muted); font-size: var(--native-small); line-height: 1.4; }
+.benzo-site .bn-sleep-wrap .bn-control-reason { margin-top: 6px; text-align: center; }
+.benzo-site .bn-settings .bn-control-reason { padding: 0 20px 6px; }
 .benzo-site .bn-options { border-top: 1px solid var(--native-black-line); }
 .benzo-site .bn-options > button { display: flex; justify-content: space-between; align-items: center; width: 100%; padding: 10px 20px; font-size: var(--native-secondary); font-weight: 500; color: var(--native-muted); }
 .benzo-site .bn-options > button > span:last-child { color: var(--native-faint); }
 .benzo-site .bn-expanded { transform: rotate(90deg); }
 .benzo-site .bn-stage .bn-setting { width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 9px 20px; }
-.benzo-site .bn-setting:hover { background: var(--native-black-faint); }
-.benzo-site .bn-setting[aria-checked=true]:hover { background: var(--native-pink-hover); }
+.benzo-site .bn-setting:disabled { opacity: .5; }
+.benzo-site .bn-setting:not(:disabled):hover { background: var(--native-black-faint); }
+.benzo-site .bn-setting[aria-checked=true]:not(:disabled):hover { background: var(--native-pink-hover); }
 .benzo-site .bn-setting strong { display: block; font-size: var(--native-setting); font-weight: 500; }
 .benzo-site .bn-setting small { display: block; margin-top: 1px; color: var(--native-description); font-size: var(--native-caption); }
 .benzo-site .bn-checkbox { display: grid; place-items: center; width: 15px; height: 15px; border: 1.5px solid var(--native-toggle-off); border-radius: 3px; flex-shrink: 0; }
@@ -99,12 +92,5 @@
 .benzo-site .bn-demo-caption .bn-demo-notice:not(:empty) { margin-top: var(--space-3); color: var(--accent-hover); }
 .benzo-site .bn-closed { padding: 60px 15px; text-align: center; color: var(--muted); font-size: var(--native-base); }
 .benzo-site .bn-closed > button { display: block; margin: 12px auto; text-decoration: underline; font-size: var(--native-base); }
-@media (prefers-reduced-motion: reduce) { .benzo-site .bn-spinner { animation: none; } }
 
 .benzo-site .bn-demo-toolbar { flex-wrap: wrap; }
-
-/* Keep every timer control inside the capsule on narrower-than-native panels. */
-@media (max-width: 359px) {
-  .benzo-site .bn-timer-picker { gap: 6px; }
-  .benzo-site .bn-timer-picker button { padding-inline: 8px; }
-}

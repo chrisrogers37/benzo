@@ -18,14 +18,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
             commands: ShellCommandRunner(),
             backup: BackupService(fileURL: backupURL, clock: clock),
             preferences: UserDefaults.standard,
-            clock: clock,
             loginItem: LiveLoginItemClient(),
             isSetupComplete: { ShellExecutor.isSetupComplete },
-            needsSudoersUpdate: { ShellExecutor.needsSudoersUpdate },
             installSudoersRule: { try ShellExecutor.installSudoersRule() },
             fetchSleepData: { DiagnosticService.fetchSleepData() },
             fetchUSBDevices: { DiagnosticService.fetchUSBDevices() },
-            fetchSleepBlockers: { DiagnosticService.fetchSleepBlockers() },
             verifySettings: { DiagnosticService.verifySettings(settingStates: $0, isActive: $1) },
             runInBackground: { DispatchQueue.global(qos: .userInitiated).async(execute: $0) },
             runOnMain: { DispatchQueue.main.async(execute: $0) },
@@ -126,7 +123,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
             // Detect ⌥-click for diagnostics
             let optionHeld = NSEvent.modifierFlags.contains(.option)
             viewModel.showDiagnostics = optionHeld
-            viewModel.verifyAndCorrectSettings()
             openPopover()
         }
     }
@@ -156,23 +152,4 @@ extension UserDefaults: PreferenceStoring {}
 
 private struct LiveBenzoClock: BenzoClock {
     var now: Date { Date() }
-
-    func schedule(after delay: TimeInterval, perform: @escaping () -> Void) {
-        DispatchQueue.main.asyncAfter(deadline: .now() + delay, execute: perform)
-    }
-
-    func scheduleRepeating(every interval: TimeInterval, perform: @escaping (any BenzoCancellation) -> Void) -> any BenzoCancellation {
-        let timer = Timer.scheduledTimer(withTimeInterval: interval, repeats: true) { timer in
-            perform(TimerCancellation(timer: timer))
-        }
-        return TimerCancellation(timer: timer)
-    }
-}
-
-private struct TimerCancellation: BenzoCancellation {
-    let timer: Timer
-
-    func cancel() {
-        timer.invalidate()
-    }
 }
