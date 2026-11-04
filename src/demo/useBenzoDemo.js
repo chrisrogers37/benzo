@@ -20,9 +20,9 @@ function reducer(state, action) {
     case 'firstLaunch': return { ...defaults(), active: false, options: false, backup: false, view: 'setup', permissionObservation: 'noLegacyRule' }
     case 'refreshPermission': return { ...state, notice: siteCopy.demo.notices.permission }
     case 'pill': return state.open
-      ? { ...state, open: false, update: state.update.status === 'checking' ? { status: 'idle' } : state.update }
+      ? { ...state, open: false, update: { status: 'idle' } }
       : { ...state, open: true, view: state.view === 'setup' ? 'setup' : action.alt ? 'diagnostics' : 'main', permissionDestination: action.alt ? 'diagnostics' : 'main' }
-    case 'diagnostics': return { ...state, update: state.update.status === 'checking' ? { status: 'idle' } : state.update, running: true, open: true, view: state.view === 'setup' ? 'setup' : 'diagnostics', permissionDestination: 'diagnostics', notice: '' }
+    case 'diagnostics': return { ...state, update: { status: 'idle' }, running: true, open: true, view: state.view === 'setup' ? 'setup' : 'diagnostics', permissionDestination: 'diagnostics', notice: '' }
     case 'back': return { ...state, view: state.view === 'setup' ? state.permissionDestination : 'main' }
     case 'active': return { ...state, active: !state.active, backup: true, error: null, notice: siteCopy.demo.notices.settings }
     case 'options': return { ...state, options: !state.options }
@@ -38,7 +38,7 @@ function reducer(state, action) {
     case 'checkUpdates': return state.update.status === 'checking' || !state.open || state.view !== 'main' || !state.running
       ? state : { ...state, update: { status: 'checking' }, notice: '' }
     case 'updatesChecked': return state.update.status !== 'checking'
-      ? state : { ...state, update: { status: 'current', version: '0.3.0' } }
+      ? state : { ...state, update: { status: 'current', version: appPresentation.version.slice(1) } }
     case 'viewRelease': return { ...state, notice: appPresentation.updates.demoNotice }
     default: return state
   }

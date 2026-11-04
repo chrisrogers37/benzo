@@ -57,7 +57,9 @@ final class UpdateViewModel: ObservableObject {
         generation += 1
         request?.cancel()
         request = nil
-        if state == .checking { state = .idle }
+        // A result belongs to this panel visit; reopening must not imply a fresh check.
+        state = .idle
+        browserOpenFailed = false
     }
 
     var message: String? {

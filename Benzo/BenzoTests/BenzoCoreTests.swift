@@ -796,6 +796,28 @@ extension BenzoCoreTests {
     }
 
     @MainActor
+    func testLeavingUpdatePanelDiscardsCompletedResultsWithoutCheckingAgain() async throws {
+        for local in ["0.9.0", "0.10.0"] {
+            var requests = 0
+            let model = UpdateViewModel(version: AppVersion(shortVersion: local, buildVersion: "1"),
+                                        checker: ReleaseChecker(load: { _ in
+                requests += 1
+                return (try releaseFixture(), releaseResponse())
+            }), openURL: { _ in false })
+            await model.checkForUpdates()?.value
+            XCTAssertNotNil(model.message)
+            model.openReleasePage()
+            XCTAssertTrue(model.browserOpenFailed)
+            model.cancelCheck()
+            XCTAssertEqual(model.state, .idle)
+            XCTAssertNil(model.message)
+            XCTAssertNil(model.pageURL)
+            XCTAssertFalse(model.browserOpenFailed)
+            XCTAssertEqual(requests, 1)
+        }
+    }
+
+    @MainActor
     func testCanceledCheckCannotReplaceNewerResultAndDuplicateClicksAreCoalesced() async throws {
         let started = expectation(description: "first request started")
         var first: CheckedContinuation<(Data, HTTPURLResponse), Error>?

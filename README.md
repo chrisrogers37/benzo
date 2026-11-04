@@ -83,6 +83,8 @@ latest published stable release. **View Release** is a separate action that open
 the official page in your browser. There are no background checks, downloads,
 installation, automatic quit or relaunch. The browser demo simulates the check
 without contacting GitHub or opening another page.
+Leaving the normal panel clears the result. Reopening it never starts a check;
+use **Check for Updates** again for a fresh result.
 
 The check requires a published stable tag and matching uploaded DMG; it does not
 verify the artifact's authenticity, OS/architecture compatibility or installation

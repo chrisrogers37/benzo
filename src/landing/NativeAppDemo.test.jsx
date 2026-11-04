@@ -323,6 +323,22 @@ describe('manual update check simulation', () => {
     expect(screen.getByRole('button', { name: 'Check for Updates…' })).toBeTruthy()
   })
 
+  it('discards completed update results on close or diagnostics without automatically rechecking', () => {
+    vi.useFakeTimers()
+    render(<Demo />)
+    for (const leave of ['Benzo menu', 'View diagnostics']) {
+      click('Check for Updates…')
+      act(() => vi.advanceTimersByTime(400))
+      expect(screen.getByText(/latest published release/)).toBeTruthy()
+      click(leave)
+      click(leave === 'Benzo menu' ? 'Benzo menu' : 'Back')
+      expect(screen.queryByText(/latest published release/)).toBeNull()
+      expect(screen.queryByRole('button', { name: 'View Releases' })).toBeNull()
+      expect(vi.getTimerCount()).toBe(0)
+      expect(screen.getByRole('button', { name: 'Check for Updates…' }).disabled).toBe(false)
+    }
+  })
+
   it.each([
     [{ status: 'available', version: '0.4.0' }, /Benzo 0\.4\.0 is available/, 'View Release'],
     [{ status: 'offline' }, /Couldn't check for updates/, 'View Releases'],
