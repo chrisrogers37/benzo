@@ -35,9 +35,68 @@ jobs:
         run: |
           xcodebuild -version
           echo "BENZO_TEST_DERIVED=$(mktemp -d "$RUNNER_TEMP/benzo-derived.XXXXXX")" >> "$GITHUB_ENV"
+          echo "BENZO_CI_EVIDENCE_ROOT=$(mktemp -d "$RUNNER_TEMP/benzo-ci-evidence.XXXXXX")" >> "$GITHUB_ENV"
       - name: Debug app build (no launch)
         run: xcodebuild -project Benzo/Benzo.xcodeproj -scheme Benzo -configuration Debug -derivedDataPath "$BENZO_TEST_DERIVED" CODE_SIGNING_ALLOWED=NO build
-      - name: Release app build (no launch)
-        run: xcodebuild -project Benzo/Benzo.xcodeproj -scheme Benzo -configuration Release -derivedDataPath "$BENZO_TEST_DERIVED" CODE_SIGNING_ALLOWED=NO build
+      - name: Release universal archive (no launch, distribution signing disabled)
+        run: xcodebuild -project Benzo/Benzo.xcodeproj -scheme Benzo -configuration Release -derivedDataPath "$BENZO_TEST_DERIVED" -archivePath "$BENZO_CI_EVIDENCE_ROOT/Benzo.xcarchive" 'ARCHS=arm64 x86_64' ONLY_ACTIVE_ARCH=NO CODE_SIGNING_ALLOWED=NO archive
       - name: Unhosted core tests
         run: xcodebuild -project Benzo/Benzo.xcodeproj -scheme BenzoCoreTests -destination 'platform=macOS' -derivedDataPath "$BENZO_TEST_DERIVED" CODE_SIGNING_ALLOWED=NO test
+      - name: Verify archive and package CI build evidence
+        shell: bash
+        run: |
+          set -euo pipefail
+          fail() { echo "::error::$1"; exit 1; }
+          archive="$BENZO_CI_EVIDENCE_ROOT/Benzo.xcarchive"
+          app="$archive/Products/Applications/Benzo.app"
+          [[ -d "$app" && ! -L "$app" ]] || fail 'Archived Benzo.app is missing'
+          info="$app/Contents/Info.plist"
+          plist() { plutil -extract "$1" raw -o - "$info"; }
+          bundle_id=$(plist CFBundleIdentifier)
+          executable_name=$(plist CFBundleExecutable)
+          version=$(plist CFBundleShortVersionString)
+          build=$(plist CFBundleVersion)
+          [[ "$bundle_id" == com.benzo.app ]] || fail 'Unexpected bundle identifier'
+          [[ "$executable_name" == Benzo ]] || fail 'Unexpected bundle executable'
+          [[ "$version" =~ ^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]] || fail 'Version must be an unambiguous three-part numeric version'
+          [[ "$build" =~ ^[1-9][0-9]*$ ]] || fail 'Build number must be a positive integer'
+          executable="$app/Contents/MacOS/Benzo"
+          [[ -f "$executable" && ! -L "$executable" ]] || fail 'Archived app executable is missing'
+          archs=$(lipo -archs "$executable")
+          [[ "$archs" == 'arm64 x86_64' || "$archs" == 'x86_64 arm64' ]] || fail 'Archived app must contain exactly arm64 and x86_64'
+          commit=$(git rev-parse HEAD)
+          out="$BENZO_CI_EVIDENCE_ROOT/upload"
+          mkdir "$out"
+          tar_name=benzo-ci-xcarchive.tar.gz
+          COPYFILE_DISABLE=1 tar -czf "$out/$tar_name" -C "$BENZO_CI_EVIDENCE_ROOT" Benzo.xcarchive
+          (cd "$out" && shasum -a 256 "$tar_name" > SHA256SUMS)
+          tar_sha=$(awk '{print $1}' "$out/SHA256SUMS")
+          cat > "$out/benzo-ci-manifest.txt" <<MANIFEST
+          Benzo CI build evidence
+          This is build evidence only: not distribution signing, not notarization, not a release candidate.
+          Checked-out commit (git rev-parse HEAD): $commit
+          GITHUB_SHA: $GITHUB_SHA
+          GITHUB_RUN_ID: $GITHUB_RUN_ID
+          Bundle identifier: $bundle_id
+          Executable: $executable_name
+          App version (CFBundleShortVersionString): $version
+          Build number (CFBundleVersion): $build
+          Architectures (lipo): $archs
+          Build: Release archive, ARCHS=arm64 x86_64, ONLY_ACTIVE_ARCH=NO
+          Distribution signing: disabled (CODE_SIGNING_ALLOWED=NO); no Developer ID or notarization was performed
+          Archive file: $tar_name (tar.gz preserves executable modes)
+          Archive SHA256: $tar_sha
+          Native acceptance: outstanding (physical sleep, permission, recovery and quit acceptance not performed)
+          MANIFEST
+          cat "$out/benzo-ci-manifest.txt"
+          cat "$out/SHA256SUMS"
+      - name: Upload CI build evidence
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: benzo-ci-build-evidence
+          path: |
+            ${{ env.BENZO_CI_EVIDENCE_ROOT }}/upload/benzo-ci-xcarchive.tar.gz
+            ${{ env.BENZO_CI_EVIDENCE_ROOT }}/upload/benzo-ci-manifest.txt
+            ${{ env.BENZO_CI_EVIDENCE_ROOT }}/upload/SHA256SUMS
+          retention-days: 7
+          if-no-files-found: error

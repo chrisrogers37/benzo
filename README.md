@@ -97,6 +97,14 @@ production app or privileged/lifecycle acceptance on an always-on fleet host.
 Physical sleep, permissions and recovery acceptance require a separately approved
 test Mac; a successful build or fake-based test does not prove those outcomes.
 
+The `build` workflow's native job also archives a universal Release app with
+distribution signing disabled (`CODE_SIGNING_ALLOWED=NO`). After
+the tests pass, it checks the archive's bundle identifier, version, build number and
+arm64/x86_64 slices, then uploads `benzo-ci-build-evidence` (a tar.gz of the
+`.xcarchive`, `benzo-ci-manifest.txt` and `SHA256SUMS`) for 7 days. This is build
+evidence for inspection only: it is not distribution signing, notarization, a
+release candidate or native acceptance.
+
 ### Package a native artifact
 
 `scripts/build-dmg.sh` requires an explicit distribution mode, full Xcode, and a
@@ -156,10 +164,12 @@ Its tests may execute only an owned synthetic child fixture. This narrow excepti
 does not permit production commands or demonstrate privileged-chain completion.
 Legacy mutation transport remains synchronous and unreleased pending recovery work.
 
-The `build` workflow runs web tests/build and full-Xcode Debug/Release/core tests.
-The separate `security` workflow retains npm audit and Gitleaks. Neither workflow
-publishes artifacts. The connected Vercel Git integration can deploy previews on
-branch pushes and the site on main; inspect and authorize deployment before push.
+The `build` workflow runs web tests/build, full-Xcode Debug and Release
+archive builds, and core tests. Its native job keeps the CI build evidence described
+above as a short-lived workflow artifact. The separate `security` workflow retains
+npm audit and Gitleaks and publishes no artifacts. The connected Vercel Git
+integration can deploy previews on branch pushes and the site on main; inspect and
+authorize deployment before push.
 
 The accepted delivery order is 03 → 01 → 04 → conditional 02 in the
 [remediation plan](documentation/planning/tech_debt/benzo-remediation_2026-11-02/00_TECH_DEBT.md).
