@@ -36,7 +36,8 @@ export default function NativeAppDemo({ state, dispatch }) {
   const active = phase === 'activeVerified'
   const busy = ['checking', 'applying', 'restoring'].includes(phase)
   const canToggleMaster = active || (phase === 'off' && settingOptions.some(option => option.available && settings[option.key]))
-  const canRestore = Boolean(state.hasSession) && !busy && state.operation !== 'uncertain'
+  const canRestore = Boolean(state.hasSession) && !busy && state.operation !== 'uncertain' && !state.conflict
+  const conflictSetting = state.conflict && settingOptions.find(option => option.commands.some(([key]) => key === state.conflict.key))
   const [aboutOpen, setAboutOpen] = useState(false)
   const aboutId = useId()
 
@@ -57,7 +58,18 @@ export default function NativeAppDemo({ state, dispatch }) {
           <div className="bn-options"><button aria-expanded={options} onClick={() => dispatch({ type: 'options' })}><span>{app.options}</span><span className={options ? 'bn-expanded' : ''}><AppSymbol name="chevron" size={9} /></span></button></div>
           {options && <div className="bn-settings">{selectionBlocked && <p className="bn-control-reason" id={selectionBlockedId}>{app.selectionBlocked}</p>}{settingOptions.map(({ key, label, desc, available, unavailableReason }) => <button className="bn-setting" role="checkbox" aria-checked={settings[key]} aria-label={label} disabled={selectionBlocked || !available} aria-describedby={!available ? `${key}-unavailable` : selectionBlocked ? selectionBlockedId : undefined} key={key} onClick={() => dispatch({ type: 'setting', key })}><span><strong>{label}</strong><small>{desc}</small>{!available && <small id={`${key}-unavailable`} className="bn-control-reason">{unavailableReason}</small>}</span><span className={`bn-checkbox${settings[key] ? ' bn-checked' : ''}`}>{settings[key] && <AppSymbol name="check" size={8} />}</span></button>)}</div>}
           {state.error && <p className="bn-error" role="alert">{state.error}</p>}
-          {phase === 'recoveryRequired' && <div className="bn-recovery-actions"><button onClick={() => dispatch({ type: 'retry' })}>Retry</button>{state.conflict && state.operation !== 'uncertain' && <><button onClick={() => dispatch({ type: 'keepCurrent' })}>Keep Current</button><button onClick={() => dispatch({ type: 'restoreRecordedOriginal' })}>Restore Recorded Original Anyway</button><button onClick={() => dispatch({ type: 'deferConflict' })}>Defer</button></>}{state.conflict && <button onClick={() => dispatch({ type: 'refreshRecovery' })}>Refresh Recovery Status</button>}{state.quitPending && <><button onClick={() => dispatch({ type: 'stayOpen' })}>Stay Open</button><button onClick={() => dispatch({ type: 'quitAnyway' })}>Quit Anyway</button></>}</div>}
+          {phase === 'recoveryRequired' && <>
+            {state.capturedAt && <p className="bn-control-reason">{app.recovery.evidence.captured} {state.capturedAt}</p>}
+            {state.conflict && (state.conflictDeferred
+              ? <div className="bn-recovery-conflict"><span>Conflict deferred; recovery evidence is retained.</span><button onClick={() => dispatch({ type: 'reviewConflict' })}>Review</button></div>
+              : <div className="bn-recovery-conflict" role="group" aria-label="Recovery conflict details">
+                <strong>{conflictSetting?.label ?? state.conflict.key} · {app.recovery.evidence.simulatedProfile}</strong>
+                <p>{app.recovery.evidence.original} {state.originals[state.conflict.key] ?? app.diagnostics.missing}. {app.recovery.evidence.current} {state.conflict.currentValue ?? app.diagnostics.missing}.</p>
+                <p>{app.recovery.evidence.lastVerified} {state.conflict.lastVerified ?? app.recovery.evidence.none}. {app.recovery.evidence.race}</p>
+                <div className="bn-recovery-actions"><button disabled={state.conflict.currentValue === null || state.operation === 'uncertain'} onClick={() => dispatch({ type: 'keepCurrent' })}>Keep Current</button><button disabled={state.conflict.currentValue === null || state.operation === 'uncertain'} onClick={() => dispatch({ type: 'restoreRecordedOriginal' })}>Restore Recorded Original Anyway</button><button onClick={() => dispatch({ type: 'deferConflict' })}>Defer</button></div>
+              </div>)}
+            <div className="bn-recovery-actions">{state.quitPending && <button onClick={() => dispatch({ type: 'retry' })}>Retry</button>}{!state.quitPending && <button onClick={() => dispatch({ type: 'refreshRecovery' })}>Refresh Recovery Status</button>}{state.quitPending && <><button onClick={() => dispatch({ type: 'stayOpen' })}>Stay Open</button><button onClick={() => dispatch({ type: 'quitAnyway' })}>Quit Anyway</button></>}</div>
+          </>}
           {state.legacyUnknown && <p className="bn-control-reason">{app.recovery.legacyHelp}</p>}
           <div className="bn-footer"><div className="bn-login"><span>{app.footer.login}</span><button className={`bn-login-toggle${login ? ' bn-on' : ''}`} role="switch" aria-label={app.footer.login} aria-checked={login} onClick={() => dispatch({ type: 'login' })}><span /></button></div><div className="bn-footer-actions"><span>{app.version}</span><span className="bn-control-reason">{app.footer.restoreHelp}</span><button disabled={!canRestore} onClick={() => dispatch({ type: 'restore' })}>{app.footer.restore}</button><button onClick={() => dispatch({ type: 'quit' })}>{app.footer.quit}</button></div></div>
         </>}

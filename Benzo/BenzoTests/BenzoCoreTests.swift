@@ -216,6 +216,21 @@ final class BenzoCoreTests: XCTestCase {
         XCTAssertEqual(Set(harness.transport.writes.map { $0.cell.key.rawValue }), Set(["powernap", "womp"]))
     }
 
+    func testSystemDefaultsRequiresResolvingConflictsFirst() async {
+        let harness = FakeDependencies()
+        let viewModel = harness.makeViewModel()
+        await viewModel.reconcile()
+        await viewModel.toggleMaster()
+        XCTAssertTrue(viewModel.canRestore)
+        harness.transport.values["hibernatemode"] = 0
+        await viewModel.reconcile()
+        XCTAssertFalse(viewModel.canRestore)
+        XCTAssertEqual(viewModel.conflicts.count, 1)
+        guard let conflict = viewModel.conflicts.first else { return }
+        await viewModel.resolveConflict(conflict, choice: .keepCurrent)
+        XCTAssertTrue(viewModel.canRestore)
+    }
+
     func testActiveSessionFreezesSelectionsAndSystemDefaultsRestoresCapturedValues() async {
         let harness = FakeDependencies()
         let viewModel = harness.makeViewModel()

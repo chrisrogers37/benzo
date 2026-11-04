@@ -3,6 +3,7 @@ import { appPresentation, exampleReadings, settingOptions } from '../design/appP
 import { siteCopy } from '../design/siteCopy'
 
 const originals = Object.freeze({ powernap: '1', womp: '1', tcpkeepalive: '1' })
+const exampleCapturedAt = 'Nov 4, 2026 at 9:00 AM (example)'
 const selectedDefaults = Object.freeze({
   hibernateMode: false, disablePowerNap: true, disableProximityWake: false,
   disableNetworkWake: true, disableTcpKeepAlive: false,
@@ -14,19 +15,25 @@ const selectedValues = settings => ({
   tcpkeepalive: settings.disableTcpKeepAlive ? '0' : originals.tcpkeepalive,
 })
 
-const ownedSelectionValues = settings => Object.fromEntries(
-  Object.entries(selectedValues(settings)).filter(([key, value]) => value !== originals[key]),
+const targetValues = (settings, captured) => ({
+  powernap: settings.disablePowerNap ? '0' : captured.powernap,
+  womp: settings.disableNetworkWake ? '0' : captured.womp,
+  tcpkeepalive: settings.disableTcpKeepAlive ? '0' : captured.tcpkeepalive,
+})
+
+const ownedSelectionValues = (settings, captured) => Object.fromEntries(
+  Object.entries(targetValues(settings, captured)).filter(([key, value]) => value !== captured[key]),
 )
 
 export const initialDemoState = (active = true) => ({
   running: true, open: true, view: 'main', permissionDestination: 'main',
   phase: active ? 'activeVerified' : 'off', options: true,
   settings: { ...selectedDefaults }, originals,
-  hasSession: active,
-  ownedValues: active ? ownedSelectionValues(selectedDefaults) : {},
+  hasSession: active, capturedAt: active ? exampleCapturedAt : null,
+  ownedValues: active ? ownedSelectionValues(selectedDefaults, originals) : {},
   currentValues: active ? selectedValues(selectedDefaults) : { ...originals },
   login: false, error: null, notice: '', permissionObservation: 'noLegacyRule',
-  operation: null, quitPending: false, resumePhase: null, conflict: null, conflictResolution: null, legacyUnknown: false,
+  operation: null, quitPending: false, resumePhase: null, conflict: null, conflictDeferred: false, conflictResolution: null, legacyUnknown: false,
   sleepData: { status: 'success', value: { sessions: exampleReadings.sleepSessions, lastWakeReason: exampleReadings.wakeReason } },
   usbDevices: { status: 'success', value: exampleReadings.usbDevices },
   observedSettings: { status: 'success', value: settingOptions.flatMap(({ commands }) => commands.map(([key]) => ({ key, actualValue: exampleReadings.values[key] }))) },
@@ -54,7 +61,7 @@ export function benzoDemoReducer(state, action) {
     case 'active':
       if (state.phase === 'off') {
         if (!Object.values(state.settings).some(Boolean)) return { ...state, error: appPresentation.recovery.emptySelection }
-        return { ...state, phase: 'applying', operation: 'apply', hasSession: true, error: null, notice: appPresentation.recovery.titles.applying }
+        return { ...state, phase: 'applying', operation: 'apply', hasSession: true, originals: Object.freeze({ ...state.currentValues }), capturedAt: exampleCapturedAt, error: null, notice: appPresentation.recovery.titles.applying }
       }
       if (state.phase === 'activeVerified') return { ...state, phase: 'restoring', operation: 'restore', error: null, notice: appPresentation.recovery.titles.restoring }
       if (state.phase === 'recoveryRequired') return { ...state, error: appPresentation.recovery.refuseWrite }
@@ -63,15 +70,21 @@ export function benzoDemoReducer(state, action) {
     case 'checkingSucceeded': {
       if (state.phase !== 'checking') return state
       const nextPhase = state.resumePhase ?? (Object.keys(state.ownedValues).length ? 'activeVerified' : 'off')
-      if (!state.quitPending) return { ...state, phase: nextPhase, resumePhase: null, notice: appPresentation.recovery.titles[nextPhase] }
-      if (nextPhase === 'activeVerified' || Object.keys(state.ownedValues).length) return { ...state, phase: 'restoring', operation: 'restore', resumePhase: null, error: null, notice: appPresentation.recovery.titles.restoring }
+      if (!state.quitPending) return { ...state, phase: nextPhase, resumePhase: null, conflictDeferred: false, notice: appPresentation.recovery.titles[nextPhase] }
       if (nextPhase === 'recoveryRequired' || state.conflict || state.legacyUnknown) return { ...state, phase: 'recoveryRequired', resumePhase: null, error: appPresentation.recovery.quitPrompt }
+      if (nextPhase === 'activeVerified' || Object.keys(state.ownedValues).length) return { ...state, phase: 'restoring', operation: 'restore', resumePhase: null, error: null, notice: appPresentation.recovery.titles.restoring }
       return { ...state, phase: 'off', running: false, open: false, quitPending: false, resumePhase: null, notice: siteCopy.demo.notices.quit }
     }
     case 'applySucceeded':
       if (state.phase !== 'applying') return state
       {
-        const applied = { ...state, hasSession: true, ownedValues: ownedSelectionValues(state.settings), currentValues: { ...state.currentValues, ...selectedValues(state.settings) } }
+        const ownedValues = ownedSelectionValues(state.settings, state.originals)
+        const applied = { ...state, hasSession: Object.keys(ownedValues).length > 0, ownedValues, currentValues: { ...state.currentValues, ...targetValues(state.settings, state.originals) } }
+        if (!Object.keys(ownedValues).length) {
+          return state.quitPending
+            ? { ...applied, phase: 'off', capturedAt: null, running: false, open: false, quitPending: false, operation: null, notice: siteCopy.demo.notices.quit }
+            : { ...applied, phase: 'off', capturedAt: null, quitPending: false, operation: null, notice: siteCopy.demo.notices.noChanges }
+        }
         return state.quitPending
           ? { ...applied, phase: 'restoring', operation: 'restore', error: null, notice: appPresentation.recovery.titles.restoring }
           : publish(applied, 'activeVerified', siteCopy.demo.notices.applied)
@@ -85,7 +98,8 @@ export function benzoDemoReducer(state, action) {
         for (const key of restoredKeys) currentValues[key] = state.originals[key]
         const ownedValues = { ...state.ownedValues }
         for (const key of restoredKeys) delete ownedValues[key]
-        const resolved = { ...state, currentValues, ownedValues, hasSession: Object.keys(ownedValues).length > 0, conflict: null, conflictResolution: null }
+        const hasSession = Object.keys(ownedValues).length > 0
+        const resolved = { ...state, currentValues, ownedValues, hasSession, capturedAt: hasSession ? state.capturedAt : null, conflict: null, conflictDeferred: false, conflictResolution: null }
         if (restoreConflictOnly && Object.keys(ownedValues).length && !state.quitPending) {
           return { ...resolved, phase: 'recoveryRequired', operation: null, error: appPresentation.recovery.remainingOwned, notice: '' }
         }
@@ -119,24 +133,29 @@ export function benzoDemoReducer(state, action) {
       if (state.phase === 'recoveryRequired') return { ...state, error: appPresentation.recovery.explicitRestore, phase: 'restoring', operation: 'restore' }
       return state
     case 'conflict': {
-      const conflict = action.conflict ?? { key: 'powernap' }
-      return { ...state, phase: 'recoveryRequired', conflict, currentValues: { ...state.currentValues, [conflict.key]: conflict.currentValue ?? '2' }, error: appPresentation.recovery.conflict, notice: '' }
+      const proposed = action.conflict ?? { key: 'powernap', currentValue: '0', lastVerified: null }
+      const key = Object.hasOwn(originals, proposed.key) ? proposed.key : 'powernap'
+      const currentValue = ['0', '1', 0, 1].includes(proposed.currentValue) ? String(proposed.currentValue) : null
+      const conflict = { ...proposed, key, currentValue, lastVerified: proposed.lastVerified ?? null }
+      return { ...state, phase: 'recoveryRequired', conflict, conflictDeferred: false, currentValues: { ...state.currentValues, [conflict.key]: conflict.currentValue }, error: appPresentation.recovery.conflict, notice: '' }
     }
     case 'keepCurrent': {
-      if (!state.conflict || state.operation === 'uncertain') return state
+      if (!state.conflict || state.conflict.currentValue === null || state.operation === 'uncertain') return state
       const { [state.conflict.key]: _released, ...ownedValues } = state.ownedValues
-      const currentValues = { ...state.currentValues, [state.conflict.key]: state.conflict.currentValue ?? state.currentValues[state.conflict.key] }
-      const resolved = { ...state, conflict: null, conflictResolution: 'keepCurrent', ownedValues, hasSession: Object.keys(ownedValues).length > 0, currentValues, operation: null }
+      const currentValues = { ...state.currentValues, [state.conflict.key]: state.conflict.currentValue ?? null }
+      const hasSession = Object.keys(ownedValues).length > 0
+      const resolved = { ...state, conflict: null, conflictDeferred: false, conflictResolution: 'keepCurrent', ownedValues, hasSession, capturedAt: hasSession ? state.capturedAt : null, currentValues, operation: null }
       return Object.keys(ownedValues).length
         ? { ...resolved, phase: 'recoveryRequired', error: appPresentation.recovery.keptCurrent, notice: '' }
         : publish(resolved, 'off', appPresentation.recovery.keptCurrent)
     }
     case 'restoreRecordedOriginal':
-      return state.conflict && state.operation !== 'uncertain' ? { ...state, conflictResolution: 'restoreOriginal', phase: 'restoring', operation: 'restore', error: null, notice: appPresentation.recovery.titles.restoring } : state
-    case 'deferConflict': return state.conflict ? { ...state, error: appPresentation.recovery.deferred } : state
+      return state.conflict && state.conflict.currentValue !== null && state.operation !== 'uncertain' ? { ...state, conflictResolution: 'restoreOriginal', phase: 'restoring', operation: 'restore', error: null, notice: appPresentation.recovery.titles.restoring } : state
+    case 'deferConflict': return state.conflict ? { ...state, conflictDeferred: true, error: appPresentation.recovery.deferred } : state
+    case 'reviewConflict': return state.conflict ? { ...state, conflictDeferred: false, error: appPresentation.recovery.conflict } : state
     case 'refreshRecovery': return state.operation === 'uncertain'
       ? { ...state, error: appPresentation.recovery.uncertainRetry }
-      : { ...state, phase: 'checking', resumePhase: state.phase, error: null, notice: appPresentation.recovery.titles.checking }
+      : { ...state, phase: 'checking', resumePhase: state.phase, conflictDeferred: false, error: null, notice: appPresentation.recovery.titles.checking }
     case 'legacyUnknown': return { ...state, phase: 'recoveryRequired', legacyUnknown: true, error: appPresentation.recovery.legacyHelp, notice: '', operation: null }
     case 'login': return { ...state, login: !state.login, notice: siteCopy.demo.notices.login }
     case 'sleep': return { ...state, error: appPresentation.sleep.unavailable }

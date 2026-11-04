@@ -55,7 +55,7 @@ final class BenzoViewModel: ObservableObject {
     var isSelectionEditBlocked: Bool { controlState != .off }
     var activeCount: Int { frozenSettings?.count ?? selectedSettings.count }
     var canToggleMaster: Bool { (controlState == .off && activeCount > 0) || isActive }
-    var canRestore: Bool { hasSession && !controlState.isBusy && !executionUncertain }
+    var canRestore: Bool { hasSession && !controlState.isBusy && !executionUncertain && conflicts.isEmpty }
 
     // Eligibility is observed before a session is admitted. Stored choices are not proof of support.
     private var selectedSettings: [SleepSetting] {

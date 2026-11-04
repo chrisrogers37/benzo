@@ -2,9 +2,9 @@
 // Owners: Views/*.swift, Models/SleepSetting.swift, Theme/BenzoTheme.swift.
 // Native claims must change there first, then here. See README.md for parity limits.
 export const settingOptions = [
-  { key: 'hibernateMode', label: 'Hibernate Mode', desc: 'Set hibernation mode 25, standby 0 and autopoweroff 0', defaultEnabled: false, available: false, unavailableReason: 'Unavailable on this AC-only target. Not reported: hibernatemode, standby, autopoweroff.', commands: [['hibernatemode', '25'], ['standby', '0'], ['autopoweroff', '0']] },
+  { key: 'hibernateMode', label: 'Hibernate Mode', desc: 'Set hibernation mode 25, standby 0 and autopoweroff 0', defaultEnabled: false, available: false, unavailableReason: 'Unavailable: AC Power does not report hibernatemode, autopoweroff.', commands: [['hibernatemode', '25'], ['standby', '0'], ['autopoweroff', '0']] },
   { key: 'disablePowerNap', label: 'Disable Power Nap', desc: 'Set Power Nap to 0', defaultEnabled: true, available: true, commands: [['powernap', '0']] },
-  { key: 'disableProximityWake', label: 'Disable Proximity Wake', desc: 'Set proximity wake to 0', defaultEnabled: false, available: false, unavailableReason: 'Unavailable on this target. Not reported: proximitywake.', commands: [['proximitywake', '0']] },
+  { key: 'disableProximityWake', label: 'Disable Proximity Wake', desc: 'Set proximity wake to 0', defaultEnabled: false, available: false, unavailableReason: 'Unavailable: AC Power does not report proximitywake.', commands: [['proximitywake', '0']] },
   { key: 'disableNetworkWake', label: 'Disable Network Wake', desc: 'Set Wake-on-LAN to 0', defaultEnabled: true, available: true, commands: [['womp', '0']] },
   { key: 'disableTcpKeepAlive', label: 'Disable TCP Keep-Alive', desc: 'Set TCP keep-alive to 0; may affect Find My', defaultEnabled: false, available: true, commands: [['tcpkeepalive', '0']] },
 ]
@@ -17,6 +17,7 @@ export const appPresentation = {
   recovery: {
     titles: { checking: 'Checking Settings', off: 'Settings Are Off', applying: 'Applying Settings', activeVerified: 'Settings Applied', restoring: 'Restoring Settings', recoveryRequired: 'Recovery Required' },
     messages: { checking: 'Reading settings and recovery evidence.', off: 'No unresolved Benzo settings session.', applying: 'Applying your frozen selection and checking each value.', activeVerified: 'Selected settings were read back successfully. Physical sleep behavior is not verified.', restoring: 'Restoring captured pre-Benzo settings and checking each value.', recoveryRequired: 'Recovery requires review. Existing evidence is preserved.' },
+    evidence: { captured: 'Captured', simulatedProfile: 'AC Power (simulated Mac Mini)', original: 'Recorded original:', current: 'Observed now:', lastVerified: 'Last verified Benzo value:', none: 'none', race: 'Other tools can change settings after this observation.' },
     unsupported: 'This setting is unavailable because the target does not report every required key.',
     emptySelection: 'Select at least one available setting before applying.',
     failed: 'The operation could not be verified. Captured originals and your selection are preserved.',

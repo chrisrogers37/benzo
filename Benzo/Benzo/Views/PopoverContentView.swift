@@ -127,11 +127,11 @@ struct PopoverContentView: View {
                             Button("Keep Current") {
                                 Task { await viewModel.resolveConflict(conflict, choice: .keepCurrent) }
                             }
-                            .disabled(viewModel.executionUncertain)
+                            .disabled(viewModel.executionUncertain || conflict.current == nil)
                             Button("Restore Recorded Original Anyway") {
                                 Task { await viewModel.resolveConflict(conflict, choice: .restoreOriginal) }
                             }
-                            .disabled(viewModel.executionUncertain)
+                            .disabled(viewModel.executionUncertain || conflict.current == nil)
                             Button("Defer") { deferredConflicts.insert(conflict.cell) }
                         }
                     }

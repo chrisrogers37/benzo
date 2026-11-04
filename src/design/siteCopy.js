@@ -77,7 +77,7 @@ export const siteCopy = {
     resultsLabel: 'Example diagnostic results',
     notices: {
       permission: 'Status refresh simulated. No permission was requested or changed.',
-      settings: 'Sleep settings changed only in this demo.', applied: 'Selected settings were simulated and verified. Your Mac’s settings haven’t changed.', login: 'Login preference changed only in this demo.',
+      settings: 'Sleep settings changed only in this demo.', applied: 'Selected settings were simulated and verified. Your Mac’s settings haven’t changed.', noChanges: 'No selected settings needed a change. Settings remain Off.', login: 'Login preference changed only in this demo.',
       restored: 'Captured pre-Benzo settings restored in the demo. Settings are editable again; your Mac’s settings haven’t changed.',
       quit: 'Demo closed. Use Restart demo to explore again.', quitAnyway: 'Demo closed with recovery evidence preserved. Use Restart demo to explore again.',
     },
