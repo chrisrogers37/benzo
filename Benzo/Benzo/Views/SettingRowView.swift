@@ -3,7 +3,7 @@ import SwiftUI
 struct SettingRowView: View {
     let setting: SleepSetting
     let isEnabled: Bool
-    let isActive: Bool
+    let isEditBlocked: Bool
     let onToggle: () -> Void
 
     @State private var isHovered = false
@@ -34,8 +34,10 @@ struct SettingRowView: View {
             )
         }
         .buttonStyle(.plain)
+        .disabled(isEditBlocked)
+        .opacity(isEditBlocked ? 0.5 : 1)
         .onHover { hovering in
-            isHovered = hovering
+            isHovered = hovering && !isEditBlocked
         }
     }
 }

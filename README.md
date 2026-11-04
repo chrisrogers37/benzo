@@ -1,8 +1,21 @@
 # Benzo
 
-**The anti-[Amphetamine](https://apps.apple.com/us/app/amphetamine/id937984704?mt=12) for macOS.** Force true deep sleep — even with your dock plugged in.
+**The anti-[Amphetamine](https://apps.apple.com/us/app/amphetamine/id937984704?mt=12) for macOS.** Sleep settings in your menu bar.
 
-Benzo sets `hibernatemode 25` and kills Power Nap, TCP keep-alive, proximity wake, and network wake. Your Mac writes RAM to disk, powers off completely, and USB ports go dark. No fan, no heat, no battery drain.
+Benzo adjusts selected `pmset` sleep and wake settings. A configured value does not prove physical hibernation, USB power behavior or battery savings on a particular Mac.
+
+## Source containment work
+
+This source revision removes timed sleep, blocker termination, automatic drift
+reapplication and launch-time permission installation. Sleep Now is unavailable
+while recovery controls are being updated. Choose options before activation;
+settings stay frozen while active or original-settings evidence is present or
+cannot be inspected, including after the legacy Restore/Off action.
+
+Manual activation, restoration and quit still have known recovery defects. An Off
+label is not proof of restored settings. This is an intermediate source change,
+not a safe native release. Existing release downloads have not been replaced by
+this work. See the [remediation plan](documentation/planning/tech_debt/benzo-remediation_2026-11-02/00_TECH_DEBT.md).
 
 ## Install
 
@@ -31,16 +44,25 @@ sudo pmset -a tcpkeepalive 0
 sudo pmset -a proximitywake 0
 ```
 
-Toggle it off (or quit) and your original settings are restored.
+Toggling off or quitting attempts to restore the saved original values. That can
+fail; keep the backup and seek recovery help if the outcome is uncertain.
 
 ### Features
 
-- **True hibernation** — `hibernatemode 25` writes RAM to disk and fully powers off
-- **Dock-friendly** — CalDigit, OWC, Anker — leave it all plugged in
-- **Granular control** — pick exactly which protections you want
-- **One-click revert** — original pmset values backed up and restored on deactivate or quit
-- **Sleep Now** — apply settings and sleep immediately
-- **Diagnostics** — Option-click the menubar icon to see sleep sessions, wake reasons, USB devices, and settings verification
+- **Configuration choices** — choose sleep and wake settings before activation
+- **Conservative selection lock** — active sessions or retained recovery evidence prevent editing
+- **Saved originals** — legacy deactivate, Restore and quit attempt recovery, with unresolved failure paths
+- **Sleep Now unavailable** — manual and timed sleep are disabled in this source revision
+- **Diagnostics** — Option-click the menubar icon for existing sleep sessions, wake reasons, USB devices and settings observations; these do not prove recovery or hardware behavior
+
+### Recovery and removal
+
+Removing the app is not verified restoration or permission-rule retirement. The
+cask no longer asks the app to quit or deletes its permission rule, backup or
+preferences during removal/zap. Preserve `~/Library/Application Support/Benzo/`
+and the existing grant until an explicit recovery/retirement flow resolves them.
+Do not delete an invalid or unreadable backup to reactivate the app. Seek help
+through [GitHub issues](https://github.com/chrisrogers37/benzo/issues).
 
 ## Requirements
 
@@ -84,19 +106,20 @@ npm audit --audit-level=moderate
 npm run dev
 ```
 
-`npm test` runs Vitest, React Testing Library and jsdom interaction tests. The
-marketing wrapper owns shared demo state; `src/components/BenzoMockup.jsx` renders
-the mockup using `src/demo/state.js` and `src/demo/fixtures.js`. Native UI changes
-must preserve matching demo behavior.
+`npm test` runs Vitest, React Testing Library and jsdom interaction tests.
+`src/landing/BenzoLanding.jsx` owns one `src/demo/useBenzoDemo.js` state and passes
+it to `src/landing/NativeAppDemo.jsx`; `src/design/appPresentation.js` owns its
+native presentation reference. Native UI changes must match this active demo.
+Unbundled `BenzoHybrid`, `BenzoMockup` and their historical tests remain unchanged.
 
 The `build` workflow runs web tests/build and full-Xcode Debug/Release/core tests.
 The separate `security` workflow retains npm audit and Gitleaks. Neither workflow
 publishes artifacts. The connected Vercel Git integration can deploy previews on
 branch pushes and the site on main; inspect and authorize deployment before push.
 
-The approved delivery order and outstanding acceptance are recorded in
-[the re-orientation plan](documentation/plans/benzo-reorientation_2026-10-25/00_overview.md)
-and [run log](documentation/plans/benzo-reorientation_2026-10-25/RUN_LOG.md).
+The accepted delivery order is 03 → 01 → 04 → conditional 02 in the
+[remediation plan](documentation/planning/tech_debt/benzo-remediation_2026-11-02/00_TECH_DEBT.md).
+Older reorientation plans and their run log remain historical safety references.
 
 ## License
 

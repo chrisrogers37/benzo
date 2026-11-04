@@ -1,5 +1,18 @@
 # Benzo Open Work
 
+## Current containment work — 2026-11-02
+
+- [x] YAGNI scope amended and independently reviewed; user requested implementation.
+- [x] Implement plan 03 on `implement/benzo-containment`, from `eed0a969b097142042dc4412424fbc71a04d2c0d`.
+- [x] Verify web behavior, inspect native changes and complete independent review; fix dangling-parent evidence finding.
+- [ ] Full-Xcode native checks and exact-head security CI; no native acceptance on this host.
+- [x] Owner approved branch push, draft PR and automatic Vercel preview on 2026-11-03; merge/release remain held.
+
+The current order is **03 → 01 → 04 → conditional 02**, as recorded in
+`documentation/planning/tech_debt/benzo-remediation_2026-11-02/00_TECH_DEBT.md`.
+Later dependent phases wait for user merge. This amendment supersedes the old
+queue below; remaining manual recovery defects prevent an intermediate native release.
+
 ## Current gated work — 2026-10-25
 
 - [x] Phase 1 evaluation: `documentation/plans/00_benzo-evaluation_2026-10-25.md`.

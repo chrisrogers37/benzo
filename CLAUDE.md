@@ -42,7 +42,7 @@ This file provides project-specific guidance for Claude Code. Update this file w
 
 ## Project Overview
 
-**Benzo** is a macOS menubar sleep-configuration utility. Applying a pmset value is not proof of physical hibernation or USB power behavior. The landing page is React/Vite on Vercel. The approved re-orientation and delivery gates live in `documentation/plans/benzo-reorientation_2026-10-25/00_overview.md`.
+**Benzo** is a macOS menubar sleep-configuration utility. Applying a pmset value is not proof of physical hibernation or USB power behavior. The landing page is React/Vite on Vercel. The accepted scope and execution order live in `documentation/planning/tech_debt/benzo-remediation_2026-11-02/00_TECH_DEBT.md`: 03 → 01 → 04 → conditional 02. Earlier reorientation documents remain safety references, not authority to restore removed features.
 
 **Version**: 0.3.0
 
@@ -69,7 +69,7 @@ Benzo/Benzo/                     — Swift macOS menubar app
 ├── Views/
 │   ├── PopoverContentView.swift — main layout, switches between setup/normal/diagnostic views
 │   ├── MasterToggleView.swift   — "Deep Sleep is On/Off" header with toggle
-│   ├── SleepNowButton.swift     — pink capsule button, activates settings then sleeps
+│   ├── SleepNowButton.swift     — disabled sleep action with recovery explanation
 │   ├── SettingRowView.swift     — individual setting checkbox row
 │   ├── FooterView.swift         — launch at login, version, restore defaults, quit
 │   ├── SetupView.swift          — first-run permission grant screen
@@ -78,7 +78,7 @@ Benzo/Benzo/                     — Swift macOS menubar app
     └── BenzoTheme.swift         — colors (accent: #d4749c)
 
 src/BenzoHybrid.jsx              — unbundled historical page; legacy layout/copy only
-src/components/BenzoMockup.jsx   — interactive mockup; keep native UI parity here
+src/components/BenzoMockup.jsx   — unbundled historical mockup and tests
 src/landing/NativeAppDemo.jsx      — source-based interactive reproduction; original mockup retained as historical source
 src/landing/BenzoLanding.jsx         — public landing page; single owner of interactive demo state
 src/design/                     — core web tokens, CSS, copy, metadata, icons and app presentation
@@ -90,10 +90,10 @@ Casks/benzo.rb                   — Homebrew cask formula
 
 ### Key Principles
 
-- **Mockup sync**: Any UI or behavioral change to the native app must also be reflected in `src/components/BenzoMockup.jsx` and the shared demo state in `src/BenzoHybrid.jsx` / `src/demo/`.
+- **Mockup sync**: Any UI or behavioral change to the native app must also be reflected in `src/landing/NativeAppDemo.jsx`, `src/demo/useBenzoDemo.js` and `src/design/appPresentation.js`. `BenzoLanding` owns the single state. Preserve historical `BenzoHybrid`/`BenzoMockup` sources, reducer and tests.
 - **Draft fidelity**: Marketing redesigns must preserve the native UI and interactive controls in `src/landing/NativeAppDemo.jsx`; keep demo navigation/disclosures outside the app panel. Verify against current Swift source, and reserve pixel-parity claims for comparison with an approved native screenshot.
 - **Core web design**: Import redesigned page/demo presentation from `src/design/`. Keep one `useBenzoDemo` state in `BenzoLanding` for panel and page theme; never mirror the master switch in a second state. Marketing copy and native UI copy have separate owners inside the module. See `src/design/README.md`.
-- **Recovery scope**: The current app attempts backup restoration on quit, with known failure paths tracked in P4/P5. Never claim defaults or successful restoration without evidence.
+- **Recovery scope**: Containment removes automatic/timed writes and freezes selections while active or recovery evidence is present/unknown. Sleep Now is unavailable. Legacy manual apply/restore/quit still have known failure paths, held for 02 or an accepted recovery-only endpoint. Never claim an Off toggle proves restoration or release an incomplete native safety slice. Preserve originals and grants during app removal; removal is not verified restoration or retirement.
 - **Not App Store**: Benzo requires root access for pmset, incompatible with App Store sandboxing.
 
 ---

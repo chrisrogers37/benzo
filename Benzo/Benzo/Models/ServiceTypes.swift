@@ -14,12 +14,6 @@ enum ShellError: LocalizedError {
     }
 }
 
-struct SleepBlocker: Identifiable {
-    let id = UUID()
-    let processName: String
-    let displayName: String
-}
-
 struct SettingVerification: Identifiable {
     let id = UUID()
     let setting: SleepSetting
