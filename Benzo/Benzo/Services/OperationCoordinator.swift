@@ -66,14 +66,17 @@ final class OperationCoordinator {
                 throw invalid("A selected setting is unavailable in a reported power profile. No settings were changed.")
             }
             let targets = try targetValues(settings, profiles: capture.profiles)
-            let cells = try targets.compactMap { target -> RecoveryCell? in
+            var cells: [RecoveryCell] = []
+            var steps: [RecoveryStep] = []
+            for target in targets {
                 guard let original = capture.value(for: target.cell) else {
                     throw invalid("A selected original value is missing. No settings were changed.")
                 }
-                return original == target.value ? nil : RecoveryCell(cell: target.cell, original: original, observed: original)
+                if original != target.value {
+                    cells.append(RecoveryCell(cell: target.cell, original: original, observed: original))
+                    steps.append(RecoveryStep(cell: target.cell, precondition: original, target: target.value))
+                }
             }
-            let steps = cells.map { cell in RecoveryStep(cell: cell.cell, precondition: cell.original,
-                target: targets.first(where: { $0.cell == cell.cell })!.value) }
             let plan = RecoveryOperation(id: UUID(), bootID: boot, kind: .apply, preState: capture.values, steps: steps)
             let session = RecoveryJournal(uid: uid, hostID: hostID, sessionID: UUID(), revision: 1,
                 capturedAt: now(), capture: capture, selectedSettings: settings.map(\.rawValue),

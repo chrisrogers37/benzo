@@ -231,10 +231,9 @@ final class DurableJournal: RecoveryStoring {
     private var markerData: Data { Data("BENZO_RECOVERY_1\n\(uid)\n\(hostID)\n".utf8) }
 
     private func sameRequest(_ lhs: ExecutionFence, _ rhs: ExecutionFence) -> Bool {
-        lhs.schema == rhs.schema && lhs.uid == rhs.uid && lhs.hostID == rhs.hostID &&
-        lhs.bootID == rhs.bootID && lhs.incarnationID == rhs.incarnationID &&
-        lhs.sessionID == rhs.sessionID && lhs.operationID == rhs.operationID &&
-        lhs.cell == rhs.cell && lhs.target == rhs.target
+        var request = lhs
+        request.completed = rhs.completed
+        return request == rhs
     }
 
     private func validatePrevious(_ previous: RecoveryJournal?, current: RecoveryJournal) throws {

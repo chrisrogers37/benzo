@@ -32,15 +32,6 @@ export const initialDemoState = (active = true) => ({
   observedSettings: { status: 'success', value: settingOptions.flatMap(({ commands }) => commands.map(([key]) => ({ key, actualValue: exampleReadings.values[key] }))) },
 })
 
-const titleByPhase = {
-  checking: appPresentation.recovery.titles.checking,
-  off: appPresentation.recovery.titles.off,
-  applying: appPresentation.recovery.titles.applying,
-  activeVerified: appPresentation.recovery.titles.activeVerified,
-  restoring: appPresentation.recovery.titles.restoring,
-  recoveryRequired: appPresentation.recovery.titles.recoveryRequired,
-}
-
 function publish(state, phase, notice = '') {
   return { ...state, phase, notice, error: null, operation: null, quitPending: false }
 }
