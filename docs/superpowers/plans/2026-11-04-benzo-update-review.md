@@ -39,4 +39,17 @@ Implemented on isolated branch `implement/benzo-update-checker`, based on c3a907
 - All native app sources passed macOS 13-target CLT typechecking, with the pre-existing non-Sendable `runOnMain` warning. Xcode project plist lint and diff whitespace checks passed.
 - A task-local synthetic Swift executable exercised the real injected version/checker/ViewModel types: numeric and invalid versions, fixed page construction, byte cap and separate check/open actions. A canceled-loader case first reproduced a stuck Checking state; after correction it passed. This is not XCTest or installed-app acceptance.
 - Nine focused XCTest methods were added. Full-Xcode Debug/Release and XCTest remain pending: the installed toolchain is CLT only. Gitleaks/CI and dedicated-Mac acceptance remain pending. No app was launched.
-- Local browser verification was attempted through the supported Chrome interface, but tab binding/navigation failed inside the browser tool before page interaction. Do not infer rendered visual acceptance from jsdom/build results.
+- Browser DOM automation initially failed before interaction; the supported native Chrome controls then loaded the task-local site. Observed the explicit check, current result within the fixed 320px panel without clipping, and separate View Releases action producing only a demo notice. Broader responsive/error-layout, keyboard/VoiceOver and native browser-handoff acceptance remain pending.
+
+## Independent implementation review
+
+Fresh reviewer inspected exact head `fe9e25d` against `c3a9070`, including the plan, diff, target membership and whitespace. **NO FINDINGS**: no Critical, Important or Minor defects, no revisions requested. Reported test receipts were not rerun by the reviewer. This is source-review acceptance of A/B, not a merge or native-release approval.
+
+Decisions on unverified boundaries:
+
+- Full-Xcode Debug/Release and XCTest remain required before merge; CLT compilation and synthetic fixtures cannot replace them. Risk until verified: native build/test failures.
+- Browser current-state layout/action passed through the fallback; broader responsive/error layout, keyboard/VoiceOver and native handoff remain acceptance checks. Risk until verified: visual or focus defects.
+- Live URLSession timeouts/redirect refusal were source-reviewed; injected tests exercise parser/state/byte bounds, not the production adapter. Verify stalled/redirected requests on the dedicated test Mac before release. Risk until verified: platform transport behavior differs from its configured contract.
+- Recovery, artifact signatures/compatibility, packaging PR102 and public release remain separately owned, held work. Check/link adds no installation or termination route; it cannot make external replacement safe.
+
+No deferred code-review findings. The implementation kept the table-shaped plan with a small progress ledger rather than adding task-runner scaffolding; the cost is manual bookkeeping only. Primary-checkout preservation check covered all 19 previously recorded work files with zero changes. Remote main was rechecked at c3a9070. The branch remains local, unmerged and unreleased.
