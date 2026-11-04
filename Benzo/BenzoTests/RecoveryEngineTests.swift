@@ -177,6 +177,42 @@ final class RecoveryEngineTests: XCTestCase {
         XCTAssertFalse(subject.state.isActive)
     }
 
+    func testPostRestoreConflictNeverCompensatesReleasedCells() async {
+        let hib = ManagedCell(profile: .ac, key: .hibernatemode)
+        let standby = ManagedCell(profile: .ac, key: .standby)
+        let auto = ManagedCell(profile: .ac, key: .autopoweroff)
+        let store = EngineStore(), transport = EngineTransport([hib: 3, standby: 1, auto: 1])
+        let subject = engine(store, transport)
+        await subject.apply(settings: [.hibernateMode])
+        XCTAssertTrue(subject.state.isActive)
+
+        var readsAfterLastRestore = 0
+        transport.beforeCapture = { [unowned transport] _ in
+            guard transport.writes.count == 6 else { return }
+            readsAfterLastRestore += 1
+            if readsAfterLastRestore == 2 {
+                // After every restore readback, another tool changes one cell.
+                // Reconciliation releases the other cells before reporting this conflict.
+                transport.values[hib] = 0
+            }
+        }
+        await subject.restore()
+        XCTAssertEqual(subject.conflicts.map(\.cell), [hib])
+        XCTAssertEqual(transport.writes.count, 6)
+        XCTAssertEqual(transport.values[standby], 1)
+        XCTAssertEqual(transport.values[auto], 1)
+        XCTAssertEqual(store.journal?.cells.filter(\.owned).map(\.cell), [hib])
+        XCTAssertNil(store.receipt)
+
+        await subject.resolveConflict(hib, choice: .keepCurrent)
+        XCTAssertEqual(subject.state, .off)
+        XCTAssertEqual(transport.writes.count, 6)
+        XCTAssertEqual(transport.values[hib], 0)
+        XCTAssertEqual(transport.values[standby], 1)
+        XCTAssertEqual(transport.values[auto], 1)
+        XCTAssertEqual(store.journal, store.receipt)
+    }
+
     func testExitZeroMismatchStopsAndNeverRestoresUnverifiedThirdValue() async {
         let store = EngineStore(), transport = EngineTransport([acNap: 1, acWake: 1])
         transport.onWrite = { _, _, _ in .completed(status: 0) }

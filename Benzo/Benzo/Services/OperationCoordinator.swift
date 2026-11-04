@@ -415,12 +415,13 @@ final class OperationCoordinator {
         do {
             let capture = try await transport.capture()
             guard let current = journal else { throw cause }
-            // Only writes with both completion and matching readback are eligible.
+            // Compensation retains ownership: reconciliation may already have
+            // released restored cells before another cell's conflict was reported.
             let attempted = current.operation?.id == failed.id ? current.operation!.steps : []
             let compensation = attempted.reversed().compactMap { step -> RecoveryStep? in
                 guard step.phase == .completed, step.readback == step.target,
                       capture.value(for: step.cell) == step.target,
-                      current.cells.first(where: { $0.cell == step.cell })?.lastVerified == step.target else { return nil }
+                      current.cells.first(where: { $0.cell == step.cell && $0.owned })?.lastVerified == step.target else { return nil }
                 return RecoveryStep(cell: step.cell, precondition: step.target, target: step.precondition)
             }
             if !compensation.isEmpty {
