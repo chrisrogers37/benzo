@@ -2,6 +2,7 @@ import SwiftUI
 
 struct PopoverContentView: View {
     @ObservedObject var viewModel: BenzoViewModel
+    @ObservedObject var updates: UpdateViewModel
     @State private var showOptions = false
 
     var body: some View {
@@ -88,6 +89,7 @@ struct PopoverContentView: View {
 
             FooterView(
                 launchAtLogin: $viewModel.launchAtLogin,
+                updates: updates,
                 onRevert: viewModel.revertToDefaults,
                 onQuit: viewModel.quit
             )

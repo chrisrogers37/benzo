@@ -279,3 +279,81 @@ describe('source-matched browser simulation', () => {
     expect(screen.getByRole('switch', { name: 'Launch at Login' }).getAttribute('aria-checked')).toBe('false')
   })
 })
+
+describe('manual update check simulation', () => {
+  it('checks only on request, then requires a separate release-page action', () => {
+    vi.useFakeTimers()
+    const fetch = vi.fn()
+    vi.stubGlobal('fetch', fetch)
+    try {
+      render(<Demo />)
+      expect(vi.getTimerCount()).toBe(0)
+      const check = screen.getByRole('button', { name: 'Check for Updates…' })
+      expect(screen.queryByText(/latest published release/)).toBeNull()
+      fireEvent.click(check)
+      expect(screen.getByRole('button', { name: 'Checking…' }).disabled).toBe(true)
+      expect(screen.getByRole('switch', { name: 'Deep Sleep' }).getAttribute('aria-checked')).toBe('true')
+      act(() => vi.advanceTimersByTime(400))
+      expect(screen.getByText(/latest published release \(0\.3\.0\)/)).toBeTruthy()
+      expect(screen.queryByText(/this would open/)).toBeNull()
+      click('View Releases')
+      expect(screen.getByText(/this would open.*releases/i)).toBeTruthy()
+      expect(fetch).not.toHaveBeenCalled()
+      expect(screen.queryByRole('button', { name: /install|download/i })).toBeNull()
+    } finally { vi.unstubAllGlobals() }
+  })
+
+  it('cancels checking on close and preserves Back navigation without moving footer controls', () => {
+    vi.useFakeTimers()
+    render(<Demo />)
+    click('Check for Updates…')
+    click('Benzo menu')
+    act(() => vi.advanceTimersByTime(400))
+    click('Benzo menu')
+    expect(screen.queryByText(/latest published release/)).toBeNull()
+    expect(screen.getByRole('button', { name: 'Check for Updates…' }).disabled).toBe(false)
+    click('First launch')
+    expect(screen.queryByRole('button', { name: 'Check for Updates…' })).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Restore System Defaults' })).toBeNull()
+    click('Back')
+    expect(screen.getByRole('button', { name: 'Check for Updates…' })).toBeTruthy()
+    click('View diagnostics')
+    expect(screen.queryByRole('button', { name: 'Check for Updates…' })).toBeNull()
+    click('Back')
+    expect(screen.getByRole('button', { name: 'Check for Updates…' })).toBeTruthy()
+  })
+
+  it('discards completed update results on close or diagnostics without automatically rechecking', () => {
+    vi.useFakeTimers()
+    render(<Demo />)
+    for (const leave of ['Benzo menu', 'View diagnostics']) {
+      click('Check for Updates…')
+      act(() => vi.advanceTimersByTime(400))
+      expect(screen.getByText(/latest published release/)).toBeTruthy()
+      click(leave)
+      click(leave === 'Benzo menu' ? 'Benzo menu' : 'Back')
+      expect(screen.queryByText(/latest published release/)).toBeNull()
+      expect(screen.queryByRole('button', { name: 'View Releases' })).toBeNull()
+      expect(vi.getTimerCount()).toBe(0)
+      expect(screen.getByRole('button', { name: 'Check for Updates…' }).disabled).toBe(false)
+    }
+  })
+
+  it.each([
+    [{ status: 'available', version: '0.4.0' }, /Benzo 0\.4\.0 is available/, 'View Release'],
+    [{ status: 'offline' }, /Couldn't check for updates/, 'View Releases'],
+    [{ status: 'unavailable' }, /Update check unavailable/, 'View Releases'],
+    [{ status: 'unknownVersion' }, /Couldn't compare this build/, 'View Releases'],
+    [{ status: 'ahead' }, /No newer stable release found/, 'View Releases'],
+  ])('shows informational result %j without installing', (update, message, action) => {
+    const { result } = renderHook(useBenzoDemo)
+    render(<NativeAppDemo state={{ ...result.current[0], update }} dispatch={() => {}} />)
+    expect(screen.getByText(message)).toBeTruthy()
+    expect(screen.getByRole('button', { name: action, exact: true })).toBeTruthy()
+    if (update.status === 'available') {
+      expect(screen.getByText(/Compatibility isn't verified/)).toBeTruthy()
+      expect(screen.getByText(/Resolve any recovery/)).toBeTruthy()
+    }
+    expect(screen.queryByRole('button', { name: /install|download/i })).toBeNull()
+  })
+})

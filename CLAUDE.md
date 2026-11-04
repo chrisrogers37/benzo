@@ -159,6 +159,8 @@ npm run build        # Production build
 
 ### Distribution
 
+- **Manual update discovery:** `AppVersion` reads bundle versions; `ReleaseChecker` validates stable GitHub metadata; `UpdateViewModel` owns an explicit check and separate browser action. Production URLSession/browser composition lives only in `AppDelegate`; core tests inject both. Requests are bounded to 15 seconds/1 MiB, reject redirects, and cancel when leaving the normal panel. No tokens, background checks, artifact downloads, installation or quit/recovery dependencies. Metadata does not establish compatibility or artifact authenticity. See `docs/superpowers/plans/2026-11-04-benzo-update-experience.md`; release readiness remains with recovery/P2.
+
 - **GitHub Releases** — signed `.dmg` (notarized when Apple Developer credentials are available)
 - **Homebrew** — `brew install --cask benzo` (personal tap; official homebrew-cask tap requires notarized DMG)
 - Gatekeeper bypass: right-click → Open, or `xattr -d com.apple.quarantine /Applications/Benzo.app`

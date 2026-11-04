@@ -31,6 +31,22 @@ function Setup({ observation, onRefresh, onBack }) {
   return <div className="bn-setup"><span className="bn-setup-pill" aria-hidden="true">💊</span><h3>{app.setup.title}</h3><p>{app.setup.observations[observation] ?? app.setup.observations.unknown}</p><button onClick={onRefresh}>{app.setup.action}</button><button onClick={onBack}>{app.setup.back}</button><p className="bn-setup-note">{app.setup.note.map((line, index) => <Fragment key={line}>{index > 0 && <br />}{line}</Fragment>)}</p></div>
 }
 
+function UpdateCheck({ update = { status: 'idle' }, dispatch }) {
+  const checking = update.status === 'checking'
+  const available = update.status === 'available'
+  const message = ['current', 'available'].includes(update.status)
+    ? app.updates[update.status](update.version)
+    : app.updates[update.status]
+  return <>
+    <div className="bn-update-row"><span>{app.version}</span><button disabled={checking} onClick={() => dispatch({ type: 'checkUpdates' })}>{checking ? app.updates.checking : app.updates.check}</button></div>
+    {!checking && message && <div className="bn-update-result" aria-live="polite">
+      <p>{message}</p>
+      {available && <><p>{app.updates.compatibility}</p><p>{app.updates.recovery}</p></>}
+      <button onClick={() => dispatch({ type: 'viewRelease' })}>{available ? app.updates.release : app.updates.releases}</button>
+    </div>}
+  </>
+}
+
 export default function NativeAppDemo({ state, dispatch }) {
   const { running, open, view, active, options, settings, login, backup } = state
   const [aboutOpen, setAboutOpen] = useState(false)
@@ -53,7 +69,7 @@ export default function NativeAppDemo({ state, dispatch }) {
           <div className="bn-options"><button aria-expanded={options} onClick={() => dispatch({ type: 'options' })}><span>{app.options}</span><span className={options ? 'bn-expanded' : ''}><AppSymbol name="chevron" size={9} /></span></button></div>
           {options && <div className="bn-settings">{selectionBlocked && <p className="bn-control-reason" id={selectionBlockedId}>{app.selectionBlocked}</p>}{settingOptions.map(({ key, label, desc }) => <button className="bn-setting" role="checkbox" aria-checked={settings[key]} aria-label={label} disabled={selectionBlocked} aria-describedby={selectionBlocked ? selectionBlockedId : undefined} key={key} onClick={() => dispatch({ type: 'setting', key })}><span><strong>{label}</strong><small>{desc}</small></span><span className={`bn-checkbox${settings[key] ? ' bn-checked' : ''}`}>{settings[key] && <AppSymbol name="check" size={8} />}</span></button>)}</div>}
           {state.error && <p className="bn-error" role="alert">{state.error}</p>}
-          <div className="bn-footer"><div className="bn-login"><span>{app.footer.login}</span><button className={`bn-login-toggle${login ? ' bn-on' : ''}`} role="switch" aria-label={app.footer.login} aria-checked={login} onClick={() => dispatch({ type: 'login' })}><span /></button></div><div className="bn-footer-actions"><span>{app.version}</span><button onClick={() => dispatch({ type: 'restore' })}>{app.footer.restore}</button><button onClick={() => dispatch({ type: 'quit' })}>{app.footer.quit}</button></div></div>
+          <div className="bn-footer"><div className="bn-login"><span>{app.footer.login}</span><button className={`bn-login-toggle${login ? ' bn-on' : ''}`} role="switch" aria-label={app.footer.login} aria-checked={login} onClick={() => dispatch({ type: 'login' })}><span /></button></div><UpdateCheck update={state.update} dispatch={dispatch} /><div className="bn-footer-actions"><button onClick={() => dispatch({ type: 'restore' })}>{app.footer.restore}</button><button onClick={() => dispatch({ type: 'quit' })}>{app.footer.quit}</button></div></div>
         </>}
       </div>}
       {!running && <div className="bn-closed">{copy.closed}<button onClick={() => dispatch({ type: 'reset' })}>{copy.restart} <span aria-hidden="true">↗</span></button></div>}
