@@ -89,9 +89,8 @@ final class FakeDependencies {
     let backup = FakeBackupStore()
     let preferences = FakePreferences()
     let login = FakeLoginItem()
-    var setupComplete = false
-    var setupChecks = 0
-    var installCalls = 0
+    var permissionObservation: PermissionObservation = .noLegacyRule
+    var permissionObservations = 0
     var diagnosticCalls = 0
     var terminationCalls = 0
     var mainQueue: [() -> Void] = []
@@ -103,8 +102,7 @@ final class FakeDependencies {
             backup: backupStore ?? backup,
             preferences: preferences,
             loginItem: login,
-            isSetupComplete: { self.setupChecks += 1; return self.setupComplete },
-            installSudoersRule: { self.installCalls += 1 },
+            observePermission: { self.permissionObservations += 1; return self.permissionObservation },
             fetchSleepData: { self.diagnosticCalls += 1; return ([], nil) },
             fetchUSBDevices: { self.diagnosticCalls += 1; return [] },
             verifySettings: { _, _ in self.diagnosticCalls += 1; return [] },

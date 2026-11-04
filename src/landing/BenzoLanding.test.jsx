@@ -27,7 +27,7 @@ describe('shared page and app state', () => {
     expect(screen.getByRole('checkbox', { name: 'Hibernate Mode' }).disabled).toBe(true)
     fireEvent.click(screen.getByRole('checkbox', { name: 'Hibernate Mode' }))
     expect(screen.getByRole('checkbox', { name: 'Hibernate Mode' }).getAttribute('aria-checked')).toBe('true')
-    click('First launch'); click('Grant Permission'); click('Options')
+    click('First launch'); click('Back'); click('Options')
     expect(screen.getByRole('checkbox', { name: 'Hibernate Mode' }).disabled).toBe(false)
     fireEvent.click(screen.getByRole('checkbox', { name: 'Hibernate Mode' }))
     expectPageState(false)
@@ -42,7 +42,7 @@ describe('shared page and app state', () => {
     expect(screen.getByRole('button', { name: 'Sleep Now' }).disabled).toBe(true)
     click('Sleep Now'); expectPageState(false)
     click('First launch'); expectPageState(false)
-    click('Grant Permission'); expectPageState(false)
+    click('Back'); expectPageState(false)
     switchMaster(); expectPageState(true)
     click('Quit'); expectPageState(false)
     // The toolbar and closed panel each offer a restart.

@@ -61,7 +61,9 @@ Benzo/Benzo/                     — Swift macOS menubar app
 │   └── USBDevice.swift          — USB device name and power draw
 ├── Services/
 │   ├── PMSetService.swift       — runs pmset commands via ShellExecutor
-│   ├── ShellExecutor.swift      — sudo via sudoers rule (post-setup) or osascript (first run)
+│   ├── ShellExecutor.swift      — legacy synchronous mutation transport; unreleased
+│   ├── CommandRunner.swift      — bounded fixed diagnostic reads and owned-fixture tests
+│   ├── PermissionObservation.swift — metadata-only legacy-rule evidence, never readiness
 │   ├── BackupService.swift      — save/load original pmset values to ~/Library/Application Support/Benzo/
 │   └── DiagnosticService.swift  — parses pmset logs, system_profiler, verifies settings
 ├── ViewModels/
@@ -72,7 +74,7 @@ Benzo/Benzo/                     — Swift macOS menubar app
 │   ├── SleepNowButton.swift     — disabled sleep action with recovery explanation
 │   ├── SettingRowView.swift     — individual setting checkbox row
 │   ├── FooterView.swift         — launch at login, version, restore defaults, quit
-│   ├── SetupView.swift          — first-run permission grant screen
+│   ├── SetupView.swift          — non-authorizing permission observation, Refresh and Back
 │   └── DiagnosticView.swift     — ⌥-click view: sleep sessions, wake reason, USB, verification
 └── Theme/
     └── BenzoTheme.swift         — colors (accent: #d4749c)
@@ -103,11 +105,11 @@ Casks/benzo.rb                   — Homebrew cask formula
 1. Make changes
 2. Compile Debug and Release with full Xcode, without launching the app; run the unhosted `BenzoCoreTests` scheme. Use README commands and task-owned DerivedData.
 3. Use Node 24 from `.nvmrc`; run `npm ci`, `npm test`, `npm run build`, and authorized browser checks with `npm run dev`.
-4. Before declaring a PR ready: verify both app configurations, core tests, site tests/build and browser parity; record blocked checks explicitly. User merges each ordered phase.
+4. Before declaring a PR ready: verify both app configurations, core tests, site tests/build and browser parity; record blocked checks explicitly. The owner authorized reviewed merges of the ordered recovery fixes on November 3.
 
 PRs run web/native build and test checks (`.github/workflows/build.yml`) plus `npm audit --audit-level=moderate` and Gitleaks (`.github/workflows/security.yml`). All required checks and independent review must pass before merge.
 
-This Mac Mini is an always-on fleet host: never launch production Benzo or mutate its power, sudoers, login or fleet state for acceptance. Core tests compile only injected services/models/ViewModel and fake dependencies; they must not link live adapters or app composition. Dedicated native acceptance is separately approved. Vercel can auto-deploy branch previews: obtain scoped deployment authority before remote push. Never push main or merge.
+This Mac Mini is an always-on fleet host: never launch production Benzo or mutate its power, sudoers, login or fleet state for acceptance. Core tests compile injected services/models/ViewModel and fake dependencies. The bounded process engine may run only its owned synthetic fixture; live adapters and app composition remain excluded. Dedicated native acceptance is separately approved. Vercel can auto-deploy branch previews: obtain scoped deployment authority before remote push. Do not push main directly. The owner authorized reviewed recovery-phase merges and a native release only after the recovery fixes and acceptance are complete.
 
 ## Commands Reference
 
@@ -153,7 +155,7 @@ npm run build        # Production build
 - `womp` = Wake-on-LAN (network wake), NOT physical USB device wake. Labeled "Disable Network Wake" in the app.
 - Do not promise USB wake prevention or zero power drain from `hibernatemode 25`; supported hardware/OS behavior must be observed separately.
 - Between `pmset sleepnow` and full hibernation, there's a brief window where the Mac is in normal sleep and USB devices could still wake it.
-- The sudoers rule (`/etc/sudoers.d/benzo`) grants passwordless access to a narrow allowlist of `pmset` invocations only: `pmset sleepnow` and `pmset -a <key> [0-9]*` for the keys defined in `SleepSetting.allCases.flatMap(\.pmsetKeys)`. Generated at install time from `SleepSetting`, validated with `visudo -cf` before install, versioned via `sudoersRuleVersion` in `UserDefaults` for migration.
+- Existing releases installed a legacy rule at `/etc/sudoers.d/benzo`. The current source only observes metadata at the canonical `/private/etc/sudoers.d/benzo` path. Presence never proves authorization or safe scope. Installer, remover, version-based readiness and privileged probe paths are removed; preserve old evidence and grants until reviewed recovery/retirement.
 
 ### Distribution
 

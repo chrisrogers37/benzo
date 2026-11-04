@@ -59,7 +59,7 @@ export const siteCopy = {
     source: 'View source on GitHub',
     questions: [
       { question: 'Will it work with my Mac and dock?', answer: 'The app requires macOS Ventura 13 or later. Sleep behavior depends on your Mac, macOS version, dock, and other equipment. Benzo can’t promise zero battery drain, USB ports with no power, or compatibility with every studio setup.' },
-      { question: 'Why does Benzo need administrator access?', answer: 'Changing sleep settings requires administrator access. Setup adds a permission rule that lets administrator accounts run specific macOS power commands. The rule stays installed after you quit and isn’t limited to Benzo.', link: 'Read the setup documentation', destination: 'setup' },
+      { question: 'Why does Benzo need administrator access?', answer: 'Changing sleep settings requires administrator access. Existing downloads install a permission rule that stays after quitting and isn’t limited to Benzo. The unreleased source only observes whether a legacy rule is present; it does not install one or verify authorization.', link: 'Read the setup documentation', destination: 'setup' },
       { question: 'Will macOS let me open it?', answer: 'The current release documentation says the app isn’t notarized by Apple, so macOS may block it from opening. Read the release instructions before continuing.', link: 'View release instructions', destination: 'releases' },
       { question: 'Does quitting restore my settings?', answer: 'Benzo tries to restore your saved settings when you quit, but this can fail. Deleting the app doesn’t undo changes either. Read the recovery and removal guidance before uninstalling, and keep the settings backup if something goes wrong.', link: 'Get help on GitHub', destination: 'help' },
       { question: 'Can I leave my audio interface connected?', answer: 'Check the instructions for your interface and driver. Some manufacturers recommend disconnecting before sleep or shutting down after a session. Finish recordings and exports first; Benzo can’t guarantee that your devices will reconnect correctly.' },
@@ -73,10 +73,10 @@ export const siteCopy = {
     diagnostics: 'View diagnostics',
     hint: 'Preview unreleased changes with the switch and Options. Use First launch to try settings before activation. This demo won’t change your Mac’s settings.',
     disclosure: 'About this demo',
-    disclosureBody: 'The controls follow unreleased source changes, not the downloadable app. Sleep Now is disabled, and settings stay locked while active or while a backup remains, including after Restore. Diagnostic readings are made-up examples. This page can’t put your Mac to sleep or show macOS permission prompts. On a real Mac, sleep, USB power, and restoring settings depend on your setup; the labels in the app don’t guarantee those results.',
+    disclosureBody: 'The controls follow unreleased source changes, not the downloadable app. Permission status only observes legacy rule evidence; it does not grant access. Sleep Now is disabled, and settings stay locked while active or while a backup remains, including after Restore. Diagnostic readings are made-up examples. This page can’t put your Mac to sleep or show macOS permission prompts. On a real Mac, sleep, USB power, and restoring settings depend on your setup; the labels in the app don’t guarantee those results.',
     resultsLabel: 'Example diagnostic results',
     notices: {
-      setup: 'Setup simulated. No permission was requested or installed.',
+      permission: 'Status refresh simulated. No permission was requested or changed.',
       settings: 'Sleep settings changed only in this demo.', login: 'Login preference changed only in this demo.',
       restored: 'Restore simulated. The backup remains, so settings stay locked. Your Mac’s settings haven’t changed.',
       quit: 'Demo closed. Use Restart demo to explore again.',

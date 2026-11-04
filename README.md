@@ -17,6 +17,11 @@ label is not proof of restored settings. This is an intermediate source change,
 not a safe native release. Existing release downloads have not been replaced by
 this work. See the [remediation plan](documentation/planning/tech_debt/benzo-remediation_2026-11-02/00_TECH_DEBT.md).
 
+The current source also removes permission installation and repair. Its permission
+panel only observes metadata for the legacy rule: absent, present but unverified,
+or unknown. Refresh and Back never authorize an operation or change permissions.
+Existing downloads still use their older setup flow.
+
 ## Install
 
 **Download** the latest `.dmg` from [Releases](https://github.com/chrisrogers37/benzo/releases).
@@ -111,6 +116,11 @@ npm run dev
 it to `src/landing/NativeAppDemo.jsx`; `src/design/appPresentation.js` owns its
 native presentation reference. Native UI changes must match this active demo.
 Unbundled `BenzoHybrid`, `BenzoMockup` and their historical tests remain unchanged.
+
+The read runner has bounded time and output, with separate stdout/stderr capture.
+Its tests may execute only an owned synthetic child fixture. This narrow exception
+does not permit production commands or demonstrate privileged-chain completion.
+Legacy mutation transport remains synchronous and unreleased pending recovery work.
 
 The `build` workflow runs web tests/build and full-Xcode Debug/Release/core tests.
 The separate `security` workflow retains npm audit and Gitleaks. Neither workflow

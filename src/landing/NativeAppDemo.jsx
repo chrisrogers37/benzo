@@ -23,8 +23,8 @@ function Diagnostics({ onBack, active, settings }) {
   </>
 }
 
-function Setup({ onSetup }) {
-  return <div className="bn-setup"><span className="bn-setup-pill" aria-hidden="true">💊</span><h3>{app.setup.title}</h3><p>{app.setup.description}</p><button onClick={onSetup}>{app.setup.action}</button><p className="bn-setup-note">{app.setup.note.map((line, index) => <Fragment key={line}>{index > 0 && <br />}{line}</Fragment>)}</p></div>
+function Setup({ observation, onRefresh, onBack }) {
+  return <div className="bn-setup"><span className="bn-setup-pill" aria-hidden="true">💊</span><h3>{app.setup.title}</h3><p>{app.setup.observations[observation] ?? app.setup.observations.unknown}</p><button onClick={onRefresh}>{app.setup.action}</button><button onClick={onBack}>{app.setup.back}</button><p className="bn-setup-note">{app.setup.note.map((line, index) => <Fragment key={line}>{index > 0 && <br />}{line}</Fragment>)}</p></div>
 }
 
 export default function NativeAppDemo({ state, dispatch }) {
@@ -41,7 +41,7 @@ export default function NativeAppDemo({ state, dispatch }) {
     <div className="bn-stage">
       <div className="bn-menubar"><span>{app.menu.finder}</span><div>{running && <button className="bn-menu-button" aria-label={app.menu.name} aria-expanded={open} title={app.menu.hint} onClick={e => dispatch({ type: 'pill', alt: e.altKey })}><MenuPill active={active} /></button>}<span>{app.menu.wifi}</span><span>{app.menu.time}</span></div></div>
       {running && open && <div className="bn-popover" aria-label={view === 'setup' ? app.setup.name : view === 'diagnostics' ? app.diagnostics.name : app.mainName}>
-        {view === 'setup' ? <Setup onSetup={() => dispatch({ type: 'setup' })} /> : view === 'diagnostics' ? <Diagnostics active={active} settings={settings} onBack={() => dispatch({ type: 'back' })} /> : <>
+        {view === 'setup' ? <Setup observation={state.permissionObservation} onRefresh={() => dispatch({ type: 'refreshPermission' })} onBack={() => dispatch({ type: 'back' })} /> : view === 'diagnostics' ? <Diagnostics active={active} settings={settings} onBack={() => dispatch({ type: 'back' })} /> : <>
           <div className="bn-master"><div><strong>{active ? app.master.on : app.master.off}</strong><p>{active ? app.master.activeDescription : app.master.inactiveDescription}</p></div><button className={`bn-toggle${active ? ' bn-on' : ''}`} role="switch" aria-label={app.master.name} aria-checked={active} onClick={() => dispatch({ type: 'active' })}><span /></button></div>
           <div className="bn-sleep-wrap"><div className="bn-sleep-capsule">
             <button className="bn-sleep-now" disabled aria-describedby={sleepUnavailableId}><AppSymbol name="moon" size={11} />{app.sleep.action}</button>

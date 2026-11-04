@@ -71,3 +71,13 @@ Archive + cross-reference: `documentation/planning/system-review_2026-07-07/04_g
 ## Cleanup
 
 - [ ] Close duplicate test issues #51, #52
+
+## Recovery release continuation — November 3
+
+- [x] Independently review and merge containment PR #99; merged-head build/security checks pass.
+- [ ] 01: bounded reads and observation-only permission panel, focused tests and review.
+- [ ] 04: adopt bounded reads and truthful diagnostic states.
+- [ ] 02: settle dedicated target/authorization gates, implement recovery/quit, and verify on approved test hardware.
+- [ ] Publish the native installer only after recovery fixes and native acceptance pass.
+
+Owner requested reviewed merge then release and selected completing recovery fixes first. This supersedes earlier no-merge authority for this work; fleet host restrictions remain.

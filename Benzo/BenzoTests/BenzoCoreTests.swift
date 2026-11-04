@@ -190,14 +190,15 @@ final class BenzoCoreTests: XCTestCase {
         XCTAssertTrue(harness.commands.calls[0].privileged)
     }
 
-    func testManualStartupSkipsSetupProbeAndQueuedWork() {
+    func testManualStartupSkipsPermissionObservationAndQueuedWork() {
         let harness = FakeDependencies()
         harness.login.isEnabled = true
         let viewModel = harness.makeViewModel()
 
         XCTAssertTrue(viewModel.launchAtLogin)
-        XCTAssertEqual(harness.setupChecks, 0)
-        XCTAssertEqual(harness.installCalls, 0)
+        XCTAssertEqual(viewModel.permissionObservation, .unknown("Not checked"))
+        XCTAssertTrue(viewModel.showPermissionStatus)
+        XCTAssertEqual(harness.permissionObservations, 0)
         XCTAssertTrue(harness.commands.calls.isEmpty)
         XCTAssertEqual(harness.backup.accesses, 0)
         XCTAssertEqual(harness.backup.evidenceChecks, 0)
@@ -207,23 +208,60 @@ final class BenzoCoreTests: XCTestCase {
         XCTAssertTrue(harness.login.calls.isEmpty)
     }
 
-    func testAutomaticStartupOnlyObservesSetupWithoutInstallingOrQueuingWork() {
-        // An old grant may still pass the legacy setup observation; a missing grant does not.
-        for setupComplete in [false, true] {
+    func testAutomaticStartupOnlyObservesPermissionWithoutChangingSavedState() {
+        for observation in [PermissionObservation.noLegacyRule, .legacyRulePresent, .unknown("unreadable")] {
             let harness = FakeDependencies()
-            harness.setupComplete = setupComplete
+            harness.permissionObservation = observation
             harness.preferences.values[BenzoPreferenceKey.sudoersRuleVersion] = 0
             harness.preferences.values[BenzoPreferenceKey.isActive] = true
             let viewModel = harness.makeViewModel(startupPolicy: .automatic)
 
-            XCTAssertEqual(viewModel.needsSetup, !setupComplete)
+            XCTAssertEqual(viewModel.permissionObservation, observation)
+            XCTAssertTrue(viewModel.showPermissionStatus)
             XCTAssertTrue(viewModel.isActive)
-            XCTAssertEqual(harness.setupChecks, 1)
-            XCTAssertEqual(harness.installCalls, 0)
+            XCTAssertEqual(harness.permissionObservations, 1)
+            XCTAssertEqual(harness.preferences.values[BenzoPreferenceKey.sudoersRuleVersion] as? Int, 0)
             XCTAssertTrue(harness.commands.calls.isEmpty)
             XCTAssertEqual(harness.backup.accesses, 0)
             XCTAssertEqual(harness.backup.evidenceChecks, 0)
             XCTAssertTrue(harness.preferences.writes.isEmpty)
+            XCTAssertTrue(harness.mainQueue.isEmpty)
+            XCTAssertTrue(harness.backgroundQueue.isEmpty)
+            XCTAssertTrue(harness.login.calls.isEmpty)
+        }
+    }
+
+    func testPermissionRefreshAndBackOnlyUpdateObservationAndNavigation() {
+        for active in [false, true] {
+            let harness = FakeDependencies()
+            harness.preferences.values[BenzoPreferenceKey.isActive] = active
+            harness.preferences.values[BenzoPreferenceKey.sudoersRuleVersion] = 2
+            let viewModel = harness.makeViewModel()
+            let states = viewModel.settingStates
+            viewModel.errorMessage = "Preserve unrelated error"
+            var stateChanges = 0
+            viewModel.onStateChange = { _ in stateChanges += 1 }
+
+            for observation in [PermissionObservation.noLegacyRule, .legacyRulePresent, .unknown("unreadable")] {
+                harness.permissionObservation = observation
+                viewModel.refreshPermissionObservation()
+                XCTAssertEqual(viewModel.permissionObservation, observation)
+                XCTAssertTrue(viewModel.showPermissionStatus)
+            }
+            viewModel.showPermissionStatus = false
+
+            XCTAssertFalse(viewModel.showPermissionStatus)
+            XCTAssertEqual(viewModel.permissionObservation, .unknown("unreadable"))
+            XCTAssertEqual(harness.permissionObservations, 3)
+            XCTAssertEqual(viewModel.isActive, active)
+            XCTAssertEqual(viewModel.settingStates, states)
+            XCTAssertEqual(viewModel.errorMessage, "Preserve unrelated error")
+            XCTAssertEqual(stateChanges, 0)
+            XCTAssertEqual(harness.preferences.values[BenzoPreferenceKey.sudoersRuleVersion] as? Int, 2)
+            XCTAssertTrue(harness.preferences.writes.isEmpty)
+            XCTAssertTrue(harness.commands.calls.isEmpty)
+            XCTAssertEqual(harness.backup.accesses, 0)
+            XCTAssertEqual(harness.backup.evidenceChecks, 0)
             XCTAssertTrue(harness.mainQueue.isEmpty)
             XCTAssertTrue(harness.backgroundQueue.isEmpty)
             XCTAssertTrue(harness.login.calls.isEmpty)
@@ -254,7 +292,6 @@ final class BenzoCoreTests: XCTestCase {
                 XCTAssertTrue(harness.preferences.writes.isEmpty)
                 XCTAssertTrue(harness.mainQueue.isEmpty)
                 XCTAssertTrue(harness.backgroundQueue.isEmpty)
-                XCTAssertEqual(harness.installCalls, 0)
                 XCTAssertTrue(harness.login.calls.isEmpty)
             }
         }
