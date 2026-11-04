@@ -694,3 +694,160 @@ final class BenzoCoreTests: XCTestCase {
     }
 
 }
+
+extension BenzoCoreTests {
+    func testReleaseComparisonUsesNumericStableVersionsAndFixedRepositoryLinks() async throws {
+        let bytes = try releaseFixture()
+        var requests: [URLRequest] = []
+        let checker = ReleaseChecker(load: { request in
+            requests.append(request)
+            return (bytes, releaseResponse())
+        })
+        let result = try await checker.check(installed: AppVersion(shortVersion: "0.9.0", buildVersion: "1"))
+        XCTAssertEqual(result, .available(version: "0.10.0", page: URL(string: "https://github.com/chrisrogers37/benzo/releases/tag/v0.10.0")!))
+        XCTAssertEqual(requests.count, 1)
+        XCTAssertEqual(requests.first?.url?.absoluteString, "https://api.github.com/repos/chrisrogers37/benzo/releases/latest")
+        XCTAssertNil(requests.first?.value(forHTTPHeaderField: "Authorization"))
+        let equal = try await checker.check(installed: AppVersion(shortVersion: "0.10.0", buildVersion: "9"))
+        XCTAssertEqual(equal, .current(version: "0.10.0"))
+        let newerLocal = try await checker.check(installed: AppVersion(shortVersion: "1.0.0", buildVersion: "10"))
+        XCTAssertEqual(newerLocal, .ahead)
+    }
+
+    func testUnknownLocalVersionsNeverFetchOrClaimCurrent() async {
+        var calls = 0
+        let checker = ReleaseChecker(load: { _ in calls += 1; return (Data(), releaseResponse()) })
+        for value in [nil, "", "0.3", "v0.3.0", "0.3.0-beta.1", "0.3.0+dev", "0.٣.0", "01.2.3", "999999999999999999999.0.0"] as [String?] {
+            do {
+                _ = try await checker.check(installed: AppVersion(shortVersion: value, buildVersion: "1"))
+                XCTFail("Invalid local version must not compare: \(value ?? "nil")")
+            } catch { XCTAssertEqual(error as? ReleaseCheckError, .unknownVersion) }
+        }
+        XCTAssertEqual(calls, 0)
+    }
+
+    func testInvalidReleaseMetadataCannotClaimCurrentOrOfferAnUpdate() async throws {
+        let fixtures: [[String: Any]] = [
+            ["draft": true], ["prerelease": true], ["published_at": NSNull()],
+            ["published_at": "not-a-date"], ["tag_name": "v0.10.0-beta.1"],
+            ["tag_name": "v0.10.0/../../evil"], ["assets": []],
+            ["assets": [["name": "Benzo-0.10.0.dmg", "state": "uploaded", "size": 0]]],
+            ["assets": [["name": "Benzo-0.10.0.dmg", "state": "starter", "size": 5]]],
+        ]
+        for fixture in fixtures {
+            let data = try releaseFixture(fixture)
+            let checker = ReleaseChecker(load: { _ in (data, releaseResponse()) })
+            do {
+                _ = try await checker.check(installed: AppVersion(shortVersion: "0.10.0", buildVersion: "1"))
+                XCTFail("Unpublished/incomplete/invalid release must not be reported current")
+            } catch { XCTAssertEqual(error as? ReleaseCheckError, .unavailable) }
+        }
+    }
+
+    func testHTTPFailuresAndMalformedOrOversizedBodiesRemainUnavailable() async throws {
+        for status in [301, 403, 404, 429, 500] {
+            let checker = ReleaseChecker(load: { _ in (try releaseFixture(), releaseResponse(status: status)) })
+            do {
+                _ = try await checker.check(installed: AppVersion(shortVersion: "0.9.0", buildVersion: "1"))
+                XCTFail("HTTP \(status) must not succeed")
+            } catch { XCTAssertEqual(error as? ReleaseCheckError, .unavailable) }
+        }
+        for data in [Data("not json".utf8), Data(repeating: 32, count: 1_048_577)] {
+            let checker = ReleaseChecker(load: { _ in (data, releaseResponse()) })
+            do {
+                _ = try await checker.check(installed: AppVersion(shortVersion: "0.9.0", buildVersion: "1"))
+                XCTFail("Invalid/oversized body must not succeed")
+            } catch { XCTAssertEqual(error as? ReleaseCheckError, .unavailable) }
+        }
+    }
+
+    func testStreamingBodyStopsAtLimitInsteadOfDrainingTheResponse() async throws {
+        var received = 0
+        let stream = AsyncStream<UInt8>(unfolding: {
+            received += 1
+            return received <= 1_048_600 ? 32 : nil
+        })
+        do {
+            _ = try await ReleaseChecker.collect(stream)
+            XCTFail("Oversized response must stop during receipt")
+        } catch { XCTAssertEqual(error as? ReleaseCheckError, .unavailable) }
+        XCTAssertEqual(received, 1_048_577)
+    }
+}
+
+extension BenzoCoreTests {
+    @MainActor
+    func testUpdateChecksAreExplicitAndOnlyOpenTheBrowserAfterASeparateAction() async throws {
+        var requests = 0
+        var opened: [URL] = []
+        let model = UpdateViewModel(version: AppVersion(shortVersion: "0.9.0", buildVersion: "1"),
+                                    checker: ReleaseChecker(load: { _ in
+            requests += 1
+            return (try releaseFixture(), releaseResponse())
+        }), openURL: { opened.append($0); return true })
+        XCTAssertEqual(requests, 0)
+        XCTAssertEqual(model.state, .idle)
+        await model.checkForUpdates()?.value
+        XCTAssertEqual(requests, 1)
+        XCTAssertTrue(opened.isEmpty)
+        XCTAssertEqual(model.state, .checked(.available(version: "0.10.0", page: URL(string: "https://github.com/chrisrogers37/benzo/releases/tag/v0.10.0")!)))
+        model.openReleasePage()
+        XCTAssertEqual(opened.map(\.absoluteString), ["https://github.com/chrisrogers37/benzo/releases/tag/v0.10.0"])
+    }
+
+    @MainActor
+    func testCanceledCheckCannotReplaceNewerResultAndDuplicateClicksAreCoalesced() async throws {
+        let started = expectation(description: "first request started")
+        var first: CheckedContinuation<(Data, HTTPURLResponse), Error>?
+        var calls = 0
+        let model = UpdateViewModel(version: AppVersion(shortVersion: "0.10.0", buildVersion: "1"),
+                                    checker: ReleaseChecker(load: { _ in
+            calls += 1
+            if calls == 1 {
+                return try await withCheckedThrowingContinuation { first = $0; started.fulfill() }
+            }
+            throw URLError(.notConnectedToInternet)
+        }), openURL: { _ in XCTFail("Checking must not open a browser"); return false })
+        let abandoned = model.checkForUpdates()
+        await fulfillment(of: [started], timeout: 1)
+        XCTAssertNil(model.checkForUpdates())
+        XCTAssertEqual(calls, 1)
+        model.cancelCheck()
+        await model.checkForUpdates()?.value
+        XCTAssertEqual(model.state, .offline)
+        first?.resume(returning: (try releaseFixture(), releaseResponse()))
+        await abandoned?.value
+        XCTAssertEqual(model.state, .offline)
+        XCTAssertEqual(calls, 2)
+    }
+
+    @MainActor
+    func testTransportCancellationClearsCheckingAndAllowsRetry() async {
+        var calls = 0
+        let model = UpdateViewModel(version: AppVersion(shortVersion: "0.3.0", buildVersion: "1"),
+                                    checker: ReleaseChecker(load: { _ in
+            calls += 1
+            throw CancellationError()
+        }), openURL: { _ in false })
+        await model.checkForUpdates()?.value
+        XCTAssertEqual(model.state, .idle)
+        await model.checkForUpdates()?.value
+        XCTAssertEqual(calls, 2)
+        XCTAssertEqual(model.state, .idle)
+    }
+
+    @MainActor
+    func testUpdateErrorsNeverBecomeCurrentAndBrowserFailureIsVisible() async {
+        for (error, expected) in [(URLError(.timedOut) as Error, UpdateViewModel.State.offline),
+                                  (URLError(.notConnectedToInternet), .offline),
+                                  (ReleaseCheckError.unavailable, .unavailable)] {
+            let model = UpdateViewModel(version: AppVersion(shortVersion: "0.3.0", buildVersion: "1"),
+                                        checker: ReleaseChecker(load: { _ in throw error }), openURL: { _ in false })
+            await model.checkForUpdates()?.value
+            XCTAssertEqual(model.state, expected)
+            XCTAssertEqual(model.pageURL, URL(string: "https://github.com/chrisrogers37/benzo/releases"))
+            model.openReleasePage()
+            XCTAssertTrue(model.browserOpenFailed)
+        }
+    }
+}

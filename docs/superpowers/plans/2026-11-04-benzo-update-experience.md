@@ -1,0 +1,150 @@
+# Benzo Update Experience Implementation Plan
+
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development or superpowers:executing-plans when implementation is separately requested. Originally planning only. The owner subsequently authorized adversarial review and implementation of the recommended A/B minimum on November 4, 2026.
+
+**Goal:** Let a user explicitly check for a newer stable Benzo release and open its official release page.
+
+**Architecture:** A small Foundation release checker, injected into a separate update ViewModel, serves the existing popover footer. It never enters the privileged operation or quit path. Use Sparkle if integrated installation later becomes justified.
+
+**Tech stack:** Swift/SwiftUI, Foundation URLSession, existing unhosted XCTest and React demo/Vitest; existing GitHub Releases.
+
+**Spec:** Owner's November 4 request; [accepted remediation scope][scope], [recovery dependency][recovery], and [distribution preparation][distribution].
+
+**Global constraints:** Implement A/B only; preserve primary-checkout work. No production-app launch, installs, signing/notarization submissions, publication, power/grant/login/fleet changes. Recovery remains a separate implementation. Native release remains held until its existing safety gates pass.
+
+**Review focus:** False “current” on failed checks; invented compatibility; replacement during uncertain execution; install-on-quit surviving cancellation; loss of legacy recovery evidence. Acceptance below assigns each a focused check.
+
+## 1. Verified current state — November 4, 2026
+
+Inspected a clean archive of freshly fetched remote `main`, **`c3a9070b16c602c48b833a6e338fb40930ae4b04`**, and compared accepted local plans with it. Primary `main` remains `a0c12f1`; its existing todo and planning files were left untouched. Current remote [AGENTS.md][agents] and [CLAUDE.md][claude] supersede their older source descriptions: native tests and the active `NativeAppDemo` now exist.
+
+| Area | Verified evidence and implication |
+|---|---|
+| Existing updates | No updater, Sparkle dependency, appcast, update action or network release checker found in native code, scripts or workflows. [FooterView:25–40][footer] has a hardcoded `v0.3.0`, Restore and Quit. [Issue #77](https://github.com/chrisrogers37/benzo/issues/77) remains open: it proposes Sparkle and references BZ-018 release automation because old installations retain old sudoers rules. That proposal does not establish an installation prerequisite for a link-only check. |
+| Recovery status | PRs [#99](https://github.com/chrisrogers37/benzo/pull/99), [#100](https://github.com/chrisrogers37/benzo/pull/100), [#101](https://github.com/chrisrogers37/benzo/pull/101) are merged: containment, bounded reads/permission observation, truthful diagnostics. Current-head native/web/audit/Gitleaks checks report success. Recovery 02 is still absent: [quit:114–118][vm] suppresses restore errors and terminates; deactivate:181–186 can show Off with missing backup. [AppDelegate][delegate] has no `applicationShouldTerminate` gate. Green CI is not privileged recovery or dedicated-Mac acceptance. |
+| Versions/builds | [project.pbxproj:451–493][project] sets marketing version `0.3.0`, build `1`, bundle ID `com.benzo.app`, generated Info.plist; deployment target is macOS 13. No explicit universal-architecture policy or hardened-runtime setting is present. The site's package version is unrelated. Read the effective bundle version rather than the footer or package.json. |
+| Public release | [GitHub Releases](https://github.com/chrisrogers37/benzo/releases) currently contains stable v0.2.0, v0.2.1, v0.3.0; latest is [v0.3.0](https://github.com/chrisrogers37/benzo/releases/tag/v0.3.0), published June 2, with `Benzo-0.3.0.dmg` (624,510 bytes). GitHub's reported SHA-256 matches the cask: `0da25dee8fdc1b260fd8113d5d001b7f556864fef9ac0578146cb0bde62dd6c7`. No new recovery release exists. This compares metadata, not downloaded binary signatures or architecture slices. |
+| Build/distribution | [build-dmg.sh:10–100][build] reads MARKETING_VERSION, deletes shared `build/`, archives, attempts Developer ID export, silently copies the archive app after export failure, conditionally notarizes, makes a DMG, prints its checksum and a suggested manual `gh release create`. It submits an app directory directly before packaging; [accepted P2][distribution] already calls for explicit modes and supported notarization containers. CI [build.yml][ci] compiles unsigned Debug/Release and tests; it does not produce or publish releases. |
+| Community versus signed | Current [README][readme] describes non-notarized downloads; release notes document Gatekeeper workarounds. **The supported evidence is community/non-notarized distribution, plus an attempted Developer ID path in the script—not verified dual distribution.** “Ad-hoc signed” is the script's fallback assumption, not an inspected signature receipt. No Developer ID/notarization success or published universal binary was established. Do not inherit CLAUDE's blanket “signed DMG” claim. |
+| Homebrew | [Casks/benzo.rb][cask] pins v0.3.0/hash/DMG and macOS Ventura. Containment removed quit/delete/zap hooks to preserve grants, originals and preferences. This does not coordinate upgrade or prove safe removal. The advertised `chrisrogers37/homebrew-benzo` repository returned 404 to the current GitHub read; a supported public tap is unverified. Do not present `brew upgrade` as the recovery solution. |
+
+Remote documents retain historical checkpoints; the source and live merged/release evidence above determine current status. The [November 2 amendment][scope] controls scope; earlier P2–P8 plans remain references, not authority to restore their entire feature queue.
+
+## 2. Options and recommended minimum
+
+| Level | Benefit, cost and limitation | Decision |
+|---|---|---|
+| Release-page link only | Smallest possible UI; no networking/parser maintenance, but user must compare versions. | Acceptable fallback, labelled **View Releases**, not a claim that a check occurred. |
+| In-app checker + explicit **Check for Updates…** | One public GitHub request and numeric comparison; existing hosting, no token/backend/library fee. Handles availability/error states but cannot authenticate an install or enforce external replacement safety. Small API/UI maintenance cost. | **Recommended initial scope.** No launch, timer or popover-open check. |
+| Browser download support | **View Release** opens the browser; a separate browser click starts the download. Browser owns download interruption/retry; Benzo does not claim downloaded/verified/installed. | Included as an external handoff; no in-app download manager. |
+| Sparkle download/install/relaunch | Maintained macOS implementation, standard UI and authenticated archives; requires framework embedding/signing, feed publication, keys, update tests and recovery integration. | Later, explicitly approved manual installation only, after prerequisites below. |
+| Automatic behavior | Background checks add unsolicited network activity/preferences; downloads save little for the current sub-megabyte DMG; unattended installation adds termination and recovery hazards. | None now. Each needs its own later justification and opt-in. |
+
+Sparkle's current stable release is **2.10.0**, requiring macOS 12+, within Benzo's declared macOS 13 floor. It has recent security and dockless-app fixes; select and pin the maintained stable version at implementation time, preserve [license notices](https://github.com/sparkle-project/Sparkle/blob/2.10.0/LICENSE), and budget dependency/security maintenance. [Official releases](https://github.com/sparkle-project/Sparkle/releases), [upgrade guidance](https://sparkle-project.org/documentation/upgrading/).
+
+**Checking ≠ downloading ≠ installation/relaunch ≠ future automation consent.** The first button performs only a check; **View Release** opens a page. No automatic follow-on action, installer authorization, privileged-rule repair or opt-in is implied. A future Download action authorizes transfer only; Install and Relaunch requires a separate explicit action.
+
+### Initial UI and release policy
+
+Put **Check for Updates…** in its own compact footer row beside the bundle-derived version, above Restore/Quit. Keep it in the normal popover; permission and diagnostic panels already provide Back navigation to it. Do not move the footer or expose its Launch at Login/Restore/Quit controls in those panels. Present check results inline without dismissing recovery UI. Maintain keyboard/VoiceOver access and the 320-point layout.
+
+| State | Concise text/action |
+|---|---|
+| Idle/checking | **Check for Updates…** → **Checking…**; disable duplicate requests only. |
+| Equal stable version | **You're on the latest published release (0.x.y).** This is not a safety certification. |
+| Local version newer | **No newer stable release found.** Never offer a downgrade. |
+| Update available | **Benzo 0.x.y is available.** **View Release**; secondary text: **Review requirements before updating. Resolve any recovery before replacing Benzo.** |
+| Offline/timeout | **Couldn't check for updates. Try again.** Keep **View Releases** available. |
+| Server/rate-limit/invalid data | **Update check unavailable. Try later.** No “current” result from errors or stale data. |
+| Unknown local version/prerelease build | **Couldn't compare this build. View Releases.** No beta-channel selector. |
+| OS/architecture | V1: **Compatibility isn't verified here. Review release requirements.** GitHub has no typed OS/architecture fields. Do not infer support from a tag, filename or current deployment target. Future validated feed: **Requires macOS X or later** / **This release doesn't support this Mac**; inhibit installation. |
+| Installation readiness | V1 offers no Install/Ready state. Future: **Resolve recovery before installing**, **Finish the current operation first**, or **Ready to Install and Relaunch** only after admission, compatibility and artifact validation. |
+
+Use `GET https://api.github.com/repos/chrisrogers37/benzo/releases/latest`, unauthenticated, with the documented Accept/API-version headers. Consume GitHub's selected full release, not arbitrary tags or publication-date ordering. Recheck `draft == false`, `prerelease == false`, published state and presence of the expected nonempty DMG asset; none prove its safety. GitHub supports public reads without authentication; rate limits are shared by source IP. [Releases API](https://docs.github.com/en/rest/releases/releases#get-the-latest-release), [rate limits](https://docs.github.com/en/rest/using-the-rest-api/rate-limits-for-the-rest-api).
+
+Parse strict `vMAJOR.MINOR.PATCH` release tags and `MAJOR.MINOR.PATCH` bundle short versions into bounded nonnegative integers; compare tuples, not strings (`0.10.0 > 0.9.0`). Reject malformed/overflowing components and prerelease/build suffixes for this stable-only feature. Unknown data is a comparison error. Same-version rebuilds are not updates in v1: publish a new patch version. Allocate increasing `CFBundleVersion` values for release artifacts now; later Sparkle compares that build number, with the short version for display. Do not silently switch to a homemade SemVer/Sparkle comparator. [Sparkle version guidance](https://sparkle-project.org/documentation/publishing/#internal-build-numbers).
+
+Bound the request to 15 seconds and 1 MiB, use an ephemeral session without cookies/credentials/disk cache, coalesce repeated clicks, cancel abandoned work and ignore stale completions. No polling, automatic retry, persistent history or telemetry. Restrict API redirects to the fixed GitHub API origin; construct release-page URLs from the fixed repository plus the validated tag, never an arbitrary response URL. Render no release HTML/Markdown in-app. A check sends ordinary network metadata to GitHub, not recovery data.
+
+### Trust and distribution prerequisites
+
+The initial checker provides **information, not artifact verification**. HTTPS protects transport; a checksum from the same compromised publisher does not authenticate that publisher. Ad-hoc signing supplies no Developer ID identity. Repository access control remains important because release-page contents can mislead users. No new update key is needed for a checker that never consumes executable artifacts.
+
+Before the next public native release, reuse [P2's explicit-mode packaging work][distribution]: deliberate community or Developer ID mode, no silent fallback; consistent bundle short-version/tag/DMG/cask versions and a separately increasing build number; actual OS floor and architecture inspection; provenance and distribution mode in release notes; no replacement of an existing version's asset. Community-only preparation is sufficient if that is the chosen release mode. Do not build dual pipelines speculatively.
+
+For Developer ID delivery, require the selected identity/team, hardened runtime, supported notarization container, successful notarization/stapling and exact-artifact assessment. Apple's code signing establishes publisher/integrity; notarization supplies Apple's malware assessment, not recovery correctness. Apple Developer Program membership is currently US$99/year where priced in USD. Actual account/certificate availability is unverified and unnecessary for this planning or link-only work. [Apple signing model](https://support.apple.com/guide/security/app-code-signing-process-sec3ad8e6e53/web), [membership](https://developer.apple.com/help/account/membership/program-enrollment).
+
+If Sparkle is adopted, reuse GitHub DMGs and a small static appcast on existing HTTPS hosting; no update server, custom installer, package scripts or sudoers integration. Generate feeds with Sparkle's tools; sign archives with Ed25519 and embed `SUPublicEDKey`. Prefer Developer ID/notarized delivery for integrated installs. Community artifacts can use Sparkle archive signatures, but bootstrap trust, Gatekeeper and key-loss recovery remain weaker; retain link-only community delivery initially. If both modes later ship, label them distinctly and never downgrade a signed client to a community artifact. [Sparkle setup/security](https://sparkle-project.org/documentation/).
+
+Key custody: name one release custodian; private update key in the release Mac's Keychain with a tested encrypted offline backup, never repository/site hosting. CI signing, if later chosen, uses restricted release credentials, not PR jobs. Keep Developer ID credentials separate. Rotate one trust anchor at a time through a verified bridge release; never silently replace both. With pre-extraction verification, EdDSA-key rotation needs a Developer ID-signed DMG. If trust continuity is lost, stop in-app updates and provide an independently verified manual recovery route. [Sparkle key rotation](https://sparkle-project.org/documentation/#rotating-signing-keys).
+
+For later integration, require pre-extraction verification and signed appcast/release notes; choose `SUSignedFeedFailureExpirationInterval = 0` to fail closed, documenting the resulting out-of-band key-loss recovery requirement. Explicitly disable automatic checking/downloading/installing and profiling; do not inherit Sparkle's second-launch prompt. Sparkle's `SUAutomaticallyUpdate` couples download and installation, so it must not be labelled “download only.” [Sparkle configuration](https://sparkle-project.org/documentation/customization/).
+
+Leave cask `auto_updates` unset for the link-only feature: Homebrew explicitly excludes webpage-only handoffs. Future self-updating distribution requires a separately verified cask/tap policy and coordination with external replacement; no app-side Homebrew runner. [Cask Cookbook](https://docs.brew.sh/Cask-Cookbook#stanzas).
+
+## 3. Recovery boundary, failures and non-goals
+
+**Check/link has no recovery dependency at runtime:** it can run while active or unresolved and must not read/change backups, grants or `isActive`, restore settings, wait for authorization or call quit. Nevertheless, distributing a new native binary remains behind the existing release hold. Legacy v0.3.0 cannot gain an updater remotely; its first upgrade is manual and needs recovery-specific guidance, not “just quit and reinstall.”
+
+External browser/Finder/Homebrew replacement cannot be prevented by this checker. Release guidance must require verified recovery resolution and safe quit before replacement, retain originals/grants, and direct uncertain legacy cases to explicit recovery support. Neither an Off label nor disappearance of the app proves restoration.
+
+Future install integration depends on recovery 02 delivering **one** operation-admission boundary, durable originals/journal, independent execution fence, cooperating-instance exclusion, startup reconciliation and truthful `prepareQuit`. It must hold admission against new work through the installation handoff. Active sessions first use the existing explicit restore/resolve flow; no updater-owned restore engine. Missing/corrupt/foreign/unknown-schema evidence, unresolved conflicts, failed restoration, authorization denial or uncertain privileged execution block installation. Matching observed values or a timeout never clears a fence. **Quit Anyway may preserve evidence and quit; it never authorizes an update.**
+
+AppKit termination must use the recovery owner's `applicationShouldTerminate`/`terminateLater` result. Sparkle's postponement delegate is only supplemental: its documentation says it can be skipped, and install-on-quit is another route. Prove cancellation disarms pending installation before allowing a later ordinary quit; never use `willInstallUpdate` as a veto, force-kill Benzo, or assume relaunch deferral prevents replacement. If these lifecycle guarantees cannot be demonstrated with the chosen Sparkle version, keep link-only updates. [Apple termination](https://developer.apple.com/documentation/appkit/nsapplicationdelegate/applicationshouldterminate(_:)), [Sparkle delegate contracts](https://sparkle-project.org/documentation/api-reference/Protocols/SPUUpdaterDelegate.html).
+
+| Failure | Required behavior |
+|---|---|
+| Interrupted download | V1: browser handles it; Benzo claims nothing. Future: Sparkle retries only on user action; partial data never becomes install-ready. |
+| Rejected artifact/feed | No extraction/installation or security-bypass fallback. Explain verification failure; preserve running app and all recovery data. |
+| Failed replacement/authorization | Report failure; preserve usable old app where the updater can, retain evidence, and require explicit retry/manual repair. Do not promise universal rollback or mutate power/grants to recover. |
+| Relaunch failure | Distinguish installed from successfully relaunched. Show/report manual launch recovery; no repeated relaunch loop or automatic activation. Next launch reconciles read-only before offering control. |
+| Newer/older app meets unknown recovery schema | Preserve bytes and require recovery; no reset, flattening, cleanup, automatic downgrade or replay. |
+
+Preferences (`com.benzo.app`, including selections/login preference), `~/Library/Application Support/Benzo/original-pmset.json`, legacy grants/evidence, future journals/previous valid generations/resolved receipt and execution fences survive all update paths. Bundle replacement must not delete Application Support or reset preferences. The updater never migrates/retires grants or interprets legacy originals; recovery owns that compatibility contract. Do not re-register login items during update/relaunch.
+
+**Non-goals:** background checks, notification badges, beta channels, automatic downloads/install-on-quit, custom metadata/installer/backend, delta updates, telemetry, launch agents, grant repair, recovery redesign, tap publication or a release-automation project just to support checking.
+
+Revisit background checks only after users demonstrably miss needed releases; offer separate reversible opt-in. Revisit integrated **manual** install after repeated manual-upgrade friction, sustained releases, trustworthy artifacts and recovery acceptance. Revisit automatic downloading only when size/frequency makes it useful. Automatic installation additionally requires proven cancellation, crash/quit/relaunch behavior, schema compatibility and explicit opt-in to installation—not consent inferred from checks/downloads. No forced security-update termination while work remains unresolved.
+
+## 4. Small sequential implementation tranches
+
+All paths are repository-relative. Rebase each tranche on current remote main and coordinate shared-file ownership with recovery/P2; never duplicate their changes. A/B implementation is authorized; C and D remain separately owned or conditional.
+
+| Tranche / exact ownership | Dependency and acceptance |
+|---|---|
+| **A — Checker core.** Create `Benzo/Benzo/Models/AppVersion.swift`, `Benzo/Benzo/Services/ReleaseChecker.swift`; modify `Benzo/BenzoTests/BenzoCoreTests.swift`, `Benzo/BenzoTests/TestDoubles.swift`, `Benzo/Benzo.xcodeproj/project.pbxproj`. Reuse AppVersion instead if P2 lands it first. | Independent of recovery implementation. AppVersion reads injected bundle short/build values; ReleaseChecker accepts an injected HTTP loader and returns a typed current/newer/unavailable/error result. Own URLSession composition in B, outside core tests. Acceptance: strict stable comparison, bounded input, safe URL construction, HTTP failures and zero privileged side effects using focused fixtures. |
+| **B — Manual action and parity.** Create `Benzo/Benzo/ViewModels/UpdateViewModel.swift`; modify `Benzo/Benzo/App/AppDelegate.swift`, `Benzo/Benzo/Views/FooterView.swift`, `Benzo/Benzo/Views/PopoverContentView.swift`, `Benzo/Benzo.xcodeproj/project.pbxproj`, the two existing native test files; `src/landing/NativeAppDemo.jsx`, `src/demo/useBenzoDemo.js`, `src/design/appPresentation.js`, `src/design/app-demo.css`, `src/landing/NativeAppDemo.test.jsx`; `README.md`, `CLAUDE.md`. | After A; shared AppDelegate/footer work follows the current recovery owner. UpdateViewModel exposes `checkForUpdates()` and typed presentation state, with injected checker/browser opener. One instance at app composition; no additions to privileged BenzoDependencies/ViewModel. Keep the existing footer placement; reach it through existing Back actions from other panels. Acceptance: all initial UI states, duplicate/stale cancellation, explicit page-opening click, no requests on launch/popover opening, active/recovery state unchanged. Web simulation is deterministic and never contacts GitHub. Preserve historical BenzoHybrid/BenzoMockup sources/tests. |
+| **C — Release readiness, owned by existing P2/recovery work.** P2 owns `scripts/build-dmg.sh`, proposed `scripts/tests/build-dmg-test.sh`, `Benzo/Benzo.xcodeproj/project.pbxproj`, `Casks/benzo.rb`, `README.md` and its distribution plan; recovery owns its files listed in [02][recovery]. This updater tranche adds only checker/upgrade acceptance to this document. | A/B can be reviewed without C; **no public native release** until explicit distribution mode, effective versions, exact-artifact compatibility/signature evidence and recovery/quit acceptance pass. Current published legacy → candidate manual upgrade must preserve evidence. Release automation/tap creation are not required predecessors. |
+| **D — Conditional Sparkle installation, not queued now.** If approved later, replace ReleaseChecker transport with `Benzo/Benzo/Services/UpdateService.swift`; modify the B native composition/UI/tests/project, `Benzo/Benzo/Info.plist`, proposed `Benzo/Benzo.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved`, `scripts/build-dmg.sh`, proposed `scripts/generate-appcast.sh`, proposed `public/updates/appcast.xml`, existing active-demo files/tests and `README.md`. Remove the superseded checker rather than retain two transports. | Requires C, named key/feed custodians and a demonstrated install need. Use standard Sparkle UI and existing DMG; generated feed stays unpublished until release approval. First prove the recovery gate with chosen Sparkle APIs, including staged/install-on-quit cancellation. No automatic behavior. If download-only separation requires replacing Sparkle's standard flow, retain browser downloads instead. |
+
+## 5. Focused verification and dedicated-Mac acceptance
+
+For A/B, add only meaningful cases to existing tests: `0.9.0`/`0.10.0`, equal/newer-local, malformed/overflow/prerelease input, absent artifact, timeout/offline/403/429/5xx/invalid JSON, unexpected redirects, request coalescing/cancellation and stale completion. Assert one request per deliberate action, correct fixed-origin page URL, no background fetch and no command/backup/preference/login/termination calls. UI checks cover keyboard access, results in the normal footer, and existing Back navigation from permission/diagnostic panels without exposing unrelated controls there; recovery state remains unchanged. No generic harness or combinatorial matrix.
+
+Run existing Node 24 `npm ci`, `npm test`, `npm run build`, moderate audit and existing Gitleaks CI at the implementation head. Use README's full-Xcode Debug/Release builds and unhosted `BenzoCoreTests` with fresh task-owned DerivedData and signing disabled. These are build/test receipts, not installed behavior. Browser checks cover the 320-point footer, long errors and active-demo parity.
+
+On a **separately approved dedicated Mac**, before public release, verify manual check/browser handoff under supported macOS and each claimed Intel/Apple Silicon artifact; inspect effective bundle versions and actual slices/signatures. No fleet-host production launch or settings changes. Existing recovery owners supply active-session/failed-restore/uncertain-execution/legacy evidence and safe-quit acceptance; do not recreate their entire test program here.
+
+If D is activated, use two real signed/notarized versions and a staging feed on that dedicated Mac. Add targeted interruption/tamper/key mismatch, insufficient space/authorization denial, read-only/translocated app, busy recovery, second instance, canceled update followed by ordinary quit/Quit Anyway, failed install and failed relaunch cases. Compare preferences and recovery evidence before/after; prove no new privileged operation or automatic activation. Validate unsupported OS/architecture states and key-rotation bridge separately. A mock delegate test cannot establish Sparkle installer behavior.
+
+## 6. Decisions and review record
+
+No owner answer is needed to complete or implement the informational checker. Recommended defaults are stable-only, explicit checks, browser handoff and no new credentials/backend.
+
+Before release, the existing owners must settle the current recovery 02 entry gates and community-only versus Developer ID delivery, produce real artifact receipts, and identify the dedicated acceptance Mac. Before Sparkle: confirm Apple team/identity/notary access, update-key custodian/backup, static-feed publication authority, supported legacy upgrade route and cask ownership policy. Do not inspect/export host secrets merely to answer these questions; credential availability is an explicit unresolved prerequisite, not a presumed blocker for A/B.
+
+Independent subagent review completed against current source and this draft. Findings resolved: check/link stays independent of recovery; compatibility remains unknown without metadata; Quit Anyway is not install consent; external replacement cannot be gated by a checker; no custom manifest or installer. Final review caught footer reparenting exposing unrelated mutation/quit controls in permission/diagnostic panels; the plan now keeps the normal footer and existing Back navigation. The reviewer found no other concrete A/B or recovery-safety issues. This reviews the plan, not implementation or native acceptance.
+
+[agents]: https://github.com/chrisrogers37/benzo/blob/c3a9070b16c602c48b833a6e338fb40930ae4b04/AGENTS.md
+[claude]: https://github.com/chrisrogers37/benzo/blob/c3a9070b16c602c48b833a6e338fb40930ae4b04/CLAUDE.md
+[scope]: https://github.com/chrisrogers37/benzo/blob/c3a9070b16c602c48b833a6e338fb40930ae4b04/documentation/planning/tech_debt/benzo-remediation_2026-11-02/00_TECH_DEBT.md
+[recovery]: https://github.com/chrisrogers37/benzo/blob/c3a9070b16c602c48b833a6e338fb40930ae4b04/documentation/planning/tech_debt/benzo-remediation_2026-11-02/02_recovery-engine.md
+[distribution]: https://github.com/chrisrogers37/benzo/blob/c3a9070b16c602c48b833a6e338fb40930ae4b04/documentation/plans/benzo-reorientation_2026-10-25/02_distribution-build.md
+[footer]: https://github.com/chrisrogers37/benzo/blob/c3a9070b16c602c48b833a6e338fb40930ae4b04/Benzo/Benzo/Views/FooterView.swift#L25
+[vm]: https://github.com/chrisrogers37/benzo/blob/c3a9070b16c602c48b833a6e338fb40930ae4b04/Benzo/Benzo/ViewModels/BenzoViewModel.swift#L114
+[delegate]: https://github.com/chrisrogers37/benzo/blob/c3a9070b16c602c48b833a6e338fb40930ae4b04/Benzo/Benzo/App/AppDelegate.swift
+[project]: https://github.com/chrisrogers37/benzo/blob/c3a9070b16c602c48b833a6e338fb40930ae4b04/Benzo/Benzo.xcodeproj/project.pbxproj#L451
+[build]: https://github.com/chrisrogers37/benzo/blob/c3a9070b16c602c48b833a6e338fb40930ae4b04/scripts/build-dmg.sh
+[ci]: https://github.com/chrisrogers37/benzo/blob/c3a9070b16c602c48b833a6e338fb40930ae4b04/.github/workflows/build.yml
+[readme]: https://github.com/chrisrogers37/benzo/blob/c3a9070b16c602c48b833a6e338fb40930ae4b04/README.md#L25
+[cask]: https://github.com/chrisrogers37/benzo/blob/c3a9070b16c602c48b833a6e338fb40930ae4b04/Casks/benzo.rb

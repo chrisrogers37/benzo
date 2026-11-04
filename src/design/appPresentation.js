@@ -17,6 +17,16 @@ export const appPresentation = {
   options: 'Options',
   selectionBlocked: 'Resolve the current session or recovery before changing settings.',
   footer: { login: 'Launch at Login', restore: 'Restore System Defaults', quit: 'Quit', noBackup: 'Nothing to revert — activate Benzo first.' },
+  updates: {
+    check: 'Check for Updates…', checking: 'Checking…', release: 'View Release', releases: 'View Releases',
+    current: version => `You're on the latest published release (${version}).`,
+    available: version => `Benzo ${version} is available.`,
+    ahead: 'No newer stable release found.', offline: "Couldn't check for updates. Try again.",
+    unavailable: 'Update check unavailable. Try later.', unknownVersion: "Couldn't compare this build. View Releases.",
+    compatibility: "Compatibility isn't verified here. Review release requirements.",
+    recovery: 'Resolve any recovery before replacing Benzo.',
+    demoNotice: "Demo only — this would open Benzo's releases in your browser. No update was downloaded.",
+  },
   setup: {
     name: 'Benzo permission status', title: 'Permission status', action: 'Refresh status', back: 'Back',
     observations: {

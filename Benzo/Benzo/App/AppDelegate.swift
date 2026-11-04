@@ -1,12 +1,20 @@
 import AppKit
 import SwiftUI
 
+@MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
     private var statusItem: NSStatusItem!
     private var popover: NSPopover!
     private let viewModel = AppDelegate.makeViewModel()
+    private let updateViewModel = AppDelegate.makeUpdateViewModel()
     private var eventMonitor: Any?
     private var sizeObserver: NSObjectProtocol?
+
+    private static func makeUpdateViewModel() -> UpdateViewModel {
+        UpdateViewModel(version: AppVersion(bundle: .main),
+                        checker: ReleaseChecker(load: GitHubReleaseHTTP.load),
+                        openURL: { NSWorkspace.shared.open($0) })
+    }
 
     /// The only production composition root; it is never compiled into BenzoCoreTests.
     private static func makeViewModel() -> BenzoViewModel {
@@ -45,7 +53,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
             button.target = self
         }
 
-        let contentView = PopoverContentView(viewModel: viewModel)
+        let contentView = PopoverContentView(viewModel: viewModel, updates: updateViewModel)
         let hostingController = NSHostingController(rootView: contentView)
         hostingController.view.setFrameSize(hostingController.sizeThatFits(in: NSSize(width: 320, height: 10000)))
 
@@ -60,7 +68,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
             object: hostingController.view,
             queue: .main
         ) { [weak self] _ in
-            self?.adjustPopoverFrame()
+            Task { @MainActor [weak self] in self?.adjustPopoverFrame() }
         }
         hostingController.view.postsFrameChangedNotifications = true
 
@@ -144,11 +152,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
     }
 
     private func closePopover() {
+        updateViewModel.cancelCheck()
         popover.performClose(nil)
         if let monitor = eventMonitor {
             NSEvent.removeMonitor(monitor)
             eventMonitor = nil
         }
+    }
+
+    func popoverDidClose(_ notification: Notification) {
+        updateViewModel.cancelCheck()
     }
 }
 
@@ -157,4 +170,38 @@ extension UserDefaults: PreferenceStoring {}
 
 private struct LiveBenzoClock: BenzoClock {
     var now: Date { Date() }
+}
+
+/// Live networking stays in the app composition boundary, outside core tests.
+private enum GitHubReleaseHTTP {
+    static func load(_ request: URLRequest) async throws -> (Data, HTTPURLResponse) {
+        let configuration = URLSessionConfiguration.ephemeral
+        configuration.timeoutIntervalForRequest = ReleaseChecker.timeout
+        configuration.timeoutIntervalForResource = ReleaseChecker.timeout
+        configuration.waitsForConnectivity = false
+        configuration.urlCache = nil
+        configuration.urlCredentialStorage = nil
+        configuration.httpCookieStorage = nil
+        configuration.httpShouldSetCookies = false
+        let session = URLSession(configuration: configuration, delegate: NoReleaseRedirects(), delegateQueue: nil)
+        defer { session.invalidateAndCancel() }
+        return try await withTaskCancellationHandler(operation: {
+            let (bytes, response) = try await session.bytes(for: request)
+            guard let response = response as? HTTPURLResponse,
+                  response.statusCode == 200, response.url == ReleaseChecker.endpoint,
+                  response.expectedContentLength <= Int64(ReleaseChecker.maximumBytes) else {
+                throw ReleaseCheckError.unavailable
+            }
+            return (try await ReleaseChecker.collect(bytes), response)
+        }, onCancel: { session.invalidateAndCancel() })
+    }
+}
+
+/// This endpoint needs no redirects; fail closed on moves instead of widening its origin.
+private final class NoReleaseRedirects: NSObject, URLSessionTaskDelegate {
+    func urlSession(_ session: URLSession, task: URLSessionTask,
+                    willPerformHTTPRedirection response: HTTPURLResponse, newRequest request: URLRequest,
+                    completionHandler: @escaping (URLRequest?) -> Void) {
+        completionHandler(nil)
+    }
 }

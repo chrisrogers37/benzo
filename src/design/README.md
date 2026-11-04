@@ -10,7 +10,9 @@
 
 ## One interactive state
 
-`BenzoLanding` owns `useBenzoDemo()` from `src/demo/useBenzoDemo.js`. It passes the same state and dispatch to `NativeAppDemo` and computes the page theme from `state.active && state.running`. Never create a second active flag in either view. Master, restore, first launch, quit and restart use that same state. Sleep Now refuses without activation or backup changes. Settings remain frozen while active or backup evidence remains, including after a simulated restore. First launch without evidence permits choices before activation. The simulation has no timer, blocker panel or native side effects.
+`BenzoLanding` owns `useBenzoDemo()` from `src/demo/useBenzoDemo.js`. It passes the same state and dispatch to `NativeAppDemo` and computes the page theme from `state.active && state.running`. Never create a second active flag in either view. Master, restore, first launch, quit and restart use that same state. Sleep Now refuses without activation or backup changes. Settings remain frozen while active or backup evidence remains, including after a simulated restore. First launch without evidence permits choices before activation. The simulation has no sleep timer, blocker panel or native side effects.
+
+The normal footer's update check is explicit and simulated with a short response delay; it never fetches GitHub. Closing the panel cancels the simulated check. The separate View Release action only shows a demo notice. Current, available, offline, unavailable and uncomparable states share native wording; an available release is not a compatibility or installation-readiness claim.
 
 ## Native ownership and parity
 
