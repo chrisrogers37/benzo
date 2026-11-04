@@ -125,7 +125,8 @@ npm run dev          # Dev server
 npm run build        # Production build
 
 # Distribution
-./scripts/build-dmg.sh   # Build DMG (set APPLE_ID, APPLE_TEAM_ID, APP_PASSWORD for notarization)
+./scripts/build-dmg.sh --help  # Explicit mode/output; Developer ID uses a configured keychain profile
+bash scripts/tests/build-dmg-test.sh  # Stub-only packaging regressions; no live Apple tools
 ```
 
 ## Code Style & Conventions
@@ -159,7 +160,8 @@ npm run build        # Production build
 
 ### Distribution
 
-- **GitHub Releases** — signed `.dmg` (notarized when Apple Developer credentials are available)
+- **Native packaging** — `scripts/build-dmg.sh --mode community|developer-id --output-dir <new-absolute-dir>`; see README for the build number and Developer ID identity/team/keychain-profile arguments. Full Xcode is required. Developer ID mode uploads to Apple, requires Accepted results and validated app/DMG staples, and never downgrades on failure. Community mode is explicitly ad-hoc signed and unnotarized. No mode is selected implicitly and neither mode publishes a release.
+- **Artifact evidence** — actual version/build, universal slices and signatures are checked before final output. `artifact.txt` and `SHA256SUMS` describe the final DMG. Fixture tests do not establish real signing, installation or native recovery acceptance. Release publication remains gated on those outcomes.
 - **Homebrew** — `brew install --cask benzo` (personal tap; official homebrew-cask tap requires notarized DMG)
 - Gatekeeper bypass: right-click → Open, or `xattr -d com.apple.quarantine /Applications/Benzo.app`
 - Vercel Git integration can deploy previews on branch pushes and production on main; deployment remains separately approved.

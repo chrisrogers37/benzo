@@ -29,6 +29,8 @@ jobs:
     runs-on: macos-15
     steps:
       - uses: actions/checkout@v7
+      - name: Packaging safety fixtures (stub tools only)
+        run: bash scripts/tests/build-dmg-test.sh
       - name: Record Xcode and isolate build output
         run: |
           xcodebuild -version

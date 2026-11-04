@@ -97,6 +97,39 @@ production app or privileged/lifecycle acceptance on an always-on fleet host.
 Physical sleep, permissions and recovery acceptance require a separately approved
 test Mac; a successful build or fake-based test does not prove those outcomes.
 
+### Package a native artifact
+
+`scripts/build-dmg.sh` requires an explicit distribution mode, full Xcode, and a
+new absolute output directory whose parent already exists. It never reuses or
+deletes a shared `build/` directory. Choose a positive release build number;
+`MARKETING_VERSION` in the native project remains the app version authority.
+The site's private npm version is independent metadata.
+
+```sh
+# Explicitly ad-hoc signed and unnotarized; no Gatekeeper acceptance claimed.
+./scripts/build-dmg.sh --mode community --output-dir "$HOME/Benzo-community-candidate" --build-number 2
+
+# Developer ID: use an installed certificate SHA1, its team ID, and an already
+# configured notarytool keychain profile. This mode uploads the app ZIP and DMG
+# to Apple. Select and authorize the signing Mac/profile before running it.
+./scripts/build-dmg.sh --mode developer-id --output-dir "$HOME/Benzo-signed-candidate" --build-number 2 \
+  --signing-identity '<40-character-certificate-SHA1>' --team-id '<10-character-team-ID>' \
+  --notary-profile '<configured-profile-name>'
+
+# Safe packaging regression checks: all Apple and host tools are stubbed.
+bash scripts/tests/build-dmg-test.sh
+```
+
+Developer ID mode fails on signing, export, notarization, stapling or assessment
+errors; it never falls back to community output. Credentials are referenced only
+by the configured keychain profile, never passed as passwords. Both modes verify
+the app's actual version/build, arm64 and x86_64 slices, and signatures. Successful
+output includes `artifact.txt`, `SHA256SUMS`, and the verified DMG; failed runs
+retain logs and an `INCOMPLETE` marker without a distributable DMG. The script
+does not publish a release. Real artifact checks and approved native recovery,
+restore and quit acceptance remain required before publication; fixture success
+and a website deployment do not complete those gates.
+
 ## Landing page
 
 [benzo-gules.vercel.app](https://benzo-gules.vercel.app) — built with React/Vite, includes an interactive mockup of the app.
