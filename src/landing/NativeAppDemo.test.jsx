@@ -11,6 +11,11 @@ function Demo() {
 
 const click = (name) => fireEvent.click(screen.getByRole('button', { name, exact: true }))
 const panel = name => screen.getByRole('heading', { name, exact: true }).parentElement
+const describedByText = element => (element.getAttribute('aria-describedby') ?? '')
+  .split(/\s+/)
+  .filter(Boolean)
+  .map(id => document.getElementById(id)?.textContent ?? '')
+  .join(' ')
 const success = value => ({ status: 'success', value })
 const diagnosticFixture = overrides => ({
   running: true, open: true, view: 'diagnostics', active: false,
@@ -36,7 +41,7 @@ describe('source-matched browser simulation', () => {
     expect(screen.getByText('No legacy permission rule found')).toBeTruthy()
     expect(screen.getByRole('status').textContent).toContain('No permission was requested or changed')
     click('Back')
-    expect(screen.getByText('Diagnostics')).toBeTruthy()
+    expect(screen.getByRole('heading', { name: 'Diagnostics', exact: true })).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Back', exact: true })).toBeTruthy()
   })
 
@@ -47,14 +52,86 @@ describe('source-matched browser simulation', () => {
     click('Benzo menu'); click('Benzo menu')
     click('Back')
     expect(screen.getByRole('switch', { name: 'Deep Sleep' })).toBeTruthy()
-    expect(screen.queryByText('Diagnostics')).toBeNull()
+    expect(screen.queryByRole('heading', { name: 'Diagnostics', exact: true })).toBeNull()
+  })
+
+  it('opens Diagnostics from its in-panel button and returns focus to that button', () => {
+    render(<Demo />)
+    click('Diagnostics')
+    expect(screen.getByRole('heading', { name: 'Diagnostics', exact: true })).toBeTruthy()
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Back', exact: true }))
+
+    click('Back')
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Diagnostics', exact: true }))
+  })
+
+  it('returns focus to View diagnostics after Back and focuses Back when invoked again in Diagnostics', () => {
+    render(<Demo />)
+    click('View diagnostics')
+    const back = screen.getByRole('button', { name: 'Back', exact: true })
+    expect(screen.getByRole('heading', { name: 'Diagnostics', exact: true })).toBeTruthy()
+    expect(document.activeElement).toBe(back)
+
+    screen.getByRole('button', { name: 'View diagnostics', exact: true }).focus()
+    expect(document.activeElement).not.toBe(back)
+    click('View diagnostics')
+    expect(document.activeElement).toBe(back)
+
+    click('Back')
+    const externalInvoker = screen.getByRole('button', { name: 'View diagnostics', exact: true })
+    expect(document.activeElement).toBe(externalInvoker)
+  })
+
+  it('returns focus to the closed Benzo menu button after Option-click diagnostics and Back', () => {
+    render(<Demo />)
+    click('Benzo menu')
+    const menuButton = screen.getByRole('button', { name: 'Benzo menu', exact: true })
+    fireEvent.click(menuButton, { altKey: true })
+    expect(screen.getByRole('heading', { name: 'Diagnostics', exact: true })).toBeTruthy()
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Back', exact: true }))
+
+    click('Back')
+    expect(document.activeElement).toBe(menuButton)
+  })
+
+  it.each(['main', 'setup', 'diagnostics'])('closes the %s panel on Escape and preserves its state', view => {
+    render(<Demo />)
+    const activeStateBefore = screen.getByRole('switch', { name: 'Deep Sleep' }).getAttribute('aria-checked')
+    if (view === 'setup') click('First launch')
+    if (view === 'diagnostics') click('View diagnostics')
+
+    const menuButton = screen.getByRole('button', { name: 'Benzo menu', exact: true })
+    const permissionStatus = view === 'setup' ? screen.getByText('No legacy permission rule found').textContent : null
+    const escapeTarget = view === 'setup'
+      ? screen.getByRole('button', { name: 'Refresh status', exact: true })
+      : view === 'diagnostics'
+        ? screen.getByRole('button', { name: 'Back', exact: true })
+        : screen.getByRole('switch', { name: 'Deep Sleep' })
+    escapeTarget.focus()
+
+    fireEvent.keyDown(escapeTarget, { key: 'Escape' })
+    expect(menuButton.getAttribute('aria-expanded')).toBe('false')
+    expect(document.activeElement).toBe(menuButton)
+    if (view === 'setup') expect(screen.queryByRole('button', { name: 'Refresh status' })).toBeNull()
+    if (view === 'diagnostics') expect(screen.queryByRole('button', { name: 'Back', exact: true })).toBeNull()
+    if (view === 'main') expect(screen.queryByRole('switch', { name: 'Deep Sleep' })).toBeNull()
+
+    click('Benzo menu')
+    expect(menuButton.getAttribute('aria-expanded')).toBe('true')
+    if (view === 'setup') {
+      expect(screen.getByText('No legacy permission rule found').textContent).toBe(permissionStatus)
+      click('Back')
+      expect(screen.getByRole('switch', { name: 'Deep Sleep' }).getAttribute('aria-checked')).toBe('false')
+    } else {
+      expect(screen.getByRole('switch', { name: 'Deep Sleep' }).getAttribute('aria-checked')).toBe(activeStateBefore)
+    }
   })
 
   it('disables Sleep Now with an explanation and omits timer and blocker controls', () => {
     render(<Demo />)
     const sleepButton = screen.getByRole('button', { name: 'Sleep Now' })
     expect(sleepButton.disabled).toBe(true)
-    expect(document.getElementById(sleepButton.getAttribute('aria-describedby')).textContent).toBe('Sleep Now is unavailable while recovery controls are being updated.')
+    expect(describedByText(sleepButton)).toBe('Sleep Now is unavailable while recovery controls are being updated.')
     expect(screen.queryByRole('button', { name: /timer/i })).toBeNull()
     expect(screen.queryByText('caffeinate')).toBeNull()
     expect(screen.queryByText(/app may prevent sleep/)).toBeNull()
@@ -84,7 +161,7 @@ describe('source-matched browser simulation', () => {
     render(<Demo />)
     const initialSetting = screen.getByRole('checkbox', { name: 'Hibernate Mode' })
     expect(initialSetting.disabled).toBe(true)
-    expect(document.getElementById(initialSetting.getAttribute('aria-describedby')).textContent).toBe('Resolve the current session or recovery before changing settings.')
+    expect(describedByText(initialSetting)).toContain('Resolve the current session or recovery before changing settings.')
     click('First launch'); click('Back'); click('Options')
     const setting = screen.getByRole('checkbox', { name: 'Disable TCP Keep-Alive' })
     expect(setting.disabled).toBe(false)
@@ -109,6 +186,33 @@ describe('source-matched browser simulation', () => {
     expect(screen.queryByRole('checkbox')).toBeNull()
     click('Options')
     expect(screen.getByRole('checkbox', { name: 'Hibernate Mode' }).disabled).toBe(true)
+  })
+
+  it('associates each setting description while editable and retains the blocked reason when frozen', () => {
+    render(<Demo />)
+    click('First launch')
+    click('Back')
+    click('Options')
+
+    for (const setting of screen.getAllByRole('checkbox')) {
+      const label = setting.getAttribute('aria-label')
+      const description = setting.querySelector('small').textContent
+      expect(screen.getByRole('checkbox', { name: label, exact: true })).toBe(setting)
+      expect(setting.disabled).toBe(false)
+      expect(describedByText(setting)).toContain(description)
+    }
+
+    fireEvent.click(screen.getByRole('switch', { name: 'Deep Sleep' }))
+    const blockedReason = screen.getByText(/Resolve the current session or recovery/).textContent
+    for (const setting of screen.getAllByRole('checkbox')) {
+      const label = setting.getAttribute('aria-label')
+      const description = setting.querySelector('small').textContent
+      const accessibleDescription = describedByText(setting)
+      expect(screen.getByRole('checkbox', { name: label, exact: true })).toBe(setting)
+      expect(setting.disabled).toBe(true)
+      expect(accessibleDescription).toContain(description)
+      expect(accessibleDescription).toContain(blockedReason)
+    }
   })
 
   it.each([
@@ -173,13 +277,13 @@ describe('source-matched browser simulation', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Benzo menu' }), { altKey: true })
     expect(screen.queryByRole('switch', { name: 'Deep Sleep' })).toBeNull()
     fireEvent.click(screen.getByRole('button', { name: 'Benzo menu' }), { altKey: true })
-    expect(screen.getByText('Diagnostics')).toBeTruthy()
+    expect(screen.getByRole('heading', { name: 'Diagnostics', exact: true })).toBeTruthy()
     expect(screen.getByText('Reported by pmset. Changes are not verified.')).toBeTruthy()
     click('Back')
     expect(screen.getByRole('switch', { name: 'Deep Sleep' })).toBeTruthy()
     click('View diagnostics')
     click('Benzo menu'); click('Benzo menu')
-    expect(screen.queryByText('Diagnostics')).toBeNull()
+    expect(screen.queryByRole('heading', { name: 'Diagnostics', exact: true })).toBeNull()
     expect(screen.getByRole('switch', { name: 'Deep Sleep' })).toBeTruthy()
   })
 

@@ -2,11 +2,11 @@
 // Owners: Views/*.swift, Models/SleepSetting.swift, Theme/BenzoTheme.swift.
 // Native claims must change there first, then here. See README.md for parity limits.
 export const settingOptions = [
-  { key: 'hibernateMode', label: 'Hibernate Mode', desc: 'Full power-off, USB ports disabled', defaultEnabled: true, commands: [['hibernatemode', '25'], ['standby', '0'], ['autopoweroff', '0']] },
-  { key: 'disablePowerNap', label: 'Disable Power Nap', desc: 'No background syncing during sleep', defaultEnabled: true, commands: [['powernap', '0']] },
-  { key: 'disableProximityWake', label: 'Disable Proximity Wake', desc: "iPhone/Watch won't wake Mac", defaultEnabled: true, commands: [['proximitywake', '0']] },
-  { key: 'disableNetworkWake', label: 'Disable Network Wake', desc: 'No Wake-on-LAN from network devices', defaultEnabled: true, commands: [['womp', '0']] },
-  { key: 'disableTcpKeepAlive', label: 'Disable TCP Keep-Alive', desc: 'No network wake — disables Find My', defaultEnabled: false, commands: [['tcpkeepalive', '0']] },
+  { key: 'hibernateMode', label: 'Hibernate Mode', desc: 'Requests hibernation; USB power-off is not guaranteed', defaultEnabled: true, commands: [['hibernatemode', '25'], ['standby', '0'], ['autopoweroff', '0']] },
+  { key: 'disablePowerNap', label: 'Disable Power Nap', desc: 'Disables Power Nap where supported', defaultEnabled: true, commands: [['powernap', '0']] },
+  { key: 'disableProximityWake', label: 'Disable Proximity Wake', desc: 'Requests no wake from nearby iPhone or Watch', defaultEnabled: true, commands: [['proximitywake', '0']] },
+  { key: 'disableNetworkWake', label: 'Disable Network Wake', desc: 'Disables Wake-on-LAN where supported', defaultEnabled: true, commands: [['womp', '0']] },
+  { key: 'disableTcpKeepAlive', label: 'Disable TCP Keep-Alive', desc: 'Disables TCP keep-alives; may limit Find My during sleep', defaultEnabled: false, commands: [['tcpkeepalive', '0']] },
 ]
 
 export const appPresentation = {

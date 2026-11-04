@@ -14,8 +14,10 @@ struct FooterView: View {
 
                 Spacer()
 
-                Toggle("", isOn: $launchAtLogin)
-                    .toggleStyle(.switch)
+                Toggle("Launch at Login", isOn: $launchAtLogin)
+                    .labelsHidden()
+                    .toggleStyle(PinkToggleStyle())
+                    .accessibilityLabel("Launch at Login")
                     .scaleEffect(0.6)
                     .frame(width: 36)
             }
@@ -25,7 +27,7 @@ struct FooterView: View {
             HStack {
                 Text("v0.3.0")
                     .font(.system(size: 10))
-                    .foregroundColor(Color(hex: "d0d0d0"))
+                    .foregroundColor(BenzoTheme.textMuted)
 
                 Spacer()
 

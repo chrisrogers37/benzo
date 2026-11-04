@@ -43,9 +43,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
             updateIcon(active: viewModel.isActive)
             button.action = #selector(togglePopover)
             button.target = self
+            button.setAccessibilityLabel("Benzo menu")
+            button.setAccessibilityHelp("Open Benzo sleep controls. Diagnostics are available inside the panel.")
         }
 
         let contentView = PopoverContentView(viewModel: viewModel)
+            .onExitCommand { [weak self] in self?.closePopover() }
         let hostingController = NSHostingController(rootView: contentView)
         hostingController.view.setFrameSize(hostingController.sizeThatFits(in: NSSize(width: 320, height: 10000)))
 

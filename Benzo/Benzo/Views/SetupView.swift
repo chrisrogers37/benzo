@@ -39,7 +39,7 @@ struct SetupView: View {
                     .foregroundColor(.white)
                     .padding(.horizontal, 24)
                     .padding(.vertical, 8)
-                    .background(BenzoTheme.accent)
+                    .background(BenzoTheme.accentControl)
                     .cornerRadius(6)
             }
             .buttonStyle(.plain)
