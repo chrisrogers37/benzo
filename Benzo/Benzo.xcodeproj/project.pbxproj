@@ -12,7 +12,6 @@
 		A10000030000000000000003 /* SleepSetting.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000030000000000000003; };
 		A10000040000000000000004 /* PMSetState.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000040000000000000004; };
 		A10000050000000000000005 /* OriginalSettingsBackup.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000050000000000000005; };
-		A10000060000000000000006 /* ShellExecutor.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000060000000000000006; };
 		A10000070000000000000007 /* PMSetService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000070000000000000007; };
 		A10000080000000000000008 /* BackupService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000080000000000000008; };
 		A10000090000000000000009 /* BenzoViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000090000000000000009; };
@@ -53,6 +52,20 @@
 		E11000000000000000000003 /* PermissionObservationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E20000000000000000000003; };
 		E11000000000000000000004 /* CommandRunnerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E20000000000000000000004; };
 		E11000000000000000000005 /* owned-read-child.sh in Resources */ = {isa = PBXBuildFile; fileRef = E20000000000000000000005; };
+		F10000000000000000000001 /* RecoveryJournal.swift in Sources */ = {isa = PBXBuildFile; fileRef = F20000000000000000000001; };
+		F11000000000000000000001 /* RecoveryJournal.swift in Sources */ = {isa = PBXBuildFile; fileRef = F20000000000000000000001; };
+		F10000000000000000000002 /* ControlState.swift in Sources */ = {isa = PBXBuildFile; fileRef = F20000000000000000000002; };
+		F11000000000000000000002 /* ControlState.swift in Sources */ = {isa = PBXBuildFile; fileRef = F20000000000000000000002; };
+		F10000000000000000000003 /* OperationCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = F20000000000000000000003; };
+		F11000000000000000000003 /* OperationCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = F20000000000000000000003; };
+		F10000000000000000000004 /* DurableJournal.swift in Sources */ = {isa = PBXBuildFile; fileRef = F20000000000000000000004; };
+		F11000000000000000000004 /* DurableJournal.swift in Sources */ = {isa = PBXBuildFile; fileRef = F20000000000000000000004; };
+		F10000000000000000000005 /* ExecutionFenceStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = F20000000000000000000005; };
+		F11000000000000000000005 /* ExecutionFenceStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = F20000000000000000000005; };
+		F10000000000000000000006 /* BootIdentityProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = F20000000000000000000006; };
+		F10000000000000000000007 /* RecoveryTransport.swift in Sources */ = {isa = PBXBuildFile; fileRef = F20000000000000000000007; };
+		F11000000000000000000008 /* RecoveryEngineTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F20000000000000000000008; };
+		F11000000000000000000009 /* RecoveryStorageTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F20000000000000000000009; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -61,7 +74,6 @@
 		A20000030000000000000003 /* SleepSetting.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SleepSetting.swift; sourceTree = "<group>"; };
 		A20000040000000000000004 /* PMSetState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PMSetState.swift; sourceTree = "<group>"; };
 		A20000050000000000000005 /* OriginalSettingsBackup.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OriginalSettingsBackup.swift; sourceTree = "<group>"; };
-		A20000060000000000000006 /* ShellExecutor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShellExecutor.swift; sourceTree = "<group>"; };
 		A20000070000000000000007 /* PMSetService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PMSetService.swift; sourceTree = "<group>"; };
 		A20000080000000000000008 /* BackupService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BackupService.swift; sourceTree = "<group>"; };
 		A20000090000000000000009 /* BenzoViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BenzoViewModel.swift; sourceTree = "<group>"; };
@@ -91,6 +103,15 @@
 		E20000000000000000000003 /* PermissionObservationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "PermissionObservationTests.swift"; sourceTree = "<group>"; };
 		E20000000000000000000004 /* CommandRunnerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "CommandRunnerTests.swift"; sourceTree = "<group>"; };
 		E20000000000000000000005 /* owned-read-child.sh */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = "owned-read-child.sh"; sourceTree = "<group>"; };
+		F20000000000000000000001 /* RecoveryJournal.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecoveryJournal.swift; sourceTree = "<group>"; };
+		F20000000000000000000002 /* ControlState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ControlState.swift; sourceTree = "<group>"; };
+		F20000000000000000000003 /* OperationCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OperationCoordinator.swift; sourceTree = "<group>"; };
+		F20000000000000000000004 /* DurableJournal.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DurableJournal.swift; sourceTree = "<group>"; };
+		F20000000000000000000005 /* ExecutionFenceStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExecutionFenceStore.swift; sourceTree = "<group>"; };
+		F20000000000000000000006 /* BootIdentityProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BootIdentityProvider.swift; sourceTree = "<group>"; };
+		F20000000000000000000007 /* RecoveryTransport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecoveryTransport.swift; sourceTree = "<group>"; };
+		F20000000000000000000008 /* RecoveryEngineTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecoveryEngineTests.swift; sourceTree = "<group>"; };
+		F20000000000000000000009 /* RecoveryStorageTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecoveryStorageTests.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -155,6 +176,8 @@
 		A50000040000000000000004 /* Models */ = {
 			isa = PBXGroup;
 			children = (
+				F20000000000000000000001 /* RecoveryJournal.swift */,
+				F20000000000000000000002 /* ControlState.swift */,
 				A20000030000000000000003 /* SleepSetting.swift */,
 				A20000040000000000000004 /* PMSetState.swift */,
 				A20000050000000000000005 /* OriginalSettingsBackup.swift */,
@@ -168,7 +191,11 @@
 		A50000050000000000000005 /* Services */ = {
 			isa = PBXGroup;
 			children = (
-				A20000060000000000000006 /* ShellExecutor.swift */,
+				F20000000000000000000003 /* OperationCoordinator.swift */,
+				F20000000000000000000004 /* DurableJournal.swift */,
+				F20000000000000000000005 /* ExecutionFenceStore.swift */,
+				F20000000000000000000006 /* BootIdentityProvider.swift */,
+				F20000000000000000000007 /* RecoveryTransport.swift */,
 				E20000000000000000000001 /* PermissionObservation.swift */,
 				E20000000000000000000002 /* CommandRunner.swift */,
 				A20000070000000000000007 /* PMSetService.swift */,
@@ -222,6 +249,8 @@
 		D50000000000000000000001 /* BenzoTests */ = {
 			isa = PBXGroup;
 			children = (
+				F20000000000000000000009 /* RecoveryStorageTests.swift */,
+				F20000000000000000000008 /* RecoveryEngineTests.swift */,
 				D20000000000000000000005 /* BenzoCoreTests.swift */,
 				D20000000000000000000006 /* TestDoubles.swift */,
 				E20000000000000000000003 /* PermissionObservationTests.swift */,
@@ -335,12 +364,18 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				F10000000000000000000001 /* RecoveryJournal.swift in Sources */,
+				F10000000000000000000002 /* ControlState.swift in Sources */,
+				F10000000000000000000003 /* OperationCoordinator.swift in Sources */,
+				F10000000000000000000004 /* DurableJournal.swift in Sources */,
+				F10000000000000000000005 /* ExecutionFenceStore.swift in Sources */,
+				F10000000000000000000006 /* BootIdentityProvider.swift in Sources */,
+				F10000000000000000000007 /* RecoveryTransport.swift in Sources */,
 				A10000010000000000000001 /* BenzoApp.swift in Sources */,
 				A10000020000000000000002 /* AppDelegate.swift in Sources */,
 				A10000030000000000000003 /* SleepSetting.swift in Sources */,
 				A10000040000000000000004 /* PMSetState.swift in Sources */,
 				A10000050000000000000005 /* OriginalSettingsBackup.swift in Sources */,
-				A10000060000000000000006 /* ShellExecutor.swift in Sources */,
 				A10000070000000000000007 /* PMSetService.swift in Sources */,
 				A10000080000000000000008 /* BackupService.swift in Sources */,
 				A10000090000000000000009 /* BenzoViewModel.swift in Sources */,
@@ -368,6 +403,13 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				F11000000000000000000009 /* RecoveryStorageTests.swift in Sources */,
+				F11000000000000000000001 /* RecoveryJournal.swift in Sources */,
+				F11000000000000000000002 /* ControlState.swift in Sources */,
+				F11000000000000000000003 /* OperationCoordinator.swift in Sources */,
+				F11000000000000000000004 /* DurableJournal.swift in Sources */,
+				F11000000000000000000005 /* ExecutionFenceStore.swift in Sources */,
+				F11000000000000000000008 /* RecoveryEngineTests.swift in Sources */,
 				D11000000000000000000001 /* SleepSetting.swift in Sources */,
 				D11000000000000000000002 /* PMSetState.swift in Sources */,
 				D11000000000000000000003 /* OriginalSettingsBackup.swift in Sources */,

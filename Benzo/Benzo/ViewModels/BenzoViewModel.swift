@@ -1,17 +1,20 @@
 import Combine
 import Foundation
 
+@MainActor
 final class BenzoViewModel: ObservableObject {
-    static let sleepUnavailableReason = "Sleep Now is unavailable while recovery controls are being updated."
+    static let sleepUnavailableReason = "Sleep Now is unavailable for this manual apply-and-restore workflow."
     static let selectionEditBlockedReason = "Resolve the current session or recovery before changing settings."
 
-    @Published var isActive: Bool {
-        didSet { dependencies.preferences.set(isActive, forKey: BenzoPreferenceKey.isActive) }
-    }
-    @Published private(set) var settingStates: [SleepSetting: Bool] {
-        didSet { persistSettingStates() }
-    }
-    @Published var launchAtLogin: Bool = false {
+    @Published private(set) var controlState: ControlState = .checking
+    @Published private(set) var conflicts: [RecoveryConflict] = []
+    @Published private(set) var unavailableSettings: [SleepSetting: String] = [:]
+    @Published private(set) var executionUncertain = false
+    @Published private(set) var hasSession = false
+    @Published private(set) var frozenSettings: [SleepSetting]?
+    @Published private(set) var capturedAt: Date?
+    @Published private(set) var settingStates: [SleepSetting: Bool]
+    @Published var launchAtLogin = false {
         didSet {
             guard isInitialized else { return }
             updateLaunchAtLogin()
@@ -21,118 +24,96 @@ final class BenzoViewModel: ObservableObject {
     @Published var showPermissionStatus = true
     @Published var errorMessage: String?
 
-    // Diagnostics
     @Published var showDiagnostics = false
     @Published private(set) var sleepData: DiagnosticState<SleepReadPayload> = .idle
     @Published private(set) var usbDevices: DiagnosticState<[USBDevice]> = .idle
     @Published private(set) var observedSettings: DiagnosticState<[ObservedSetting]> = .idle
     private var diagnosticGeneration = 0
-
-    var isLoadingDiagnostics: Bool {
-        sleepData.isLoading || usbDevices.isLoading || observedSettings.isLoading
-    }
-
-    var onStateChange: ((Bool) -> Void)?
     private var isInitialized = false
     private let dependencies: BenzoDependencies
-    private let pmset: PMSetService
+    private(set) var startupTask: Task<Void, Never>?
+    var onStateChange: ((ControlState) -> Void)?
 
     init(dependencies: BenzoDependencies, startupPolicy: BenzoStartupPolicy) {
         self.dependencies = dependencies
-        self.pmset = PMSetService(runner: dependencies.commands)
-        let savedActive = dependencies.preferences.bool(forKey: BenzoPreferenceKey.isActive)
-
-        if let data = dependencies.preferences.dictionary(forKey: BenzoPreferenceKey.settingStates) as? [String: Bool] {
-            var states: [SleepSetting: Bool] = [:]
-            for setting in SleepSetting.allCases {
-                states[setting] = data[setting.rawValue] ?? setting.defaultEnabled
-            }
-            self.settingStates = states
-        } else {
-            var states: [SleepSetting: Bool] = [:]
-            for setting in SleepSetting.allCases {
-                states[setting] = setting.defaultEnabled
-            }
-            self.settingStates = states
-        }
-
-        self.isActive = savedActive
-
-        self.launchAtLogin = dependencies.loginItem.isEnabled
-        self.isInitialized = true
-
+        let saved = dependencies.preferences.dictionary(forKey: BenzoPreferenceKey.settingStates) as? [String: Bool]
+        settingStates = Dictionary(uniqueKeysWithValues: SleepSetting.allCases.map {
+            ($0, saved?[$0.rawValue] ?? $0.defaultEnabled)
+        })
+        launchAtLogin = dependencies.loginItem.isEnabled
+        isInitialized = true
+        dependencies.coordinator.onChange = { [weak self] in self?.publishControlState() }
+        publishControlState()
         if startupPolicy == .automatic {
             refreshPermissionObservation()
+            startupTask = Task { [weak self] in await self?.reconcile() }
         }
     }
 
-    func refreshPermissionObservation() {
-        permissionObservation = dependencies.observePermission()
+    var isActive: Bool { controlState.isActive }
+    var isLoadingDiagnostics: Bool { sleepData.isLoading || usbDevices.isLoading || observedSettings.isLoading }
+    var isSelectionEditBlocked: Bool { controlState != .off }
+    var activeCount: Int { frozenSettings?.count ?? selectedSettings.count }
+    var canToggleMaster: Bool { (controlState == .off && activeCount > 0) || isActive }
+    var canRestore: Bool { hasSession && !controlState.isBusy && !executionUncertain && conflicts.isEmpty }
+
+    // Eligibility is observed before a session is admitted. Stored choices are not proof of support.
+    private var selectedSettings: [SleepSetting] {
+        SleepSetting.allCases.filter { settingStates[$0] == true && unavailableSettings[$0] == nil }
     }
 
-    var activeCount: Int {
-        settingStates.values.filter { $0 }.count
+    func isSelected(_ setting: SleepSetting) -> Bool {
+        if let frozenSettings { return frozenSettings.contains(setting) }
+        return settingStates[setting] == true && unavailableSettings[setting] == nil
     }
 
-    var isSelectionEditBlocked: Bool {
-        dependencies.backup.evidencePresence() != .absent
-    }
+    func refreshPermissionObservation() { permissionObservation = dependencies.observePermission() }
 
-    func toggleMaster() {
-        if isActive {
-            deactivate()
-        } else {
-            activate()
-        }
+    func reconcile() async { await dependencies.coordinator.reconcile() }
+
+    func toggleMaster() async {
+        errorMessage = nil
+        if isActive { await dependencies.coordinator.restore() }
+        else if controlState == .off { await dependencies.coordinator.apply(settings: selectedSettings) }
     }
 
     func toggleSetting(_ setting: SleepSetting) {
-        guard !isActive, !isSelectionEditBlocked else {
+        guard dependencies.coordinator.mayEditSelections() else {
             errorMessage = Self.selectionEditBlockedReason
             return
         }
-        settingStates[setting]?.toggle()
-    }
-
-    func revertToDefaults() {
-        guard let backup = try? dependencies.backup.load() else {
-            errorMessage = "Nothing to revert — activate Benzo first."
+        guard unavailableSettings[setting] == nil else {
+            errorMessage = unavailableSettings[setting]
             return
         }
-        do {
-            try pmset.restoreValues(backup)
-            isActive = false
-            onStateChange?(false)
-            errorMessage = nil
-        } catch ShellError.userCancelled {
-            // Don't change state
-        } catch {
-            errorMessage = error.localizedDescription
-        }
+        settingStates[setting] = !(settingStates[setting] ?? false)
+        dependencies.preferences.set(Dictionary(uniqueKeysWithValues: settingStates.map { ($0.key.rawValue, $0.value) }),
+                                     forKey: BenzoPreferenceKey.settingStates)
+        errorMessage = nil
     }
 
-    func quit() {
-        if isActive, let backup = try? dependencies.backup.load() {
-            try? pmset.restoreValues(backup)
-        }
-        dependencies.terminate()
+    func revertToDefaults() async {
+        errorMessage = nil
+        await dependencies.coordinator.restore()
     }
 
-    func sleepNow() {
-        errorMessage = Self.sleepUnavailableReason
+    func resolveConflict(_ conflict: RecoveryConflict, choice: ConflictChoice) async {
+        await dependencies.coordinator.resolveConflict(conflict.cell, choice: choice)
     }
 
-    // MARK: - Diagnostics
+    func prepareToQuit() async -> Bool { await dependencies.coordinator.prepareToQuit() }
+
+    // AppKit owns the terminateLater / Retry / Stay Open / Quit Anyway decision.
+    func quit() { dependencies.terminate() }
+    func sleepNow() { errorMessage = Self.sleepUnavailableReason }
 
     func loadDiagnostics() {
-        // Called by the UI; all generation and published state access stays on its main boundary.
         diagnosticGeneration += 1
         let generation = diagnosticGeneration
         sleepData = .loading
         usbDevices = .loading
         observedSettings = .loading
         let dependencies = self.dependencies
-
         dependencies.runInBackground { [weak self] in
             let result = await dependencies.fetchSleepData()
             dependencies.runOnMain {
@@ -156,62 +137,21 @@ final class BenzoViewModel: ObservableObject {
         }
     }
 
-    // MARK: - Private
-
-    private func activate() {
-        do {
-            // Backup current values on first activation
-            if !dependencies.backup.hasBackup() {
-                let state = try pmset.readCurrentState()
-                try dependencies.backup.save(state)
-            }
-
-            let enabled = SleepSetting.allCases.filter { settingStates[$0] == true }
-            try pmset.applySettings(enabled)
-            isActive = true
-            onStateChange?(true)
-            errorMessage = nil
-        } catch ShellError.userCancelled {
-            // Don't change state
-        } catch {
-            errorMessage = error.localizedDescription
-        }
-    }
-
-    private func deactivate() {
-        guard let backup = try? dependencies.backup.load() else {
-            // No backup — just toggle off visually
-            isActive = false
-            onStateChange?(false)
-            return
-        }
-        do {
-            try pmset.restoreValues(backup)
-            isActive = false
-            onStateChange?(false)
-            errorMessage = nil
-        } catch ShellError.userCancelled {
-            // Don't change state
-        } catch {
-            errorMessage = error.localizedDescription
-        }
-    }
-
-    private func persistSettingStates() {
-        var dict: [String: Bool] = [:]
-        for (setting, enabled) in settingStates {
-            dict[setting.rawValue] = enabled
-        }
-        dependencies.preferences.set(dict, forKey: BenzoPreferenceKey.settingStates)
+    private func publishControlState() {
+        controlState = dependencies.coordinator.state
+        conflicts = dependencies.coordinator.conflicts
+        unavailableSettings = dependencies.coordinator.unavailable
+        executionUncertain = dependencies.coordinator.executionUncertain
+        hasSession = dependencies.coordinator.hasSession
+        frozenSettings = dependencies.coordinator.frozenSettings
+        capturedAt = dependencies.coordinator.capturedAt
+        onStateChange?(controlState)
     }
 
     private func updateLaunchAtLogin() {
         do {
-            if launchAtLogin {
-                try dependencies.loginItem.register()
-            } else {
-                try dependencies.loginItem.unregister()
-            }
+            if launchAtLogin { try dependencies.loginItem.register() }
+            else { try dependencies.loginItem.unregister() }
         } catch {
             errorMessage = "Failed to update launch at login: \(error.localizedDescription)"
         }

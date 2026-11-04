@@ -4,18 +4,30 @@
 
 Benzo adjusts selected `pmset` sleep and wake settings. A configured value does not prove physical hibernation, USB power behavior or battery savings on a particular Mac.
 
-## Source containment work
+## Current source status
 
-This source revision removes timed sleep, blocker termination, automatic drift
-reapplication and launch-time permission installation. Sleep Now is unavailable
-while recovery controls are being updated. Choose options before activation;
-settings stay frozen while active or original-settings evidence is present or
-cannot be inspected, including after the legacy Restore/Off action.
+The current source implements a manual apply-and-restore workflow. Choices are
+editable only when no unresolved session or recovery evidence exists. Apply
+captures the reported per-profile originals before writing exact selected
+settings; applying freezes the selection. Switching Off, choosing **System
+Defaults**, or quitting attempts to restore those captured values. System
+Defaults does not reset macOS to Apple's factory defaults. Sleep Now remains
+disabled. A successful settings readback confirms reported configuration only;
+it does not prove physical sleep, hibernation, USB power behavior or battery
+savings.
 
-Manual activation, restoration and quit still have known recovery defects. An Off
-label is not proof of restored settings. This is an intermediate source change,
-not a safe native release. Existing release downloads have not been replaced by
-this work. See the [remediation plan](documentation/planning/tech_debt/benzo-remediation_2026-11-02/00_TECH_DEBT.md).
+If a setting changes unexpectedly, recovery offers Keep Current, Restore
+Recorded Original Anyway, or Defer while retaining the evidence. A same-boot
+uncertain command blocks further writes even when a later read matches. A
+verified later boot permits read-only reconciliation, never automatic replay or
+restoration. If quit-time restoration fails, the app offers Retry, Stay Open or
+Quit Anyway; Quit Anyway preserves recovery evidence. Legacy flat backups cannot
+prove per-profile originals. Their recovery and any old permission-rule
+retirement require administrator-assisted review outside the app; the app does
+not install or remove that rule. These source changes have not completed native
+acceptance or release, and the latest public release remains v0.3.0. See the
+[remediation plan](documentation/planning/tech_debt/benzo-remediation_2026-11-02/00_TECH_DEBT.md)
+and [recovery plan](documentation/planning/tech_debt/benzo-remediation_2026-11-02/02_recovery-engine.md).
 
 The current source also removes permission installation and repair. Its permission
 panel only observes metadata for the legacy rule: absent, present but unverified,
@@ -38,40 +50,58 @@ brew install --cask benzo
 
 ## What it does
 
-Benzo lives in your menubar. Choose settings before activation. Applying them
-changes selected sleep and wake values system-wide, across power sources, through
-`pmset -a`. The current source manages seven keys, including `womp` for network
-wake; the values written depend on your selections. See the
-[setting definitions](Benzo/Benzo/Models/SleepSetting.swift).
+Benzo lives in your menubar. It captures the available AC, battery and UPS
+profiles, then applies only selected settings and profile/key values that are
+reported and supported. Writes use macOS's administrator-authorized path;
+prompt caching is managed by macOS. Readback checks reported values; hardware
+sleep behavior is a separate outcome.
 
-Toggling off or quitting attempts to restore the saved original values. That can
-fail; keep the backup and seek recovery help if the outcome is uncertain.
+A setting is unavailable when any required key is absent from a reported
+profile. Benzo disables that control and reports the missing profile/key; it
+does not invent profiles or values.
 
 See the [privacy notes](PRIVACY.md) for
 what Benzo stores on your Mac and what the website does.
 
 ### Features
 
-- **Configuration choices** — choose sleep and wake settings before activation
-- **Conservative selection lock** — active sessions or retained recovery evidence prevent editing
-- **Saved originals** — legacy deactivate, Restore and quit attempt recovery, with unresolved failure paths
-- **Sleep Now unavailable** — manual and timed sleep are disabled in this source revision
+- **Manual settings** — choose available settings before applying; selections freeze for the session
+- **Captured originals** — Off, System Defaults and quit attempt to restore the exact pre-Benzo values recorded per profile
+- **Conflict recovery** — Keep Current, Restore Recorded Original Anyway, or Defer retains explicit recovery choices
+- **Sleep Now unavailable** — sleep commands and timed sleep remain disabled
 - **Diagnostics** — Option-click the menubar icon for existing sleep sessions, wake reasons, USB devices and settings observations; these do not prove recovery or hardware behavior
 
 ### Recovery and removal
 
-Removing the app is not verified restoration or permission-rule retirement. The
-cask no longer asks the app to quit or deletes its permission rule, backup or
-preferences during removal/zap. Preserve `~/Library/Application Support/Benzo/`
-and the existing grant until an explicit recovery/retirement flow resolves them.
-Do not delete an invalid or unreadable backup to reactivate the app. Seek help
-through [GitHub issues](https://github.com/chrisrogers37/benzo/issues).
+Legacy recovery is administrator-assisted: historical flat originals do not
+establish profile identity, and the app will not infer or adopt those values.
+Review the prior controller and exact affected settings with an administrator;
+preserve the original evidence and existing rule. Rule retirement is a separate
+administrator action after recovery and verification. Removing the app is not
+verified restoration or permission-rule retirement. The cask preserves the
+backup and existing rule during removal. Do not delete invalid or unreadable
+evidence to reactivate the app. Seek help through
+[GitHub issues](https://github.com/chrisrogers37/benzo/issues).
+
+Legacy backup bytes, an unretired rule, or saved legacy-active state without a
+final journal keep normal controls unavailable. This version has no in-app legacy acknowledgement or
+migration; administrator review alone does not clear those gates. Preserve the
+evidence while arranging recovery and retirement outside the app.
+
+Recovery storage requires an account-owned private directory (0700) and regular
+private files (0600). Older installations may have different permissions. An
+interrupted save may also leave `.benzo-*.tmp` evidence in
+`~/Library/Application Support/Benzo`. For either storage error, preserve the
+entire directory and ask an administrator to inspect its ownership, permissions,
+and recovery generations together with execution evidence. Do not automatically
+change permissions or remove temporary files to bypass Recovery Required.
 
 ## Requirements
 
 - macOS Ventura (13.0) or later
 - Intel or Apple Silicon
-- Admin privileges (one-time setup installs a sudoers rule for passwordless `pmset`)
+- macOS administrator authorization for settings writes; prompt caching is
+  managed by macOS, and no new passwordless sudoers rule is installed
 
 ## Build from source
 
@@ -88,12 +118,15 @@ xcodebuild -project Benzo/Benzo.xcodeproj -scheme BenzoCoreTests -destination 'p
 ```
 
 `BenzoCoreTests` does not host or launch the app. Its source list excludes the live
-command and login adapters. DiagnosticService receives fake reader outcomes. Tests
-use in-memory preferences, fake commands and clocks, and task-owned temporary
-backup files. Do not run the
-production app or privileged/lifecycle acceptance on an always-on fleet host.
-Physical sleep, permissions and recovery acceptance require a separately approved
-test Mac; a successful build or fake-based test does not prove those outcomes.
+command and login adapters. Tests use injected commands, clocks and temporary
+storage. The bounded read runner's fixture exception does not exercise privileged
+execution. Full-Xcode Debug/Release builds and unhosted XCTest are required; a
+Command Line Tools-only Swift check is not an XCTest pass. Native acceptance and
+release remain incomplete. For this task, acceptance on this Mac Mini is limited
+to launching the task build, temporary selected-setting apply/restore with
+administrator prompts, relaunch and quit. It excludes sleep/reboot, permission
+rule or login-item changes, installation/removal and terminating other fleet
+processes. These checks do not establish physical sleep or USB behavior.
 
 ## Landing page
 
@@ -117,14 +150,16 @@ native presentation reference. Native UI changes must match this active demo.
 Unbundled `BenzoHybrid`, `BenzoMockup` and their historical tests remain unchanged.
 
 The read runner has bounded time and output, with separate stdout/stderr capture.
-Its tests may execute only an owned synthetic child fixture. This narrow exception
-does not permit production commands or demonstrate privileged-chain completion.
-Legacy mutation transport remains synchronous and unreleased pending recovery work.
+The recovery transport uses fixed per-profile reads and foreground exact-cell
+administrator-authorized writes. Request completion and subsequent readback are
+separate evidence; neither establishes physical sleep behavior.
 
-The `build` workflow runs web tests/build and full-Xcode Debug/Release/core tests.
-The separate `security` workflow retains npm audit and Gitleaks. Neither workflow
-publishes artifacts. The connected Vercel Git integration can deploy previews on
-branch pushes and the site on main; inspect and authorize deployment before push.
+The `build` workflow runs web tests/build, full-Xcode Debug and core tests, and
+uploads a seven-day universal `.xcarchive` with distribution signing disabled as CI build evidence. It is
+not distribution signing, a release candidate, or a release platform. The
+separate `security` workflow retains npm audit and Gitleaks. The connected Vercel
+Git integration can deploy previews on branch pushes and the site on main;
+inspect and authorize deployment before push.
 
 The accepted delivery order is 03 → 01 → 04 → conditional 02 in the
 [remediation plan](documentation/planning/tech_debt/benzo-remediation_2026-11-02/00_TECH_DEBT.md).

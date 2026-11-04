@@ -1,80 +1,52 @@
 import Foundation
 
-enum PMSetError: LocalizedError {
-    case invalidBackupData(key: String)
-
-    var errorDescription: String? {
-        switch self {
-        case .invalidBackupData(let key):
-            return "Backup data for '\(key)' is invalid. Keep the recovery file and seek recovery assistance before making further changes."
-        }
-    }
+enum RecoveryWriteOutcome: Equatable {
+    /// The fixed foreground chain returned its operation-bound status.
+    /// Configuration still needs separate readback, even for status zero.
+    case completed(status: Int)
+    case uncertain(String)
 }
 
-struct PMSetService {
-    let runner: any CommandRunning
-    private let pmsetPath = BenzoPaths.pmset
+protocol RecoveryCommanding {
+    func capture() async throws -> ProfileSnapshot
+    func write(cell: ManagedCell, value: Int, operationID: UUID) async -> RecoveryWriteOutcome
+}
 
-    /// Read current pmset values
-    func readCurrentState() throws -> PMSetState {
-        let output = try runner.runDirect(pmsetPath, ["-g"])
-        return PMSetState(parsing: output)
-    }
+/// Pure, closed command vocabulary. Only the app adapter dispatches requests.
+enum PMSetService {
+    static let captureRequest = CommandRequest(executable: "/usr/bin/pmset",
+        arguments: ["-g", "custom"], timeout: 10, maximumOutputBytes: 65_536)
 
-    /// Apply enabled settings. First failure aborts the rest.
-    func applySettings(_ enabledSettings: [SleepSetting]) throws {
-        for setting in enabledSettings {
-            for (key, value) in setting.pmsetCommands {
-                try runner.runDirectWithSudo(pmsetPath, ["-a", key, value])
-            }
+    static func writeRequest(cell: ManagedCell, value: Int, operationID: UUID) throws -> CommandRequest {
+        guard cell.key.isValid(value) else {
+            throw RecoveryEvidenceError.invalid("The requested setting value is unsupported.")
         }
+        // Only enum spellings, a domain-validated Int and an internal UUID enter
+        // this fixed foreground script. do-shell-script waits for its command.
+        let script = "/usr/bin/pmset \(cell.profile.argument) \(cell.key.rawValue) \(value) >/dev/null 2>&1; " +
+            "benzo_status=$?; /usr/bin/printf 'BENZO1:\(operationID.uuidString):%s' \"$benzo_status\""
+        let quoted = script.replacingOccurrences(of: "\\", with: "\\\\")
+            .replacingOccurrences(of: "\"", with: "\\\"")
+        return CommandRequest(executable: "/usr/bin/osascript",
+            arguments: ["-e", "do shell script \"\(quoted)\" with administrator privileges"],
+            timeout: 120, maximumOutputBytes: 8_192)
     }
 
-    /// Apply enabled settings and restore original values for disabled ones
-    func applySettingsWithRestore(_ enabledSettings: [SleepSetting], disabledSettings: [SleepSetting], backup: OriginalSettingsBackup?) throws {
-        for setting in enabledSettings {
-            for (key, value) in setting.pmsetCommands {
-                try runner.runDirectWithSudo(pmsetPath, ["-a", key, value])
-            }
+    static func completion(_ outcome: CommandOutcome, operationID: UUID) -> RecoveryWriteOutcome {
+        guard outcome.termination == .exited(0), outcome.directChildStopped,
+              outcome.outputComplete, !outcome.outputTruncated, outcome.stderr.isEmpty,
+              let output = String(data: outcome.stdout, encoding: .utf8) else {
+            return .uncertain("The administrator request did not return complete execution evidence. Settings may still change; keep the recovery evidence.")
         }
-
-        if let backup = backup {
-            for setting in disabledSettings {
-                for key in setting.pmsetKeys {
-                    if let originalValue = backup.values[key] {
-                        guard isValidPMSetParam(key, originalValue) else {
-                            throw PMSetError.invalidBackupData(key: key)
-                        }
-                        try runner.runDirectWithSudo(pmsetPath, ["-a", key, originalValue])
-                    }
-                }
-            }
+        let prefix = "BENZO1:\(operationID.uuidString):"
+        // osascript prints one line. Extra output cannot be a protocol reply.
+        guard output.hasPrefix(prefix), output.hasSuffix("\n") else {
+            return .uncertain("The administrator request returned an invalid completion reply.")
         }
-    }
-
-    /// Defense-in-depth: backup data is user-influenced via the JSON file on disk,
-    /// so still validate format even though argv exec defangs shell injection.
-    private func isValidPMSetParam(_ key: String, _ value: String) -> Bool {
-        let letters = CharacterSet.letters
-        let digits = CharacterSet.decimalDigits
-        return !key.isEmpty && key.unicodeScalars.allSatisfy(letters.contains)
-            && !value.isEmpty && value.unicodeScalars.allSatisfy(digits.contains)
-    }
-
-    /// Force the Mac to sleep immediately
-    func sleepNow() throws {
-        try runner.runDirectWithSudo(pmsetPath, ["sleepnow"])
-    }
-
-    /// Restore all original values from backup
-    func restoreValues(_ backup: OriginalSettingsBackup) throws {
-        let relevantKeys = Set(SleepSetting.allCases.flatMap(\.pmsetKeys))
-
-        for (key, value) in backup.values where relevantKeys.contains(key) {
-            guard isValidPMSetParam(key, value) else {
-                throw PMSetError.invalidBackupData(key: key)
-            }
-            try runner.runDirectWithSudo(pmsetPath, ["-a", key, value])
+        let statusText = String(output.dropFirst(prefix.count).dropLast())
+        guard let status = Int(statusText), (0...255).contains(status), String(status) == statusText else {
+            return .uncertain("The administrator request returned an invalid completion status.")
         }
+        return .completed(status: status)
     }
 }

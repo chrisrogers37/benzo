@@ -1,27 +1,27 @@
 import SwiftUI
 
 struct MasterToggleView: View {
-    let isActive: Bool
-    let activeCount: Int
+    let state: ControlState
+    let canToggle: Bool
     let onToggle: () -> Void
 
     var body: some View {
         HStack {
             VStack(alignment: .leading, spacing: 2) {
-                Text(isActive ? "Deep Sleep is On" : "Deep Sleep is Off")
+                Text(state.title)
                     .font(.system(size: 13, weight: .semibold))
                     .foregroundColor(BenzoTheme.text)
-
-                Text(isActive
-                    ? "Sedated. Your Mac can rest."
-                    : "Your Mac is awake.")
+                Text(state.message)
                     .font(.system(size: 11))
                     .foregroundColor(BenzoTheme.textFaint)
+                    .fixedSize(horizontal: false, vertical: true)
             }
-
             Spacer()
-
-            PinkToggle(isOn: isActive, action: onToggle)
+            PinkToggle(isOn: state.isActive, action: onToggle)
+                .disabled(!canToggle)
+                .opacity(canToggle ? 1 : 0.5)
+                .accessibilityLabel(state.isActive ? "Restore captured settings" : "Apply selected settings")
+                .accessibilityValue(state.title)
         }
         .padding(.horizontal, 20)
         .padding(.vertical, 14)

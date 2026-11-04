@@ -32,28 +32,50 @@ function Setup({ observation, onRefresh, onBack }) {
 }
 
 export default function NativeAppDemo({ state, dispatch }) {
-  const { running, open, view, active, options, settings, login, backup } = state
+  const { running, open, view, options, settings, login, phase } = state
+  const statusTitle = app.recovery.titles[phase] ?? app.recovery.titles.recoveryRequired
+  const statusMessage = phase === 'recoveryRequired' && state.error
+    ? state.error
+    : app.recovery.messages[phase] ?? app.recovery.messages.recoveryRequired
+  const active = phase === 'activeVerified'
+  const busy = ['checking', 'applying', 'restoring'].includes(phase)
+  const canToggleMaster = active || (phase === 'off' && settingOptions.some(option => option.available && settings[option.key]))
+  const canRestore = Boolean(state.hasSession) && !busy && state.operation !== 'uncertain' && !state.conflict
+  const conflictSetting = state.conflict && settingOptions.find(option => option.commands.some(([key]) => key === state.conflict.key))
   const [aboutOpen, setAboutOpen] = useState(false)
   const aboutId = useId()
 
   const sleepUnavailableId = useId()
   const selectionBlockedId = useId()
-  const selectionBlocked = active || backup
+  const selectionBlocked = phase !== 'off' || state.legacyUnknown
 
   return <div className="bz-native-demo" aria-label={copy.name}>
     <div className="bn-demo-toolbar" aria-label={copy.navigation}><span>{copy.title}</span><div><button onClick={() => dispatch({ type: 'firstLaunch' })}>{copy.firstLaunch}</button><button onClick={() => dispatch({ type: 'reset' })}>{running ? copy.reset : copy.restart}</button></div></div>
     <div className="bn-stage">
-      <div className="bn-menubar"><span>{app.menu.finder}</span><div>{running && <button className="bn-menu-button" aria-label={app.menu.name} aria-expanded={open} title={app.menu.hint} onClick={e => dispatch({ type: 'pill', alt: e.altKey })}><MenuPill active={active} /></button>}<span>{app.menu.wifi}</span><span>{app.menu.time}</span></div></div>
+      <div className="bn-menubar"><span>{app.menu.finder}</span><div>{running && <button className="bn-menu-button" aria-label={app.menu.name} aria-description={`Benzo: ${statusTitle}. ${statusMessage}`} aria-expanded={open} title={`${statusTitle}. ${statusMessage}`} onClick={e => dispatch({ type: 'pill', alt: e.altKey })}><MenuPill active={active} status={phase} /></button>}<span>{app.menu.wifi}</span><span>{app.menu.time}</span></div></div>
       {running && open && <div className="bn-popover" aria-label={view === 'setup' ? app.setup.name : view === 'diagnostics' ? app.diagnostics.name : app.mainName}>
         {view === 'setup' ? <Setup observation={state.permissionObservation} onRefresh={() => dispatch({ type: 'refreshPermission' })} onBack={() => dispatch({ type: 'back' })} /> : view === 'diagnostics' ? <Diagnostics sleepData={state.sleepData} usbDevices={state.usbDevices} observedSettings={state.observedSettings} onBack={() => dispatch({ type: 'back' })} /> : <>
-          <div className="bn-master"><div><strong>{active ? app.master.on : app.master.off}</strong><p>{active ? app.master.activeDescription : app.master.inactiveDescription}</p></div><button className={`bn-toggle${active ? ' bn-on' : ''}`} role="switch" aria-label={app.master.name} aria-checked={active} onClick={() => dispatch({ type: 'active' })}><span /></button></div>
+          <div className="bn-master"><div><strong>{statusTitle}</strong><p>{statusMessage}</p></div><button className={`bn-toggle${active ? ' bn-on' : ''}`} role="switch" aria-label={app.master.name} aria-checked={active} disabled={!canToggleMaster} onClick={() => dispatch({ type: 'active' })}><span /></button></div>
           <div className="bn-sleep-wrap"><div className="bn-sleep-capsule">
             <button className="bn-sleep-now" disabled aria-describedby={sleepUnavailableId}><AppSymbol name="moon" size={11} />{app.sleep.action}</button>
           </div><p className="bn-control-reason" id={sleepUnavailableId}>{app.sleep.unavailable}</p></div>
           <div className="bn-options"><button aria-expanded={options} onClick={() => dispatch({ type: 'options' })}><span>{app.options}</span><span className={options ? 'bn-expanded' : ''}><AppSymbol name="chevron" size={9} /></span></button></div>
-          {options && <div className="bn-settings">{selectionBlocked && <p className="bn-control-reason" id={selectionBlockedId}>{app.selectionBlocked}</p>}{settingOptions.map(({ key, label, desc }) => <button className="bn-setting" role="checkbox" aria-checked={settings[key]} aria-label={label} disabled={selectionBlocked} aria-describedby={selectionBlocked ? selectionBlockedId : undefined} key={key} onClick={() => dispatch({ type: 'setting', key })}><span><strong>{label}</strong><small>{desc}</small></span><span className={`bn-checkbox${settings[key] ? ' bn-checked' : ''}`}>{settings[key] && <AppSymbol name="check" size={8} />}</span></button>)}</div>}
+          {options && <div className="bn-settings">{selectionBlocked && <p className="bn-control-reason" id={selectionBlockedId}>{app.selectionBlocked}</p>}{settingOptions.map(({ key, label, desc, available, unavailableReason }) => <button className="bn-setting" role="checkbox" aria-checked={settings[key]} aria-label={label} disabled={selectionBlocked || !available} aria-describedby={!available ? `${key}-unavailable` : selectionBlocked ? selectionBlockedId : undefined} key={key} onClick={() => dispatch({ type: 'setting', key })}><span><strong>{label}</strong><small>{desc}</small>{!available && <small id={`${key}-unavailable`} className="bn-control-reason">{unavailableReason}</small>}</span><span className={`bn-checkbox${settings[key] ? ' bn-checked' : ''}`}>{settings[key] && <AppSymbol name="check" size={8} />}</span></button>)}</div>}
           {state.error && <p className="bn-error" role="alert">{state.error}</p>}
-          <div className="bn-footer"><div className="bn-login"><span>{app.footer.login}</span><button className={`bn-login-toggle${login ? ' bn-on' : ''}`} role="switch" aria-label={app.footer.login} aria-checked={login} onClick={() => dispatch({ type: 'login' })}><span /></button></div><div className="bn-footer-actions"><span>{app.version}</span><button onClick={() => dispatch({ type: 'restore' })}>{app.footer.restore}</button><button onClick={() => dispatch({ type: 'quit' })}>{app.footer.quit}</button></div></div>
+          {phase === 'recoveryRequired' && <>
+            {state.capturedAt && <p className="bn-control-reason">{app.recovery.evidence.captured} {state.capturedAt}</p>}
+            {state.conflict && (state.conflictDeferred
+              ? <div className="bn-recovery-conflict"><span>Conflict deferred; recovery evidence is retained.</span><button onClick={() => dispatch({ type: 'reviewConflict' })}>Review</button></div>
+              : <div className="bn-recovery-conflict" role="group" aria-label="Recovery conflict details">
+                <strong>{conflictSetting?.label ?? state.conflict.key} · {app.recovery.evidence.simulatedProfile}</strong>
+                <p>{app.recovery.evidence.original} {state.originals[state.conflict.key] ?? app.diagnostics.missing}. {app.recovery.evidence.current} {state.conflict.currentValue ?? app.diagnostics.missing}.</p>
+                <p>{app.recovery.evidence.lastVerified} {state.conflict.lastVerified ?? app.recovery.evidence.none}. {app.recovery.evidence.race}</p>
+                <div className="bn-recovery-actions"><button disabled={state.conflict.currentValue === null || state.operation === 'uncertain'} onClick={() => dispatch({ type: 'keepCurrent' })}>Keep Current</button><button disabled={state.conflict.currentValue === null || state.operation === 'uncertain'} onClick={() => dispatch({ type: 'restoreRecordedOriginal' })}>Restore Recorded Original Anyway</button><button onClick={() => dispatch({ type: 'deferConflict' })}>Defer</button></div>
+              </div>)}
+            <div className="bn-recovery-actions">{state.quitPending && <button onClick={() => dispatch({ type: 'retry' })}>Retry</button>}{!state.quitPending && <button onClick={() => dispatch({ type: 'refreshRecovery' })}>Refresh Recovery Status</button>}{state.quitPending && <><button onClick={() => dispatch({ type: 'stayOpen' })}>Stay Open</button><button onClick={() => dispatch({ type: 'quitAnyway' })}>Quit Anyway</button></>}</div>
+          </>}
+          {state.legacyUnknown && <p className="bn-control-reason">{app.recovery.legacyHelp}</p>}
+          <div className="bn-footer"><div className="bn-login"><span>{app.footer.login}</span><button className={`bn-login-toggle${login ? ' bn-on' : ''}`} role="switch" aria-label={app.footer.login} aria-checked={login} onClick={() => dispatch({ type: 'login' })}><span /></button></div><div className="bn-footer-actions"><span>{app.version}</span><span className="bn-control-reason">{app.footer.restoreHelp}</span><button disabled={!canRestore} onClick={() => dispatch({ type: 'restore' })}>{app.footer.restore}</button><button onClick={() => dispatch({ type: 'quit' })}>{app.footer.quit}</button></div></div>
         </>}
       </div>}
       {!running && <div className="bn-closed">{copy.closed}<button onClick={() => dispatch({ type: 'reset' })}>{copy.restart} <span aria-hidden="true">↗</span></button></div>}

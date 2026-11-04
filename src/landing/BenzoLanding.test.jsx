@@ -18,27 +18,25 @@ function expectPageState(active) {
 }
 
 describe('shared page and app state', () => {
-  it('connects the actual master switch to the whole page and preserves control preferences', () => {
+  it('connects phase transitions to the whole page and preserves available target choices', () => {
     render(<App />)
     expectPageState(true)
     switchMaster()
     expectPageState(false)
     expect(screen.getByRole('switch', { name: 'Deep Sleep' }).getAttribute('aria-checked')).toBe('false')
     expect(screen.getByRole('checkbox', { name: 'Hibernate Mode' }).disabled).toBe(true)
-    fireEvent.click(screen.getByRole('checkbox', { name: 'Hibernate Mode' }))
-    expect(screen.getByRole('checkbox', { name: 'Hibernate Mode' }).getAttribute('aria-checked')).toBe('true')
     click('First launch'); click('Back'); click('Options')
-    expect(screen.getByRole('checkbox', { name: 'Hibernate Mode' }).disabled).toBe(false)
-    fireEvent.click(screen.getByRole('checkbox', { name: 'Hibernate Mode' }))
+    expect(screen.getByRole('checkbox', { name: 'Disable TCP Keep-Alive' }).disabled).toBe(false)
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Disable TCP Keep-Alive' }))
     expectPageState(false)
     switchMaster()
     expectPageState(true)
-    expect(screen.getByRole('checkbox', { name: 'Hibernate Mode' }).getAttribute('aria-checked')).toBe('false')
+    expect(screen.getByRole('checkbox', { name: 'Disable TCP Keep-Alive' }).getAttribute('aria-checked')).toBe('true')
   })
 
   it('keeps restore, first launch, sleep, quit, and restart synchronized with the page', () => {
     render(<App />)
-    click('Restore System Defaults'); expectPageState(false)
+    click('System Defaults'); expectPageState(false)
     expect(screen.getByRole('button', { name: 'Sleep Now' }).disabled).toBe(true)
     click('Sleep Now'); expectPageState(false)
     click('First launch'); expectPageState(false)

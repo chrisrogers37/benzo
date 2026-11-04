@@ -11,6 +11,8 @@
 .benzo-site .bn-menubar { display: flex; justify-content: space-between; align-items: center; height: 32px; padding: 0 12px; background: var(--native-menubar); border: 1px solid var(--native-menubar-border); border-radius: 7px; font-size: var(--native-secondary); }
 .benzo-site .bn-menubar > div { display: flex; gap: 12px; align-items: center; }
 .benzo-site .bn-menubar .bn-menu-button { width: 44px; height: 28px; display: grid; place-items: center; border-radius: 4px; }
+.benzo-site .bn-menu-status[data-status=busy] { color: var(--native-muted); }
+.benzo-site .bn-menu-status[data-status=recovery] { color: #ff9f0a; }
 .benzo-site .bn-menu-button[aria-expanded=true] { background: var(--native-black-pressed); }
 .benzo-site .bn-popover { position: relative; width: var(--layout-demo); max-width: 100%; margin-top: 12px; background: var(--white); border-radius: var(--native-popover-radius); box-shadow: 0 0 0 1px var(--native-black-outline), 0 12px 36px var(--native-black-shadow); }
 .benzo-site .bn-popover::before { content: ''; position: absolute; width: 14px; height: 14px; background: var(--white); top: -7px; right: 117px; transform: rotate(45deg); border-top: 1px solid var(--native-black-outline); border-left: 1px solid var(--native-black-outline); }

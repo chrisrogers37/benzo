@@ -4,6 +4,7 @@ struct SettingRowView: View {
     let setting: SleepSetting
     let isEnabled: Bool
     let isEditBlocked: Bool
+    let unavailableReason: String?
     let onToggle: () -> Void
 
     @State private var isHovered = false
@@ -16,7 +17,7 @@ struct SettingRowView: View {
                         .font(.system(size: 12.5, weight: .medium))
                         .foregroundColor(BenzoTheme.text)
 
-                    Text(setting.description)
+                    Text(unavailableReason ?? setting.description)
                         .font(.system(size: 10.5))
                         .foregroundColor(Color(hex: "c0c0c0"))
                 }
@@ -34,10 +35,10 @@ struct SettingRowView: View {
             )
         }
         .buttonStyle(.plain)
-        .disabled(isEditBlocked)
-        .opacity(isEditBlocked ? 0.5 : 1)
+        .disabled(isEditBlocked || unavailableReason != nil)
+        .opacity(isEditBlocked || unavailableReason != nil ? 0.5 : 1)
         .onHover { hovering in
-            isHovered = hovering && !isEditBlocked
+            isHovered = hovering && !isEditBlocked && unavailableReason == nil
         }
     }
 }

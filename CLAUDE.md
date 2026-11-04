@@ -54,23 +54,29 @@ Benzo/Benzo/                     — Swift macOS menubar app
 │   ├── BenzoApp.swift           — SwiftUI entry point, creates AppDelegate
 │   └── AppDelegate.swift        — NSStatusItem, popover, ⌥-click diagnostics, dynamic icon
 ├── Models/
-│   ├── SleepSetting.swift       — enum of pmset settings (keys, labels, defaults)
-│   ├── PMSetState.swift         — parses `pmset -g` output into key-value pairs
-│   ├── OriginalSettingsBackup.swift — Codable struct for persisted backup
+│   ├── SleepSetting.swift       — managed settings and exact key/value domains
+│   ├── PMSetState.swift         — flat diagnostic parser and strict profile capture
+│   ├── ControlState.swift       — checking, off, applying, verified, restoring, recovery
+│   ├── RecoveryJournal.swift    — per-profile captured originals and operation evidence
+│   ├── OriginalSettingsBackup.swift — legacy flat-backup decoder
 │   ├── SleepSession.swift       — sleep/wake event with duration, battery delta, wake reason
 │   └── USBDevice.swift          — USB device name and power draw
 ├── Services/
-│   ├── PMSetService.swift       — runs pmset commands via ShellExecutor
-│   ├── ShellExecutor.swift      — legacy synchronous mutation transport; unreleased
-│   ├── CommandRunner.swift      — bounded fixed diagnostic reads and owned-fixture tests
+│   ├── PMSetService.swift       — fixed pmset capture request and target mapping
+│   ├── RecoveryTransport.swift  — bounded reads and foreground exact-cell admin writes
+│   ├── CommandRunner.swift      — bounded process transport and owned-fixture tests
+│   ├── OperationCoordinator.swift — serialized apply, restore, conflict and admission
+│   ├── DurableJournal.swift    — checked account-local recovery evidence and lock
+│   ├── ExecutionFenceStore.swift — persistent potentially-executed request fence
+│   ├── BootIdentityProvider.swift — validated kernel boot identity
 │   ├── PermissionObservation.swift — metadata-only legacy-rule evidence, never readiness
-│   ├── BackupService.swift      — save/load original pmset values to ~/Library/Application Support/Benzo/
+│   ├── BackupService.swift      — legacy flat-backup decoding only
 │   └── DiagnosticService.swift  — bounded injected reads; parses logs/USB and observes settings
 ├── ViewModels/
-│   └── BenzoViewModel.swift     — state: legacy apply/restore/quit, disabled sleep action, diagnostic results
+│   └── BenzoViewModel.swift     — frozen selection, control/recovery state and diagnostics
 ├── Views/
 │   ├── PopoverContentView.swift — main layout, switches between setup/normal/diagnostic views
-│   ├── MasterToggleView.swift   — "Deep Sleep is On/Off" header with toggle
+│   ├── MasterToggleView.swift   — truthful control/recovery state and gated toggle
 │   ├── SleepNowButton.swift     — disabled sleep action with recovery explanation
 │   ├── SettingRowView.swift     — individual setting checkbox row
 │   ├── FooterView.swift         — launch at login, version, restore defaults, quit
@@ -95,7 +101,7 @@ Casks/benzo.rb                   — Homebrew cask formula
 - **Mockup sync**: Any UI or behavioral change to the native app must also be reflected in `src/landing/NativeAppDemo.jsx`, `src/demo/useBenzoDemo.js` and `src/design/appPresentation.js`. `BenzoLanding` owns the single state. Preserve historical `BenzoHybrid`/`BenzoMockup` sources, reducer and tests.
 - **Draft fidelity**: Marketing redesigns must preserve the native UI and interactive controls in `src/landing/NativeAppDemo.jsx`; keep demo navigation/disclosures outside the app panel. Verify against current Swift source, and reserve pixel-parity claims for comparison with an approved native screenshot.
 - **Core web design**: Import redesigned page/demo presentation from `src/design/`. Keep one `useBenzoDemo` state in `BenzoLanding` for panel and page theme; never mirror the master switch in a second state. Marketing copy and native UI copy have separate owners inside the module. See `src/design/README.md`.
-- **Recovery scope**: Containment removes automatic/timed writes and freezes selections while active or recovery evidence is present/unknown. Sleep Now is unavailable. Legacy manual apply/restore/quit still have known failure paths, held for 02 or an accepted recovery-only endpoint. Never claim an Off toggle proves restoration or release an incomplete native safety slice. Preserve originals and grants during app removal; removal is not verified restoration or retirement.
+- **Recovery scope**: Manual apply captures immutable originals per reported profile and freezes selections. A setting is unavailable if any required key is absent from a reported profile. Off, System Defaults and quit attempt to restore the exact captured pre-Benzo values; System Defaults is not Apple's factory reset. Sleep Now remains unavailable. Readback establishes reported settings only; it cannot prove physical sleep, hibernation or USB behavior. Conflicts offer Keep Current, Restore Recorded Original Anyway or Defer. Same-boot execution uncertainty blocks further writes even if reads match; a verified later boot permits read-only reconciliation, never replay or automatic restore. Legacy flat originals remain untrusted for profile mapping; legacy recovery and rule retirement require administrator-assisted steps outside the app.
 - **Not App Store**: Benzo requires root access for pmset, incompatible with App Store sandboxing.
 
 ---
@@ -103,13 +109,13 @@ Casks/benzo.rb                   — Homebrew cask formula
 ## Development Workflow
 
 1. Make changes
-2. Compile Debug and Release with full Xcode, without launching the app; run the unhosted `BenzoCoreTests` scheme. Use README commands and task-owned DerivedData.
+2. Compile Debug and Release with full Xcode; CI must run unhosted `BenzoCoreTests`. Command Line Tools-only checks are not XCTest. Native acceptance on this host is limited to the user's scoped task authorization.
 3. Use Node 24 from `.nvmrc`; run `npm ci`, `npm test`, `npm run build`, and authorized browser checks with `npm run dev`.
 4. Before declaring a PR ready: verify both app configurations, core tests, site tests/build and browser parity; record blocked checks explicitly. The owner authorized reviewed merges of the ordered recovery fixes on November 3.
 
 PRs run web/native build and test checks (`.github/workflows/build.yml`) plus `npm audit --audit-level=moderate` and Gitleaks (`.github/workflows/security.yml`). All required checks and independent review must pass before merge.
 
-This Mac Mini is an always-on fleet host: never launch production Benzo or mutate its power, sudoers, login or fleet state for acceptance. Core tests compile injected services/models/ViewModel and fake dependencies. The bounded process engine may run only its owned synthetic fixture; live adapters and app composition remain excluded. Dedicated native acceptance is separately approved. Vercel can auto-deploy branch previews: obtain scoped deployment authority before remote push. Do not push main directly. The owner authorized reviewed recovery-phase merges and a native release only after the recovery fixes and acceptance are complete.
+This Mac Mini is an always-on fleet host. The November 4 recovery task is authorized to build and launch that task's app, exercise temporary selected-setting apply/restore with administrator prompts, relaunch and quit. It does not authorize sleep/reboot, permission-rule or login-item changes, installation/removal, or terminating other fleet processes. Core tests use injected dependencies; the bounded runner fixture never proves live authorization or hardware outcomes. Full-Xcode CI and native acceptance remain separate evidence. Vercel can auto-deploy branch previews. The current recovery task authorizes branch pushes and associated previews; routine pushes do not need repeated permission. Do not push main directly. No public release is authorized by implementation or CI completion alone; the latest public version remains 0.3.0.
 
 ## Commands Reference
 
