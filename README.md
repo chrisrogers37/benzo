@@ -38,19 +38,17 @@ brew install --cask benzo
 
 ## What it does
 
-Benzo lives in your menubar. Toggle it on and it applies six `pmset` commands that Apple should have put in System Settings years ago:
-
-```
-sudo pmset -a hibernatemode 25
-sudo pmset -a powernap 0
-sudo pmset -a standby 0
-sudo pmset -a autopoweroff 0
-sudo pmset -a tcpkeepalive 0
-sudo pmset -a proximitywake 0
-```
+Benzo lives in your menubar. Choose settings before activation. Applying them
+changes selected sleep and wake values system-wide, across power sources, through
+`pmset -a`. The current source manages seven keys, including `womp` for network
+wake; the values written depend on your selections. See the
+[setting definitions](Benzo/Benzo/Models/SleepSetting.swift).
 
 Toggling off or quitting attempts to restore the saved original values. That can
 fail; keep the backup and seek recovery help if the outcome is uncertain.
+
+See the [privacy notes](PRIVACY.md) for
+what Benzo stores on your Mac and what the website does.
 
 ### Features
 
@@ -169,7 +167,7 @@ assessment error fails the build; it never silently downgrades to community mode
 
 ## Landing page
 
-[benzo-gules.vercel.app](https://benzo-gules.vercel.app) — built with React/Vite, includes an interactive mockup of the app.
+[benzo.work](https://benzo.work/) — built with React/Vite, includes an interactive demo of unreleased app changes.
 
 Use Node 24 LTS (24.15.0 or newer in the 24.x line); `.nvmrc` pins the version used
 in CI. With nvm installed, run `nvm install` and `nvm use` first.
@@ -207,4 +205,11 @@ Older reorientation plans and their run log remain historical safety references.
 
 ## License
 
-MIT
+Benzo is licensed under the [MIT License](LICENSE). Third-party dependencies remain
+under their own licenses.
+
+## Security
+
+To report a vulnerability, follow the [security policy](SECURITY.md). Send private
+reports to contact@benzo.work; do not open a public issue for a suspected
+vulnerability.
