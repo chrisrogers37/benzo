@@ -10,13 +10,15 @@
 
 **Spec:** Owner's November 4 request; [accepted remediation scope][scope], [recovery dependency][recovery], and [distribution preparation][distribution].
 
-**Global constraints:** Implement A/B only; preserve primary-checkout work. No production-app launch, installs, signing/notarization submissions, publication, power/grant/login/fleet changes. Recovery remains a separate implementation. Native release remains held until its existing safety gates pass.
+**Scope and authorization:** A/B is implemented; preserve primary-checkout work. The owner explicitly authorized native UI, keyboard/VoiceOver and browser testing on the current Mac for this task, using a temporary acceptance bundle with isolated preferences. This overrides the standing dedicated-Mac restriction for these checks only. Installs, signing/notarization submissions, native release and power/grant/login/fleet mutations remain outside this acceptance scope. Recovery remains separate; native release remains held until its existing safety gates pass.
 
 **Review focus:** False “current” on failed checks; invented compatibility; replacement during uncertain execution; install-on-quit surviving cancellation; loss of legacy recovery evidence. Acceptance below assigns each a focused check.
 
-## 1. Verified current state — November 4, 2026
+## 1. Verified baseline and implementation status — November 4, 2026
 
-Inspected a clean archive of freshly fetched remote `main`, **`c3a9070b16c602c48b833a6e338fb40930ae4b04`**, and compared accepted local plans with it. Primary `main` remains `a0c12f1`; its existing todo and planning files were left untouched. Current remote [AGENTS.md][agents] and [CLAUDE.md][claude] supersede their older source descriptions: native tests and the active `NativeAppDemo` now exist.
+The planning baseline is remote `main`, **`c3a9070b16c602c48b833a6e338fb40930ae4b04`**, rechecked unchanged after implementation. Primary-checkout work was preserved. Current remote [AGENTS.md][agents] and [CLAUDE.md][claude] supersede their older source descriptions: native tests and the active `NativeAppDemo` now exist. The following table describes that main baseline, not the checker branch.
+
+**A/B implementation:** draft [PR #103](https://github.com/chrisrogers37/benzo/pull/103) has implementation head `38ea13ded6235a7efaab98d9548000d7ad2152fb`, followed by a documentation-only acceptance record, and remains unmerged and unreleased. All implementation-head checks succeeded. [Build run 41880417986](https://github.com/chrisrogers37/benzo/actions/runs/41880417986) records Xcode 16.4 Debug/Release builds, 64 passing XCTest tests and 52 passing web tests. Native current/available UI and live browser handoffs passed in a temporary window driver; web state layouts passed. Production-popover, full native keyboard/VoiceOver and live transport-failure acceptance limits are recorded in the [review record](2026-11-04-benzo-update-review.md). Separately owned draft [PR #102](https://github.com/chrisrogers37/benzo/pull/102), head `6d3478606fd72ec131ce99ed9065676e44179bfd`, contains packaging and universal-artifact CI work; it has not been adopted into A/B.
 
 | Area | Verified evidence and implication |
 |---|---|
@@ -108,7 +110,7 @@ Revisit background checks only after users demonstrably miss needed releases; of
 
 ## 4. Small sequential implementation tranches
 
-All paths are repository-relative. Rebase each tranche on current remote main and coordinate shared-file ownership with recovery/P2; never duplicate their changes. A/B implementation is authorized; C and D remain separately owned or conditional.
+All paths are repository-relative. A/B is implemented in draft PR #103. Coordinate later shared-file work with recovery/P2; never duplicate their changes. C is separately owned native-release preparation. D remains conditional and is not queued.
 
 | Tranche / exact ownership | Dependency and acceptance |
 |---|---|
@@ -117,15 +119,15 @@ All paths are repository-relative. Rebase each tranche on current remote main an
 | **C — Release readiness, owned by existing P2/recovery work.** P2 owns `scripts/build-dmg.sh`, proposed `scripts/tests/build-dmg-test.sh`, `Benzo/Benzo.xcodeproj/project.pbxproj`, `Casks/benzo.rb`, `README.md` and its distribution plan; recovery owns its files listed in [02][recovery]. This updater tranche adds only checker/upgrade acceptance to this document. | A/B can be reviewed without C; **no public native release** until explicit distribution mode, effective versions, exact-artifact compatibility/signature evidence and recovery/quit acceptance pass. Current published legacy → candidate manual upgrade must preserve evidence. Release automation/tap creation are not required predecessors. |
 | **D — Conditional Sparkle installation, not queued now.** If approved later, replace ReleaseChecker transport with `Benzo/Benzo/Services/UpdateService.swift`; modify the B native composition/UI/tests/project, `Benzo/Benzo/Info.plist`, proposed `Benzo/Benzo.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved`, `scripts/build-dmg.sh`, proposed `scripts/generate-appcast.sh`, proposed `public/updates/appcast.xml`, existing active-demo files/tests and `README.md`. Remove the superseded checker rather than retain two transports. | Requires C, named key/feed custodians and a demonstrated install need. Use standard Sparkle UI and existing DMG; generated feed stays unpublished until release approval. First prove the recovery gate with chosen Sparkle APIs, including staged/install-on-quit cancellation. No automatic behavior. If download-only separation requires replacing Sparkle's standard flow, retain browser downloads instead. |
 
-## 5. Focused verification and dedicated-Mac acceptance
+## 5. Focused verification and native acceptance
 
 For A/B, add only meaningful cases to existing tests: `0.9.0`/`0.10.0`, equal/newer-local, malformed/overflow/prerelease input, absent artifact, timeout/offline/403/429/5xx/invalid JSON, unexpected redirects, request coalescing/cancellation and stale completion. Assert one request per deliberate action, correct fixed-origin page URL, no background fetch and no command/backup/preference/login/termination calls. UI checks cover keyboard access, results in the normal footer, and existing Back navigation from permission/diagnostic panels without exposing unrelated controls there; recovery state remains unchanged. No generic harness or combinatorial matrix.
 
 Run existing Node 24 `npm ci`, `npm test`, `npm run build`, moderate audit and existing Gitleaks CI at the implementation head. Use README's full-Xcode Debug/Release builds and unhosted `BenzoCoreTests` with fresh task-owned DerivedData and signing disabled. These are build/test receipts, not installed behavior. Browser checks cover the 320-point footer, long errors and active-demo parity.
 
-On a **separately approved dedicated Mac**, before public release, verify manual check/browser handoff under supported macOS and each claimed Intel/Apple Silicon artifact; inspect effective bundle versions and actual slices/signatures. No fleet-host production launch or settings changes. Existing recovery owners supply active-session/failed-restore/uncertain-execution/legacy evidence and safe-quit acceptance; do not recreate their entire test program here.
+For A/B, the owner explicitly authorized UI, keyboard/VoiceOver and browser-handoff acceptance on the current Mac. Use a task-owned temporary acceptance bundle and isolated preferences; leave power, grants, login items and fleet state unchanged. Record the actual checks and limits in the review record. Before native release, the release owner still verifies each claimed Intel/Apple Silicon artifact, effective versions and signatures. Recovery owners separately supply active-session/failed-restore/uncertain-execution/legacy evidence and safe-quit acceptance on their approved acceptance host; do not recreate their test program here.
 
-If D is activated, use two real signed/notarized versions and a staging feed on that dedicated Mac. Add targeted interruption/tamper/key mismatch, insufficient space/authorization denial, read-only/translocated app, busy recovery, second instance, canceled update followed by ordinary quit/Quit Anyway, failed install and failed relaunch cases. Compare preferences and recovery evidence before/after; prove no new privileged operation or automatic activation. Validate unsupported OS/architecture states and key-rotation bridge separately. A mock delegate test cannot establish Sparkle installer behavior.
+If D is activated, use two real signed/notarized versions and a staging feed on a separately approved dedicated Mac. Add targeted interruption/tamper/key mismatch, insufficient space/authorization denial, read-only/translocated app, busy recovery, second instance, canceled update followed by ordinary quit/Quit Anyway, failed install and failed relaunch cases. Compare preferences and recovery evidence before/after; prove no new privileged operation or automatic activation. Validate unsupported OS/architecture states and key-rotation bridge separately. A mock delegate test cannot establish Sparkle installer behavior.
 
 ## 6. Decisions and review record
 
