@@ -4,10 +4,38 @@ type: plan
 status: draft
 owner: claudna:forge
 created: 2026-10-25
-updated: 2026-10-25
+updated: 2026-11-04
 tags: [enhancement, security, reliability]
 repos: chrisrogers37/benzo
 ---
+
+## November 4, 2026 — Current distribution scope
+
+The owner selected GitHub distribution of an explicitly unnotarized community
+build. No Developer ID is available; the ad-hoc signature makes no Developer ID,
+Apple notarization or Gatekeeper acceptance claim. Apple Developer membership is
+not a blocker for this path.
+
+Script preparation now implements explicit modes, isolated output, version/build,
+universal architecture and signature checks, and fail-closed Developer ID handling.
+The minimal CI preparation uses the existing full-Xcode native job after its tests
+to run community packaging and retain only the DMG, `SHA256SUMS` and `artifact.txt`
+for seven days. Actual CI artifact validation, approved native recovery/restore/quit
+acceptance and final release metadata remain pending; prepared source and fixtures
+do not establish those outcomes or publish a release.
+
+Developer ID/notarization is an optional future target when distribution or support
+needs justify it. Securely configure the certificate/team and notary keychain
+profile on a selected signing Mac, then use the existing explicit mode. Acceptance
+requires the real signature/hardened runtime, Apple's Accepted results, validated
+app/DMG staples, Gatekeeper assessment and clean-Mac installation/launch evidence.
+Never silently downgrade a failed signed build. See the
+[current packaging instructions](../../../README.md#future-developer-id-distribution).
+
+This lean scope supersedes the original expanded P2 ownership list and separate
+artifact workflow below. No extra version/UI refactor, updater or release platform
+is implied. The original plan below is **historical reference only**, subject to
+this amendment and the accepted November 2 YAGNI scope.
 
 ## Summary
 

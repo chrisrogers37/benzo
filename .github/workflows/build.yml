@@ -100,3 +100,21 @@ jobs:
             ${{ env.BENZO_CI_EVIDENCE_ROOT }}/upload/SHA256SUMS
           retention-days: 7
           if-no-files-found: error
+      - name: Package unnotarized community candidate
+        shell: bash
+        run: |
+          set -euo pipefail
+          candidate_root=$(mktemp -d "$RUNNER_TEMP/benzo-community.XXXXXX")
+          candidate="$candidate_root/output"
+          ./scripts/build-dmg.sh --mode community --output-dir "$candidate"
+          echo "BENZO_COMMUNITY_OUTPUT=$candidate" >> "$GITHUB_ENV"
+      - name: Upload unnotarized community candidate
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: benzo-community-candidate
+          path: |
+            ${{ env.BENZO_COMMUNITY_OUTPUT }}/Benzo-*.dmg
+            ${{ env.BENZO_COMMUNITY_OUTPUT }}/SHA256SUMS
+            ${{ env.BENZO_COMMUNITY_OUTPUT }}/artifact.txt
+          retention-days: 7
+          if-no-files-found: error

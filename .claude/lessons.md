@@ -1,5 +1,8 @@
 # Lessons
 
+## Community distribution is an explicit supported choice
+On November 4, 2026, the owner clarified that no Developer ID is available and selected an explicitly unnotarized community release from GitHub. Do not treat Apple Developer membership as an absolute release blocker or infer signed distribution. Use community mode deliberately, state its ad-hoc/unnotarized trust limits, and keep Developer ID/notarization as a documented future target when warranted. A Developer ID failure must never silently fall back to community output. Native recovery and artifact acceptance requirements remain.
+
 ## pbxproj registration
 New Swift files must be added to 4 sections in `project.pbxproj`: PBXBuildFile, PBXFileReference, PBXGroup, PBXSourcesBuildPhase. Missing any section causes "Cannot find X in scope" build errors.
 

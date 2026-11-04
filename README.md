@@ -107,6 +107,19 @@ release candidate or native acceptance.
 
 ### Package a native artifact
 
+The selected release path is an explicitly **unnotarized community build** on
+GitHub Releases. No Developer ID is available. The app uses an ad-hoc signature;
+this does not establish a Developer ID identity, Apple notarization, or Gatekeeper
+acceptance. Apple Developer membership is not a prerequisite for this selected path.
+
+After its native tests and archive checks pass, the existing `build` workflow
+runs the packaging script in community mode on its full-Xcode runner. It uploads
+only the DMG, `SHA256SUMS` and `artifact.txt` as `benzo-community-candidate`, retained
+for 7 days. The candidate keeps the checked-out native project's version and build
+number. This prepares inspectable bytes; it does not publish a GitHub Release.
+Final version/build allocation, artifact acceptance, and approved native recovery,
+restore and quit acceptance still precede publication.
+
 `scripts/build-dmg.sh` requires an explicit distribution mode, full Xcode, and a
 new absolute output directory whose parent already exists. It never reuses or
 deletes a shared `build/` directory. Choose a positive release build number;
@@ -117,26 +130,42 @@ The site's private npm version is independent metadata.
 # Explicitly ad-hoc signed and unnotarized; no Gatekeeper acceptance claimed.
 ./scripts/build-dmg.sh --mode community --output-dir "$HOME/Benzo-community-candidate" --build-number 2
 
-# Developer ID: use an installed certificate SHA1, its team ID, and an already
-# configured notarytool keychain profile. This mode uploads the app ZIP and DMG
-# to Apple. Select and authorize the signing Mac/profile before running it.
-./scripts/build-dmg.sh --mode developer-id --output-dir "$HOME/Benzo-signed-candidate" --build-number 2 \
-  --signing-identity '<40-character-certificate-SHA1>' --team-id '<10-character-team-ID>' \
-  --notary-profile '<configured-profile-name>'
-
 # Safe packaging regression checks: all Apple and host tools are stubbed.
 bash scripts/tests/build-dmg-test.sh
 ```
 
-Developer ID mode fails on signing, export, notarization, stapling or assessment
-errors; it never falls back to community output. Credentials are referenced only
-by the configured keychain profile, never passed as passwords. Both modes verify
-the app's actual version/build, arm64 and x86_64 slices, and signatures. Successful
-output includes `artifact.txt`, `SHA256SUMS`, and the verified DMG; failed runs
+Both modes verify the app's actual version/build, arm64 and x86_64 slices, and
+signatures. Successful output includes `artifact.txt`, `SHA256SUMS`, and the
+verified DMG; failed runs
 retain logs and an `INCOMPLETE` marker without a distributable DMG. The script
 does not publish a release. Real artifact checks and approved native recovery,
 restore and quit acceptance remain required before publication; fixture success
 and a website deployment do not complete those gates.
+
+### Future Developer ID distribution
+
+Revisit Developer ID signing and notarization when broader distribution or support
+needs justify the Apple Developer setup. It is a future target, not the current
+release mode or a blocker for the community release. The existing script already
+has an explicit mode for that work; no updater or release platform is required.
+
+On the selected signing Mac, install a valid Developer ID Application certificate
+and configure a `notarytool` keychain profile securely. Then use the certificate's
+SHA1 and team ID with that profile; never put passwords or private keys in chat,
+repository files, or CLI arguments:
+
+```sh
+# Future use only: uploads the app ZIP and DMG to Apple.
+./scripts/build-dmg.sh --mode developer-id --output-dir "$HOME/Benzo-signed-candidate" --build-number 2 \
+  --signing-identity '<40-character-certificate-SHA1>' --team-id '<10-character-team-ID>' \
+  --notary-profile '<configured-profile-name>'
+```
+
+That path requires the real artifact's Developer ID signature and hardened
+runtime, Apple's Accepted results, validated app and DMG staples, Gatekeeper
+assessment, and approved clean-Mac installation/launch acceptance before claiming
+signed/notarized distribution. Any signing, export, notarization, stapling or
+assessment error fails the build; it never silently downgrades to community mode.
 
 ## Landing page
 
@@ -166,7 +195,8 @@ Legacy mutation transport remains synchronous and unreleased pending recovery wo
 
 The `build` workflow runs web tests/build, full-Xcode Debug and Release
 archive builds, and core tests. Its native job keeps the CI build evidence described
-above as a short-lived workflow artifact. The separate `security` workflow retains
+above and the unnotarized community candidate as separate short-lived workflow
+artifacts. Neither publishes a release. The separate `security` workflow retains
 npm audit and Gitleaks and publishes no artifacts. The connected Vercel Git
 integration can deploy previews on branch pushes and the site on main; inspect and
 authorize deployment before push.
