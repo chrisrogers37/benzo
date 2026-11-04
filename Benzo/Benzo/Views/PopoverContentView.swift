@@ -78,7 +78,7 @@ struct PopoverContentView: View {
             if let error = viewModel.errorMessage {
                 Text(error)
                     .font(.system(size: 10))
-                    .foregroundColor(.red)
+                    .foregroundColor(BenzoTheme.errorText)
                     .padding(.horizontal, 16)
                     .padding(.vertical, 6)
                     .frame(maxWidth: .infinity, alignment: .leading)

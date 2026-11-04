@@ -18,7 +18,7 @@ struct SettingRowView: View {
 
                     Text(setting.description)
                         .font(.system(size: 10.5))
-                        .foregroundColor(Color(hex: "c0c0c0"))
+                        .foregroundColor(BenzoTheme.textMuted)
                 }
 
                 Spacer()
@@ -48,10 +48,10 @@ struct PinkCheckbox: View {
     var body: some View {
         ZStack {
             RoundedRectangle(cornerRadius: 3)
-                .fill(isChecked ? BenzoTheme.accent : Color.clear)
+                .fill(isChecked ? BenzoTheme.accentControl : Color.clear)
                 .overlay(
                     RoundedRectangle(cornerRadius: 3)
-                        .strokeBorder(isChecked ? Color.clear : Color(hex: "dddddd"), lineWidth: 1.5)
+                        .strokeBorder(isChecked ? Color.clear : BenzoTheme.controlBorder, lineWidth: 1.5)
                 )
                 .shadow(color: isChecked ? BenzoTheme.accent.opacity(0.25) : .clear, radius: 4)
                 .frame(width: 15, height: 15)

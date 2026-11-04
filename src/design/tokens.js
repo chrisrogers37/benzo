@@ -34,9 +34,9 @@ export const designTokens = Object.freeze({
   // These values follow the existing native demo's current SwiftUI reference.
   // Improving its contrast or dimensions requires a native/parity decision.
   native: {
-    ink: '#1a1a1a', muted: '#999', faint: '#ccc', description: '#c0c0c0',
-    version: '#d0d0d0', toggleOff: '#ddd', loginOff: '#dedede', blue: '#007aff',
-    green: '#28cd41', red: '#ff3b30', redMuted: '#ff3b30b3', hoverText: '#555',
+    ink: '#1a1a1a', muted: '#666', faint: '#707070', description: '#666',
+    version: '#707070', toggleOff: '#767676', loginOff: '#767676', blue: '#007aff',
+    controlAccent: '#a54370', green: '#23752f', red: '#b42318', redMuted: '#b42318', hoverText: '#555',
     menubar: '#ffffffd9', menubarBorder: '#e6e1dd', whiteSoft: '#ffffffe6',
     whiteLine: '#ffffff38', whiteFaint: '#ffffff55', blackFaint: '#00000005',
     blackLine: '#00000008', blackPressed: '#00000009', blackOutline: '#00000014',

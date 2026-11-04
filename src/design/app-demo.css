@@ -18,7 +18,7 @@
 .benzo-site .bn-master strong { display: block; font-size: var(--native-title); font-weight: 600; }
 .benzo-site .bn-master p { margin-top: 2px; color: var(--native-faint); font-size: var(--native-secondary); }
 .benzo-site .bn-stage .bn-toggle { position: relative; width: var(--native-toggle-width); height: var(--native-toggle-height); flex-shrink: 0; border-radius: 13px; background: var(--native-toggle-off); }
-.benzo-site .bn-stage .bn-toggle.bn-on { background: var(--pink); box-shadow: 0 2px 8px var(--native-pink-shadow); }
+.benzo-site .bn-stage .bn-toggle.bn-on { background: var(--native-control-accent); box-shadow: 0 2px 8px var(--native-pink-shadow); }
 .benzo-site .bn-toggle > span { position: absolute; width: var(--native-toggle-thumb); height: var(--native-toggle-thumb); top: 3px; left: 3px; border-radius: 50%; background: var(--white); box-shadow: 0 1px 2px var(--native-thumb-shadow); transition: left var(--motion-normal); }
 .benzo-site .bn-toggle.bn-on > span { left: 21px; }
 .benzo-site .bn-sleep-wrap { padding: 0 20px 14px; }
@@ -39,7 +39,7 @@
 .benzo-site .bn-setting strong { display: block; font-size: var(--native-setting); font-weight: 500; }
 .benzo-site .bn-setting small { display: block; margin-top: 1px; color: var(--native-description); font-size: var(--native-caption); }
 .benzo-site .bn-checkbox { display: grid; place-items: center; width: 15px; height: 15px; border: 1.5px solid var(--native-toggle-off); border-radius: 3px; flex-shrink: 0; }
-.benzo-site .bn-checkbox.bn-checked { background: var(--pink); color: var(--white); border-color: transparent; box-shadow: 0 0 4px var(--native-pink-checkbox-glow); }
+.benzo-site .bn-checkbox.bn-checked { background: var(--native-control-accent); color: var(--white); border-color: transparent; box-shadow: 0 0 4px var(--native-pink-checkbox-glow); }
 .benzo-site .bn-error { color: var(--native-red); font-size: var(--native-small); padding: 6px 16px; }
 .benzo-site .bn-footer { border-top: 1px solid var(--native-black-faint); color: var(--native-muted); font-size: var(--native-small); }
 .benzo-site .bn-login { display: flex; align-items: center; justify-content: space-between; padding: 8px 20px 0; }
@@ -54,10 +54,10 @@
 .benzo-site .bn-setup-pill { font-size: 36px; }
 .benzo-site .bn-setup h3 { font-size: var(--native-setup-title); font-weight: 600; }
 .benzo-site .bn-setup p { padding: 0 20px; color: var(--native-muted); font-size: var(--native-base); }
-.benzo-site .bn-setup > button { font-size: var(--native-base); font-weight: 600; padding: 8px 24px; border-radius: 6px; background: var(--pink); color: var(--white); }
+.benzo-site .bn-setup > button { font-size: var(--native-base); font-weight: 600; padding: 8px 24px; border-radius: 6px; background: var(--native-control-accent); color: var(--white); }
 .benzo-site .bn-setup .bn-setup-note { color: var(--native-faint); font-size: var(--native-small); }
 .benzo-site .bn-diagnostic-header { display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; border-bottom: 1px solid var(--native-black-line); }
-.benzo-site .bn-diagnostic-header button { display: flex; align-items: center; gap: 4px; color: var(--pink); font-size: var(--native-secondary); font-weight: 500; }
+.benzo-site .bn-diagnostic-header button { display: flex; align-items: center; gap: 4px; color: var(--native-control-accent); font-size: var(--native-secondary); font-weight: 500; }
 .benzo-site .bn-diagnostic-header strong { font-size: var(--native-title); font-weight: 600; }
 .benzo-site .bn-diagnostic-header > span { width: 40px; }
 .benzo-site .bn-diagnostic-scroll { max-height: var(--native-diagnostic-height); overflow-y: auto; border-radius: 0 0 10px 10px; }

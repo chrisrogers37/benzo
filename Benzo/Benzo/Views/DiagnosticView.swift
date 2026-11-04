@@ -34,7 +34,7 @@ struct DiagnosticView: View {
                     Text("Back")
                         .font(.system(size: 11, weight: .medium))
                 }
-                .foregroundColor(BenzoTheme.accent)
+                .foregroundColor(BenzoTheme.accentControl)
             }
             .buttonStyle(.plain)
 
@@ -107,7 +107,7 @@ struct DiagnosticView: View {
                     let delta = session.batteryDelta ?? 0
                     Text("\(s)% → \(w)% (\(delta > 0 ? "+" : "")\(delta)%)")
                         .font(.system(size: 10, design: .monospaced))
-                        .foregroundColor(delta == 0 ? Color.green : BenzoTheme.textMuted)
+                        .foregroundColor(delta == 0 ? BenzoTheme.positiveText : BenzoTheme.textMuted)
                 }
 
                 if session.wakeReason != nil {

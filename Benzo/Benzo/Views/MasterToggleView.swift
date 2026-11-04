@@ -36,7 +36,7 @@ struct PinkToggle: View {
         Button(action: action) {
             ZStack(alignment: isOn ? .trailing : .leading) {
                 Capsule()
-                    .fill(isOn ? BenzoTheme.accent : Color(hex: "dddddd"))
+                    .fill(isOn ? BenzoTheme.accentControl : BenzoTheme.controlBorder)
                     .frame(width: 44, height: 26)
                     .shadow(color: isOn ? BenzoTheme.accent.opacity(0.3) : .clear, radius: 8, y: 2)
 
