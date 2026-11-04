@@ -1,6 +1,7 @@
 import Foundation
 import XCTest
 
+@MainActor
 final class BenzoCoreTests: XCTestCase {
     func testParsesValidSpaceSeparatedSettings() {
         let state = PMSetState(parsing: """
@@ -100,333 +101,161 @@ final class BenzoCoreTests: XCTestCase {
         XCTAssertFalse(FileManager.default.fileExists(atPath: directory.path))
     }
 
-    func testDanglingParentSymlinkIsUnknownAndKeepsSelectionFrozen() throws {
-        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
-        defer { try? FileManager.default.removeItem(at: directory) }
-        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
-        let link = directory.appendingPathComponent("recovery")
-        let missingTarget = directory.appendingPathComponent("missing-directory").path
-        try FileManager.default.createSymbolicLink(atPath: link.path, withDestinationPath: missingTarget)
-
-        for relativePath in ["originals.json", "nested/originals.json"] {
-            let store = BackupService(fileURL: link.appendingPathComponent(relativePath), clock: FakeClock())
-            guard case .unknown = store.evidencePresence() else {
-                return XCTFail("A dangling parent symlink must not count as confirmed absence")
-            }
-            let harness = FakeDependencies()
-            let viewModel = harness.makeViewModel(backupStore: store)
-            let originalStates = viewModel.settingStates
-
-            XCTAssertTrue(viewModel.isSelectionEditBlocked)
-            viewModel.toggleSetting(.hibernateMode)
-
-            XCTAssertEqual(viewModel.settingStates, originalStates)
-            XCTAssertEqual(viewModel.errorMessage, BenzoViewModel.selectionEditBlockedReason)
-            XCTAssertTrue(harness.preferences.writes.isEmpty)
-            XCTAssertTrue(harness.commands.calls.isEmpty)
-            XCTAssertTrue(harness.mainQueue.isEmpty)
-            XCTAssertTrue(harness.backgroundQueue.isEmpty)
-            XCTAssertEqual(try FileManager.default.destinationOfSymbolicLink(atPath: link.path), missingTarget)
-            XCTAssertFalse(FileManager.default.fileExists(atPath: missingTarget))
-        }
-    }
-
-    func testUnreadableBackupPathIsUnknownAndBlocksSelection() throws {
-        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
-        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
-        defer {
-            try? FileManager.default.setAttributes([.posixPermissions: 0o700], ofItemAtPath: directory.path)
-            try? FileManager.default.removeItem(at: directory)
-        }
-        let url = directory.appendingPathComponent("originals.json")
-        let bytes = Data("retain unreadable evidence".utf8)
-        try bytes.write(to: url)
-        let store = BackupService(fileURL: url, clock: FakeClock())
-        try FileManager.default.setAttributes([.posixPermissions: 0], ofItemAtPath: directory.path)
-
-        if store.evidencePresence() == .present {
-            throw XCTSkip("This test account can bypass scratch-directory permissions")
-        }
-        guard case .unknown = store.evidencePresence() else {
-            return XCTFail("An unreadable path must not count as confirmed absence")
-        }
-        let harness = FakeDependencies()
-        let viewModel = harness.makeViewModel(backupStore: store)
-        let originalStates = viewModel.settingStates
-        viewModel.toggleSetting(.hibernateMode)
-
-        XCTAssertEqual(viewModel.settingStates, originalStates)
-        XCTAssertEqual(viewModel.errorMessage, BenzoViewModel.selectionEditBlockedReason)
-        XCTAssertTrue(harness.preferences.writes.isEmpty)
-        XCTAssertTrue(harness.commands.calls.isEmpty)
-        try FileManager.default.setAttributes([.posixPermissions: 0o700], ofItemAtPath: directory.path)
-        XCTAssertEqual(try Data(contentsOf: url), bytes)
-    }
-
-    func testCommandErrorsPropagateThroughPMSetService() {
-        let runner = FakeCommandRunner()
-        let service = PMSetService(runner: runner)
-        runner.error = ShellError.executionFailed("fake command failure")
-
-        XCTAssertThrowsError(try service.readCurrentState()) { error in
-            XCTAssertEqual(error.localizedDescription, "fake command failure")
-        }
-        XCTAssertThrowsError(try service.applySettings([.hibernateMode])) { error in
-            XCTAssertEqual(error.localizedDescription, "fake command failure")
-        }
-        XCTAssertEqual(runner.calls.map(\.privileged), [false, true])
-    }
-
-    func testCommandErrorIsVisibleThroughViewModel() {
-        let harness = FakeDependencies()
-        harness.commands.error = ShellError.executionFailed("fake write denied")
-        let viewModel = harness.makeViewModel()
-
-        viewModel.toggleMaster()
-
-        XCTAssertEqual(viewModel.errorMessage, "fake write denied")
-        XCTAssertFalse(viewModel.isActive)
-        XCTAssertEqual(harness.commands.calls.count, 1)
-        XCTAssertTrue(harness.commands.calls[0].privileged)
-    }
-
-    func testManualStartupSkipsPermissionObservationAndQueuedWork() {
+    func testManualStartupDoesNotReadOrWriteAnyRecoveryBoundary() {
         let harness = FakeDependencies()
         harness.login.isEnabled = true
+        harness.preferences.values[BenzoPreferenceKey.isActive] = true
         let viewModel = harness.makeViewModel()
-
         XCTAssertTrue(viewModel.launchAtLogin)
-        XCTAssertEqual(viewModel.permissionObservation, .unknown("Not checked"))
-        XCTAssertTrue(viewModel.showPermissionStatus)
+        XCTAssertEqual(viewModel.controlState, .checking)
+        XCTAssertFalse(viewModel.isActive)
         XCTAssertEqual(harness.permissionObservations, 0)
-        XCTAssertTrue(harness.commands.calls.isEmpty)
-        XCTAssertEqual(harness.backup.accesses, 0)
-        XCTAssertEqual(harness.backup.evidenceChecks, 0)
+        XCTAssertEqual(harness.store.lockCalls, 0)
+        XCTAssertEqual(harness.transport.captureCalls, 0)
+        XCTAssertTrue(harness.transport.writes.isEmpty)
         XCTAssertTrue(harness.preferences.writes.isEmpty)
-        XCTAssertTrue(harness.mainQueue.isEmpty)
-        XCTAssertTrue(harness.backgroundQueue.isEmpty)
         XCTAssertTrue(harness.login.calls.isEmpty)
     }
 
-    func testAutomaticStartupOnlyObservesPermissionWithoutChangingSavedState() {
-        for observation in [PermissionObservation.noLegacyRule, .legacyRulePresent, .unknown("unreadable")] {
-            let harness = FakeDependencies()
-            harness.permissionObservation = observation
-            harness.preferences.values[BenzoPreferenceKey.sudoersRuleVersion] = 0
-            harness.preferences.values[BenzoPreferenceKey.isActive] = true
-            let viewModel = harness.makeViewModel(startupPolicy: .automatic)
-
-            XCTAssertEqual(viewModel.permissionObservation, observation)
-            XCTAssertTrue(viewModel.showPermissionStatus)
-            XCTAssertTrue(viewModel.isActive)
-            XCTAssertEqual(harness.permissionObservations, 1)
-            XCTAssertEqual(harness.preferences.values[BenzoPreferenceKey.sudoersRuleVersion] as? Int, 0)
-            XCTAssertTrue(harness.commands.calls.isEmpty)
-            XCTAssertEqual(harness.backup.accesses, 0)
-            XCTAssertEqual(harness.backup.evidenceChecks, 0)
-            XCTAssertTrue(harness.preferences.writes.isEmpty)
-            XCTAssertTrue(harness.mainQueue.isEmpty)
-            XCTAssertTrue(harness.backgroundQueue.isEmpty)
-            XCTAssertTrue(harness.login.calls.isEmpty)
-        }
-    }
-
-    func testPermissionRefreshAndBackOnlyUpdateObservationAndNavigation() {
-        for active in [false, true] {
-            let harness = FakeDependencies()
-            harness.preferences.values[BenzoPreferenceKey.isActive] = active
-            harness.preferences.values[BenzoPreferenceKey.sudoersRuleVersion] = 2
-            let viewModel = harness.makeViewModel()
-            let states = viewModel.settingStates
-            viewModel.errorMessage = "Preserve unrelated error"
-            var stateChanges = 0
-            viewModel.onStateChange = { _ in stateChanges += 1 }
-
-            for observation in [PermissionObservation.noLegacyRule, .legacyRulePresent, .unknown("unreadable")] {
-                harness.permissionObservation = observation
-                viewModel.refreshPermissionObservation()
-                XCTAssertEqual(viewModel.permissionObservation, observation)
-                XCTAssertTrue(viewModel.showPermissionStatus)
-            }
-            viewModel.showPermissionStatus = false
-
-            XCTAssertFalse(viewModel.showPermissionStatus)
-            XCTAssertEqual(viewModel.permissionObservation, .unknown("unreadable"))
-            XCTAssertEqual(harness.permissionObservations, 3)
-            XCTAssertEqual(viewModel.isActive, active)
-            XCTAssertEqual(viewModel.settingStates, states)
-            XCTAssertEqual(viewModel.errorMessage, "Preserve unrelated error")
-            XCTAssertEqual(stateChanges, 0)
-            XCTAssertEqual(harness.preferences.values[BenzoPreferenceKey.sudoersRuleVersion] as? Int, 2)
-            XCTAssertTrue(harness.preferences.writes.isEmpty)
-            XCTAssertTrue(harness.commands.calls.isEmpty)
-            XCTAssertEqual(harness.backup.accesses, 0)
-            XCTAssertEqual(harness.backup.evidenceChecks, 0)
-            XCTAssertTrue(harness.mainQueue.isEmpty)
-            XCTAssertTrue(harness.backgroundQueue.isEmpty)
-            XCTAssertTrue(harness.login.calls.isEmpty)
-        }
-    }
-
-    func testSleepNowRefusesWithoutCommandsBackupsPreferencesOrContinuations() {
-        for isActive in [false, true] {
-            for evidence in [BackupEvidencePresence.absent, .present, .unknown("unreadable")] {
-                let harness = FakeDependencies()
-                harness.preferences.values[BenzoPreferenceKey.isActive] = isActive
-                harness.backup.evidence = evidence
-                let viewModel = harness.makeViewModel()
-                let originalStates = viewModel.settingStates
-                var stateChanges = 0
-                viewModel.onStateChange = { _ in stateChanges += 1 }
-
-                viewModel.sleepNow()
-                viewModel.sleepNow()
-
-                XCTAssertEqual(viewModel.errorMessage, BenzoViewModel.sleepUnavailableReason)
-                XCTAssertEqual(viewModel.isActive, isActive)
-                XCTAssertEqual(viewModel.settingStates, originalStates)
-                XCTAssertEqual(stateChanges, 0)
-                XCTAssertTrue(harness.commands.calls.isEmpty)
-                XCTAssertEqual(harness.backup.accesses, 0)
-                XCTAssertEqual(harness.backup.evidenceChecks, 0)
-                XCTAssertTrue(harness.preferences.writes.isEmpty)
-                XCTAssertTrue(harness.mainQueue.isEmpty)
-                XCTAssertTrue(harness.backgroundQueue.isEmpty)
-                XCTAssertTrue(harness.login.calls.isEmpty)
-            }
-        }
-    }
-
-    func testActiveSelectionIsRejectedBeforePreferencePersistence() {
+    func testAutomaticStartupReconcilesReadOnlyAndDoesNotTrustSavedActive() async {
         let harness = FakeDependencies()
         harness.preferences.values[BenzoPreferenceKey.isActive] = true
-        harness.backup.evidence = .absent
-        let viewModel = harness.makeViewModel()
-        let originalStates = viewModel.settingStates
-
-        viewModel.toggleSetting(.hibernateMode)
-
-        XCTAssertEqual(viewModel.settingStates, originalStates)
-        XCTAssertEqual(viewModel.errorMessage, BenzoViewModel.selectionEditBlockedReason)
-        XCTAssertTrue(harness.preferences.writes.isEmpty)
-        XCTAssertTrue(harness.commands.calls.isEmpty)
-        XCTAssertEqual(harness.backup.accesses, 0)
-        XCTAssertTrue(harness.mainQueue.isEmpty)
-        XCTAssertTrue(harness.backgroundQueue.isEmpty)
-    }
-
-    func testPresentAndUnknownEvidenceRejectInactiveSelectionBeforePersistence() {
-        for evidence in [BackupEvidencePresence.present, .unknown("metadata unavailable")] {
-            let harness = FakeDependencies()
-            harness.backup.evidence = evidence
-            let viewModel = harness.makeViewModel()
-            let originalStates = viewModel.settingStates
-
-            XCTAssertTrue(viewModel.isSelectionEditBlocked)
-            viewModel.toggleSetting(.hibernateMode)
-
-            XCTAssertEqual(viewModel.settingStates, originalStates)
-            XCTAssertEqual(viewModel.errorMessage, BenzoViewModel.selectionEditBlockedReason)
-            XCTAssertTrue(harness.preferences.writes.isEmpty)
-            XCTAssertTrue(harness.commands.calls.isEmpty)
-            XCTAssertEqual(harness.backup.accesses, 0)
-            XCTAssertTrue(harness.mainQueue.isEmpty)
-            XCTAssertTrue(harness.backgroundQueue.isEmpty)
-        }
-    }
-
-    func testConfirmedAbsentEvidenceAllowsInactivePreferenceEditOnly() {
-        let harness = FakeDependencies()
-        harness.backup.evidence = .absent
-        let viewModel = harness.makeViewModel()
-        let originalValue = viewModel.settingStates[.hibernateMode]!
-
-        XCTAssertFalse(viewModel.isSelectionEditBlocked)
-        viewModel.toggleSetting(.hibernateMode)
-
-        XCTAssertEqual(viewModel.settingStates[.hibernateMode], !originalValue)
-        let saved = harness.preferences.values[BenzoPreferenceKey.settingStates] as? [String: Bool]
-        XCTAssertEqual(saved?[SleepSetting.hibernateMode.rawValue], !originalValue)
-        XCTAssertEqual(harness.preferences.writes, [BenzoPreferenceKey.settingStates])
+        let viewModel = harness.makeViewModel(startupPolicy: .automatic)
+        await viewModel.startupTask?.value
+        guard case .recoveryRequired = viewModel.controlState else { return XCTFail("A saved Boolean is legacy evidence, never proof of active or Off") }
         XCTAssertFalse(viewModel.isActive)
-        XCTAssertTrue(harness.commands.calls.isEmpty)
-        XCTAssertEqual(harness.backup.accesses, 0)
+        XCTAssertEqual(harness.permissionObservations, 1)
+        XCTAssertTrue(harness.transport.writes.isEmpty)
+        XCTAssertTrue(harness.preferences.writes.isEmpty)
+        XCTAssertTrue(harness.login.calls.isEmpty)
+    }
+
+    func testPermissionRefreshOnlyUpdatesObservationAndNavigation() {
+        let harness = FakeDependencies()
+        let viewModel = harness.makeViewModel()
+        let states = viewModel.settingStates
+        viewModel.errorMessage = "Preserve unrelated error"
+        var stateChanges = 0
+        viewModel.onStateChange = { _ in stateChanges += 1 }
+        for observation in [PermissionObservation.noLegacyRule, .legacyRulePresent, .unknown("unreadable")] {
+            harness.permissionObservation = observation
+            viewModel.refreshPermissionObservation()
+            XCTAssertEqual(viewModel.permissionObservation, observation)
+        }
+        viewModel.showPermissionStatus = false
+        XCTAssertEqual(viewModel.settingStates, states)
+        XCTAssertEqual(viewModel.errorMessage, "Preserve unrelated error")
+        XCTAssertEqual(stateChanges, 0)
+        XCTAssertEqual(harness.permissionObservations, 3)
+        XCTAssertTrue(harness.preferences.writes.isEmpty)
+        XCTAssertTrue(harness.transport.writes.isEmpty)
+        XCTAssertEqual(harness.store.lockCalls, 0)
+    }
+
+    func testSleepNowRemainsDisabledWithoutCaptureWriteOrContinuation() {
+        let harness = FakeDependencies()
+        let viewModel = harness.makeViewModel()
+        viewModel.sleepNow()
+        XCTAssertEqual(viewModel.errorMessage, BenzoViewModel.sleepUnavailableReason)
+        XCTAssertEqual(harness.transport.captureCalls, 0)
+        XCTAssertTrue(harness.transport.writes.isEmpty)
+        XCTAssertTrue(harness.preferences.writes.isEmpty)
         XCTAssertTrue(harness.mainQueue.isEmpty)
         XCTAssertTrue(harness.backgroundQueue.isEmpty)
     }
 
-    func testSelectionGuardRechecksEvidenceImmediatelyBeforeEdit() {
+    func testCheckingAndLegacyRecoveryFreezePreferences() async {
         let harness = FakeDependencies()
-        harness.backup.evidence = .absent
+        harness.store.legacy = Data("untrusted legacy bytes".utf8)
         let viewModel = harness.makeViewModel()
-        let originalStates = viewModel.settingStates
-        XCTAssertFalse(viewModel.isSelectionEditBlocked)
-        harness.backup.evidence = .present
-
+        let states = viewModel.settingStates
         viewModel.toggleSetting(.hibernateMode)
-
-        XCTAssertEqual(viewModel.settingStates, originalStates)
-        XCTAssertEqual(harness.backup.evidenceChecks, 2)
+        XCTAssertEqual(viewModel.settingStates, states)
         XCTAssertTrue(harness.preferences.writes.isEmpty)
-        XCTAssertTrue(harness.commands.calls.isEmpty)
+        await viewModel.reconcile()
+        guard case .recoveryRequired = viewModel.controlState else { return XCTFail("Legacy evidence requires recovery") }
+        viewModel.toggleSetting(.hibernateMode)
+        await viewModel.revertToDefaults()
+        XCTAssertEqual(viewModel.settingStates, states)
+        XCTAssertTrue(harness.preferences.writes.isEmpty)
+        XCTAssertTrue(harness.transport.writes.isEmpty)
+        XCTAssertEqual(harness.store.legacy, Data("untrusted legacy bytes".utf8))
     }
 
-    func testValidAndCorruptScratchEvidenceKeepInactiveSelectionFrozen() throws {
-        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
-        defer { try? FileManager.default.removeItem(at: directory) }
-        let url = directory.appendingPathComponent("originals.json")
-        let store = BackupService(fileURL: url, clock: FakeClock())
-        try store.save(PMSetState(parsing: "hibernatemode 3"))
-        let validBytes = try Data(contentsOf: url)
-
-        for bytes in [validBytes, Data("invalid JSON".utf8)] {
-            try bytes.write(to: url)
-            let harness = FakeDependencies()
-            let viewModel = harness.makeViewModel(backupStore: store)
-            let originalStates = viewModel.settingStates
-
-            XCTAssertTrue(viewModel.isSelectionEditBlocked)
-            viewModel.toggleSetting(.hibernateMode)
-
-            XCTAssertEqual(viewModel.settingStates, originalStates)
-            XCTAssertEqual(viewModel.errorMessage, BenzoViewModel.selectionEditBlockedReason)
-            XCTAssertTrue(harness.preferences.writes.isEmpty)
-            XCTAssertTrue(harness.commands.calls.isEmpty)
-            XCTAssertEqual(try Data(contentsOf: url), bytes)
-        }
+    func testOffSelectionEditRechecksFreshProvenanceBeforePersistence() async {
+        let harness = FakeDependencies()
+        let viewModel = harness.makeViewModel()
+        await viewModel.reconcile()
+        XCTAssertEqual(viewModel.controlState, .off)
+        viewModel.toggleSetting(.disableTcpKeepAlive)
+        XCTAssertEqual(viewModel.settingStates[.disableTcpKeepAlive], true)
+        XCTAssertEqual(harness.preferences.writes, [BenzoPreferenceKey.settingStates])
+        let states = viewModel.settingStates
+        harness.store.legacy = Data("new evidence".utf8)
+        viewModel.toggleSetting(.disableTcpKeepAlive)
+        XCTAssertEqual(viewModel.settingStates, states)
+        XCTAssertEqual(harness.preferences.writes, [BenzoPreferenceKey.settingStates])
+        XCTAssertTrue(harness.transport.writes.isEmpty)
     }
 
-    func testLegacyOffAndRestoreRetainEvidenceAndKeepSelectionFrozen() throws {
-        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
-        defer { try? FileManager.default.removeItem(at: directory) }
-        let url = directory.appendingPathComponent("originals.json")
-        let store = BackupService(fileURL: url, clock: FakeClock())
-        try store.save(PMSetState(parsing: "hibernatemode 3"))
-        let originalBytes = try Data(contentsOf: url)
+    func testUnavailableControlsAreUncheckedAndCannotPersistAnEdit() async {
+        let harness = FakeDependencies()
+        harness.transport.values.removeValue(forKey: "hibernatemode")
+        harness.transport.values.removeValue(forKey: "autopoweroff")
+        harness.transport.values.removeValue(forKey: "proximitywake")
+        let viewModel = harness.makeViewModel()
+        await viewModel.reconcile()
+        XCTAssertFalse(viewModel.isSelected(.hibernateMode))
+        XCTAssertFalse(viewModel.isSelected(.disableProximityWake))
+        XCTAssertEqual(viewModel.activeCount, 2)
+        viewModel.toggleSetting(.hibernateMode)
+        XCTAssertNotNil(viewModel.errorMessage)
+        XCTAssertTrue(harness.preferences.writes.isEmpty)
+        await viewModel.toggleMaster()
+        XCTAssertTrue(viewModel.isActive)
+        XCTAssertEqual(Set(harness.transport.writes.map { $0.cell.key.rawValue }), Set(["powernap", "womp"]))
+    }
 
-        for useRestore in [false, true] {
-            let harness = FakeDependencies()
-            harness.preferences.values[BenzoPreferenceKey.isActive] = true
-            let viewModel = harness.makeViewModel(backupStore: store)
-            let originalStates = viewModel.settingStates
-            if useRestore {
-                viewModel.revertToDefaults()
-            } else {
-                viewModel.toggleMaster()
-            }
-            XCTAssertFalse(viewModel.isActive)
-            XCTAssertEqual(harness.commands.calls.map(\.arguments), [["-a", "hibernatemode", "3"]])
-            XCTAssertEqual(store.evidencePresence(), .present)
-            let writesAfterRestore = harness.preferences.writes
+    func testActiveSessionFreezesSelectionsAndSystemDefaultsRestoresCapturedValues() async {
+        let harness = FakeDependencies()
+        let viewModel = harness.makeViewModel()
+        await viewModel.reconcile()
+        let originalValues = harness.transport.values
+        await viewModel.toggleMaster()
+        XCTAssertTrue(viewModel.isActive)
+        let states = viewModel.settingStates
+        viewModel.toggleSetting(.disableTcpKeepAlive)
+        XCTAssertEqual(viewModel.settingStates, states)
+        XCTAssertTrue(harness.preferences.writes.isEmpty)
+        XCTAssertNotNil(viewModel.capturedAt)
+        await viewModel.revertToDefaults()
+        XCTAssertEqual(viewModel.controlState, .off)
+        XCTAssertEqual(harness.transport.values, originalValues)
+        XCTAssertNotNil(harness.store.receipt)
+        XCTAssertFalse(harness.preferences.writes.contains(BenzoPreferenceKey.isActive))
+    }
 
-            viewModel.toggleSetting(.hibernateMode)
-
-            XCTAssertEqual(viewModel.settingStates, originalStates)
-            XCTAssertEqual(viewModel.errorMessage, BenzoViewModel.selectionEditBlockedReason)
-            XCTAssertEqual(harness.preferences.writes, writesAfterRestore)
-            XCTAssertEqual(harness.commands.calls.count, 1)
-            XCTAssertEqual(try Data(contentsOf: url), originalBytes)
-        }
+    func testFailedRestorationCannotApproveQuitAndPreservesEvidence() async {
+        let harness = FakeDependencies()
+        let viewModel = harness.makeViewModel()
+        await viewModel.reconcile()
+        await viewModel.toggleMaster()
+        let originalJournal = harness.store.journal
+        harness.transport.writeOutcome = .uncertain("Fixture authorization result is uncertain")
+        let shouldQuit = await viewModel.prepareToQuit()
+        XCTAssertFalse(shouldQuit)
+        XCTAssertTrue(viewModel.executionUncertain)
+        guard case .recoveryRequired = viewModel.controlState else { return XCTFail("Failed restore must remain recovery") }
+        XCTAssertEqual(harness.store.journal?.sessionID, originalJournal?.sessionID)
+        XCTAssertEqual(harness.terminationCalls, 0)
+        let writes = harness.transport.writes.count
+        let retry = await viewModel.prepareToQuit()
+        XCTAssertFalse(retry)
+        XCTAssertEqual(harness.transport.writes.count, writes)
+        viewModel.quit()
+        XCTAssertEqual(harness.terminationCalls, 1, "The menu requests AppKit termination; it does not discard evidence")
+        XCTAssertNotNil(harness.store.journal)
+        XCTAssertNotNil(harness.store.fence)
     }
 
     func testLoginSetterReachesOnlyInjectedRegisterAndUnregister() {
@@ -437,7 +266,7 @@ final class BenzoCoreTests: XCTestCase {
         viewModel.launchAtLogin = false
 
         XCTAssertEqual(harness.login.calls, ["register", "unregister"])
-        XCTAssertTrue(harness.commands.calls.isEmpty)
+        XCTAssertTrue(harness.transport.writes.isEmpty)
     }
 
     func testLoginErrorsPropagateToViewModel() {
@@ -468,7 +297,7 @@ final class BenzoCoreTests: XCTestCase {
         XCTAssertFalse(viewModel.isLoadingDiagnostics)
         viewModel.quit()
         XCTAssertEqual(harness.terminationCalls, 1)
-        XCTAssertTrue(harness.commands.calls.isEmpty)
+        XCTAssertTrue(harness.transport.writes.isEmpty)
     }
 
     func testDiagnosticReaderPreservesFailureTimeoutAndIncompleteCapture() async {
@@ -675,18 +504,19 @@ final class BenzoCoreTests: XCTestCase {
 
     func testObservedValuesDoNotFollowPreferencesOrActiveState() async {
         let harness = FakeDependencies()
-        harness.backup.evidence = .absent
         harness.settingsResult = .success([ObservedSetting(key: "hibernatemode", actualValue: "3")])
         let viewModel = harness.makeViewModel()
         viewModel.loadDiagnostics()
         await harness.runBackgroundQueue()
         harness.runMainQueue()
-        viewModel.toggleSetting(.hibernateMode)
-        viewModel.isActive = true
+        await viewModel.reconcile()
+        viewModel.toggleSetting(.disableTcpKeepAlive)
+        await viewModel.toggleMaster()
         guard case .success(let settings) = viewModel.observedSettings else { return XCTFail("Observation disappeared") }
         XCTAssertEqual(settings, [ObservedSetting(key: "hibernatemode", actualValue: "3")])
         XCTAssertEqual(harness.diagnosticCalls, 3)
-        XCTAssertTrue(harness.commands.calls.isEmpty)
+        XCTAssertTrue(viewModel.isActive)
+        XCTAssertEqual(harness.transport.values["hibernatemode"], 25)
     }
 
     private func completeOutcome(_ output: String) -> CommandOutcome {

@@ -2,7 +2,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { act, cleanup, fireEvent, render, renderHook, screen, within } from '@testing-library/react'
 import NativeAppDemo from './NativeAppDemo'
-import { useBenzoDemo } from '../demo/useBenzoDemo'
+import { benzoDemoReducer, initialDemoState, useBenzoDemo } from '../demo/useBenzoDemo'
 
 function Demo() {
   const [state, dispatch] = useBenzoDemo()
@@ -22,6 +22,128 @@ const diagnosticFixture = overrides => ({
 afterEach(() => { cleanup(); vi.useRealTimers() })
 
 describe('source-matched browser simulation', () => {
+  it('keeps originals immutable, freezes choices during apply, and unlocks only after verified restore', () => {
+    const original = initialDemoState(false)
+    let state = benzoDemoReducer(original, { type: 'setting', key: 'disableTcpKeepAlive' })
+    state = benzoDemoReducer(state, { type: 'active' })
+    expect(state.phase).toBe('applying')
+    expect(benzoDemoReducer(state, { type: 'setting', key: 'disablePowerNap' }).settings).toEqual(state.settings)
+    state = benzoDemoReducer(state, { type: 'applySucceeded' })
+    expect(state.phase).toBe('activeVerified')
+    expect(state.originals).toBe(original.originals)
+    expect(state.currentValues.tcpkeepalive).toBe('0')
+    state = benzoDemoReducer(state, { type: 'restore' })
+    expect(state.phase).toBe('restoring')
+    const capturedSettings = state.settings
+    const capturedOriginals = state.originals
+    state = benzoDemoReducer(state, { type: 'operationFailed', message: 'Restore did not verify.' })
+    expect(state.phase).toBe('recoveryRequired')
+    expect(state.settings).toBe(capturedSettings)
+    expect(state.originals).toBe(capturedOriginals)
+    state = benzoDemoReducer(state, { type: 'retry' })
+    expect(state.phase).toBe('restoring')
+    state = benzoDemoReducer(state, { type: 'restoreSucceeded' })
+    expect(state.phase).toBe('off')
+    expect(state.currentValues).toEqual(state.originals)
+    expect(state.settings.disableTcpKeepAlive).toBe(true)
+  })
+
+  it('refuses unsupported settings and preserves originals and selection after uncertain failure', () => {
+    const off = initialDemoState(false)
+    expect(benzoDemoReducer(off, { type: 'setting', key: 'hibernateMode' }).settings).toEqual(off.settings)
+    expect(benzoDemoReducer(off, { type: 'setting', key: 'disableProximityWake' }).settings).toEqual(off.settings)
+    let state = benzoDemoReducer(off, { type: 'active' })
+    state = benzoDemoReducer(state, { type: 'operationFailed', uncertain: true })
+    const selection = state.settings
+    const captured = state.originals
+    state = benzoDemoReducer(state, { type: 'retry' })
+    expect(state.phase).toBe('recoveryRequired')
+    expect(state.error).toContain('no new write is allowed')
+    expect(state.settings).toBe(selection)
+    expect(state.originals).toBe(captured)
+    const midWrite = benzoDemoReducer(off, { type: 'active' })
+    const quit = benzoDemoReducer(midWrite, { type: 'quit' })
+    expect(quit.phase).toBe('applying')
+    expect(quit.quitPending).toBe(true)
+    const applied = benzoDemoReducer(quit, { type: 'applySucceeded' })
+    expect(applied.phase).toBe('restoring')
+    expect(applied.quitPending).toBe(true)
+    expect(benzoDemoReducer(applied, { type: 'restoreSucceeded' }).running).toBe(false)
+  })
+
+  it('requires explicit conflict resolution and leaves legacy evidence requiring administrator help', () => {
+    let state = benzoDemoReducer(initialDemoState(true), { type: 'conflict' })
+    expect(state.phase).toBe('recoveryRequired')
+    state = benzoDemoReducer(state, { type: 'deferConflict' })
+    expect(state.phase).toBe('recoveryRequired')
+    state = benzoDemoReducer(state, { type: 'keepCurrent' })
+    expect(state.phase).toBe('recoveryRequired')
+    expect(state.ownedValues).toEqual({ womp: '0' })
+    expect(state.currentValues.powernap).toBe('2')
+    state = benzoDemoReducer(state, { type: 'retry' })
+    state = benzoDemoReducer(state, { type: 'restoreSucceeded' })
+    expect(state.phase).toBe('off')
+    expect(state.currentValues.powernap).toBe('2')
+    expect(state.currentValues.womp).toBe('1')
+    expect(state.currentValues.tcpkeepalive).toBe('1')
+
+    let restoreConflict = benzoDemoReducer(initialDemoState(true), { type: 'conflict', conflict: { key: 'powernap', currentValue: '2' } })
+    restoreConflict = benzoDemoReducer(restoreConflict, { type: 'restoreRecordedOriginal' })
+    restoreConflict = benzoDemoReducer(restoreConflict, { type: 'restoreSucceeded' })
+    expect(restoreConflict.phase).toBe('recoveryRequired')
+    expect(restoreConflict.currentValues.powernap).toBe('1')
+    expect(restoreConflict.currentValues.womp).toBe('0')
+    expect(restoreConflict.currentValues.tcpkeepalive).toBe('1')
+    expect(restoreConflict.ownedValues).toEqual({ womp: '0' })
+    restoreConflict = benzoDemoReducer(restoreConflict, { type: 'restore' })
+    restoreConflict = benzoDemoReducer(restoreConflict, { type: 'restoreSucceeded' })
+    expect(restoreConflict.currentValues.womp).toBe('1')
+
+    state = benzoDemoReducer(state, { type: 'legacyUnknown' })
+    const preserved = state.originals
+    state = benzoDemoReducer(state, { type: 'retry' })
+    expect(state.phase).toBe('recoveryRequired')
+    expect(state.originals).toBe(preserved)
+    expect(state.error).toContain('administrator')
+  })
+
+  it('offers stay open and explicit quit anyway when restoration cannot be verified', () => {
+    let state = benzoDemoReducer(initialDemoState(true), { type: 'quit' })
+    state = benzoDemoReducer(state, { type: 'operationFailed', message: 'Restore failed.' })
+    expect(state.quitPending).toBe(true)
+    state = benzoDemoReducer(state, { type: 'stayOpen' })
+    expect(state.running).toBe(true)
+    state = benzoDemoReducer({ ...state, quitPending: true }, { type: 'quitAnyway' })
+    expect(state.running).toBe(false)
+    expect(state.originals).toBe(initialDemoState(true).originals)
+  })
+
+  it('offers Retry, Stay Open, and Quit Anyway after a known failed quit restore', () => {
+    const dispatch = vi.fn()
+    const state = { ...initialDemoState(true), phase: 'recoveryRequired', quitPending: true, error: 'Restore failed.' }
+    render(<NativeAppDemo state={state} dispatch={dispatch} />)
+    for (const name of ['Retry', 'Stay Open', 'Quit Anyway']) expect(screen.getByRole('button', { name, exact: true })).toBeTruthy()
+  })
+
+  it('disables the master without an available Off selection and disables restore without a session', () => {
+    const emptySelection = { ...initialDemoState(false), settings: Object.fromEntries(Object.keys(initialDemoState(false).settings).map(key => [key, false])) }
+    const { rerender } = render(<NativeAppDemo state={emptySelection} dispatch={vi.fn()} />)
+    expect(screen.getByRole('switch', { name: 'Deep Sleep' }).disabled).toBe(true)
+    expect(screen.getByRole('button', { name: 'System Defaults' }).disabled).toBe(true)
+
+    rerender(<NativeAppDemo state={{ ...emptySelection, phase: 'recoveryRequired', legacyUnknown: true }} dispatch={vi.fn()} />)
+    expect(screen.getByRole('switch', { name: 'Deep Sleep' }).disabled).toBe(true)
+    expect(screen.getByRole('button', { name: 'System Defaults' }).disabled).toBe(true)
+    expect(screen.getByText('Legacy or unknown recovery evidence needs administrator-assisted recovery and retirement. Preserve ~/Library/Application Support/Benzo/original-pmset.json and /private/etc/sudoers.d/benzo. This app cannot substantiate their profile ownership or mark them restored.')).toBeTruthy()
+  })
+
+  it('allows restore for an active no-op session even when it owns no changed cells', () => {
+    const noOpSession = { ...initialDemoState(true), ownedValues: {}, hasSession: true }
+    render(<NativeAppDemo state={noOpSession} dispatch={vi.fn()} />)
+    expect(screen.getByRole('switch', { name: 'Deep Sleep' }).disabled).toBe(false)
+    expect(screen.getByRole('button', { name: 'System Defaults' }).disabled).toBe(false)
+  })
+
   it('keeps permission status ahead of diagnostics until Back without granting access', () => {
     render(<Demo />)
     click('First launch')
@@ -54,7 +176,7 @@ describe('source-matched browser simulation', () => {
     render(<Demo />)
     const sleepButton = screen.getByRole('button', { name: 'Sleep Now' })
     expect(sleepButton.disabled).toBe(true)
-    expect(document.getElementById(sleepButton.getAttribute('aria-describedby')).textContent).toBe('Sleep Now is unavailable while recovery controls are being updated.')
+    expect(document.getElementById(sleepButton.getAttribute('aria-describedby')).textContent).toBe('Sleep Now is unavailable for this manual apply-and-restore workflow.')
     expect(screen.queryByRole('button', { name: /timer/i })).toBeNull()
     expect(screen.queryByText('caffeinate')).toBeNull()
     expect(screen.queryByText(/app may prevent sleep/)).toBeNull()
@@ -74,17 +196,17 @@ describe('source-matched browser simulation', () => {
     for (const type of actions) act(() => result.current[1]({ type }))
     const before = result.current[0]
     act(() => result.current[1]({ type: 'sleep' }))
-    expect(result.current[0]).toEqual({ ...before, error: 'Sleep Now is unavailable while recovery controls are being updated.' })
+    expect(result.current[0]).toEqual({ ...before, error: 'Sleep Now is unavailable for this manual apply-and-restore workflow.' })
     expect(vi.getTimerCount()).toBe(0)
     act(() => vi.advanceTimersByTime(3600000))
-    expect(result.current[0]).toEqual({ ...before, error: 'Sleep Now is unavailable while recovery controls are being updated.' })
+    expect(result.current[0]).toEqual({ ...before, error: 'Sleep Now is unavailable for this manual apply-and-restore workflow.' })
   })
 
-  it('allows choices only before activation and keeps them frozen after Off and Restore', () => {
+  it('allows only reported target choices while Off and unlocks after captured restore', () => {
     render(<Demo />)
     const initialSetting = screen.getByRole('checkbox', { name: 'Hibernate Mode' })
     expect(initialSetting.disabled).toBe(true)
-    expect(document.getElementById(initialSetting.getAttribute('aria-describedby')).textContent).toBe('Resolve the current session or recovery before changing settings.')
+    expect(document.getElementById(initialSetting.getAttribute('aria-describedby')).textContent).toContain('Unavailable on this AC-only target')
     click('First launch'); click('Back'); click('Options')
     const setting = screen.getByRole('checkbox', { name: 'Disable TCP Keep-Alive' })
     expect(setting.disabled).toBe(false)
@@ -95,16 +217,13 @@ describe('source-matched browser simulation', () => {
     expect(setting.disabled).toBe(true)
     fireEvent.click(setting)
     expect(setting.getAttribute('aria-checked')).toBe('true')
-    fireEvent.click(screen.getByRole('switch', { name: 'Deep Sleep' }))
-    expect(setting.disabled).toBe(true)
-    fireEvent.click(setting)
-    expect(setting.getAttribute('aria-checked')).toBe('true')
-    click('Restore System Defaults')
+    click('System Defaults')
     expect(screen.getByRole('switch', { name: 'Deep Sleep' }).getAttribute('aria-checked')).toBe('false')
-    expect(setting.disabled).toBe(true)
-    fireEvent.click(setting)
+    expect(setting.disabled).toBe(false)
     expect(setting.getAttribute('aria-checked')).toBe('true')
-    expect(screen.getByRole('status').textContent).toContain('The backup remains')
+    fireEvent.click(setting)
+    expect(setting.getAttribute('aria-checked')).toBe('false')
+    expect(screen.getByRole('status').textContent).toContain('editable again')
     click('Options')
     expect(screen.queryByRole('checkbox')).toBeNull()
     click('Options')
@@ -113,13 +232,11 @@ describe('source-matched browser simulation', () => {
 
   it.each([
     ['active', []],
-    ['after Off', ['active']],
-    ['after Restore', ['restore']],
   ])('refuses direct setting actions %s and preserves the backup', (_label, actions) => {
     const { result } = renderHook(useBenzoDemo)
     for (const type of actions) act(() => result.current[1]({ type }))
     const before = result.current[0]
-    expect(before.backup).toBe(true)
+    expect(before.phase).not.toBe('off')
     act(() => result.current[1]({ type: 'setting', key: 'disableTcpKeepAlive' }))
     expect(result.current[0]).toEqual({ ...before, error: 'Resolve the current session or recovery before changing settings.' })
   })
@@ -132,10 +249,9 @@ describe('source-matched browser simulation', () => {
     click('Back')
     expect(screen.getByRole('status').textContent).toContain('No permission was requested')
     expect(screen.getByRole('button', { name: 'Options' }).getAttribute('aria-expanded')).toBe('false')
-    click('Restore System Defaults')
-    expect(screen.getByRole('alert').textContent).toBe('Nothing to revert — activate Benzo first.')
+    expect(screen.getByRole('button', { name: 'System Defaults' }).disabled).toBe(true)
     fireEvent.click(screen.getByRole('switch', { name: 'Deep Sleep' }))
-    click('Restore System Defaults')
+    click('System Defaults')
     expect(screen.queryByRole('alert')).toBeNull()
   })
 

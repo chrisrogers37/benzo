@@ -2,6 +2,7 @@ import SwiftUI
 
 struct FooterView: View {
     @Binding var launchAtLogin: Bool
+    let canRestore: Bool
     let onRevert: () -> Void
     let onQuit: () -> Void
 
@@ -23,13 +24,15 @@ struct FooterView: View {
             .padding(.top, 8)
 
             HStack {
-                Text("v0.3.0")
+                Text("v\(Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "unknown")")
                     .font(.system(size: 10))
                     .foregroundColor(Color(hex: "d0d0d0"))
 
                 Spacer()
 
-                Button("Restore System Defaults") { onRevert() }
+                Button("System Defaults") { onRevert() }
+                    .disabled(!canRestore)
+                    .help("Restore captured pre-Benzo settings. This does not reset macOS to Apple defaults.")
                     .font(.system(size: 10))
                     .foregroundColor(BenzoTheme.textMuted)
                     .buttonStyle(.plain)
@@ -40,7 +43,11 @@ struct FooterView: View {
                     .buttonStyle(.plain)
             }
             .padding(.horizontal, 20)
-            .padding(.bottom, 10)
+            Text("System Defaults restores captured pre-Benzo settings.")
+                .font(.system(size: 10))
+                .foregroundColor(BenzoTheme.textMuted)
+                .padding(.horizontal, 20)
+                .padding(.bottom, 10)
         }
     }
 }

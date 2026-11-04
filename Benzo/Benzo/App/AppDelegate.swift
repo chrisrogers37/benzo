@@ -1,36 +1,54 @@
 import AppKit
 import SwiftUI
 
+@MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
     private var statusItem: NSStatusItem!
     private var popover: NSPopover!
     private let viewModel = AppDelegate.makeViewModel()
     private var eventMonitor: Any?
     private var sizeObserver: NSObjectProtocol?
+    private var terminationPending = false
 
     /// The only production composition root; it is never compiled into BenzoCoreTests.
     private static func makeViewModel() -> BenzoViewModel {
-        let clock = LiveBenzoClock()
         let diagnostics = DiagnosticService(reader: CommandRunner())
-        let backupURL = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
-            .appendingPathComponent(BenzoPaths.supportDirectory, isDirectory: true)
-            .appendingPathComponent(BenzoPaths.backupFilename)
+        let preferences = UserDefaults.standard
+        let observePermission: () -> PermissionObservation = {
+            PermissionObserver(
+                ruleURL: URL(fileURLWithPath: BenzoPaths.sudoers),
+                metadata: { try FileManager.default.attributesOfItem(atPath: $0) }
+            ).observe()
+        }
+        let store: any RecoveryStoring
+        var hostID = "unavailable"
+        do {
+            hostID = try BootIdentityProvider.hostID()
+            guard let support = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first else {
+                throw RecoveryEvidenceError.invalid("The account's Application Support directory is unavailable.")
+            }
+            store = DurableJournal(directory: support.appendingPathComponent(BenzoPaths.supportDirectory, isDirectory: true),
+                                   uid: getuid(), hostID: hostID)
+        } catch {
+            // An unavailable identity or store must never become an empty fresh session.
+            hostID = "unavailable"
+            store = UnavailableRecoveryStore(error: error)
+        }
+        let coordinator = OperationCoordinator(
+            store: store, transport: RecoveryTransport(runner: CommandRunner()), uid: getuid(), hostID: hostID,
+            bootID: { try BootIdentityProvider.bootID() }, now: { Date() },
+            legacyActive: { preferences.bool(forKey: BenzoPreferenceKey.isActive) }, legacyRule: observePermission
+        )
         let dependencies = BenzoDependencies(
-            commands: ShellCommandRunner(),
-            backup: BackupService(fileURL: backupURL, clock: clock),
-            preferences: UserDefaults.standard,
+            coordinator: coordinator,
+            preferences: preferences,
             loginItem: LiveLoginItemClient(),
-            observePermission: {
-                PermissionObserver(
-                    ruleURL: URL(fileURLWithPath: BenzoPaths.sudoers),
-                    metadata: { try FileManager.default.attributesOfItem(atPath: $0) }
-                ).observe()
-            },
+            observePermission: observePermission,
             fetchSleepData: { await diagnostics.fetchSleepData() },
             fetchUSBDevices: { await diagnostics.fetchUSBDevices() },
             readObservedSettings: { await diagnostics.readObservedSettings() },
             runInBackground: { work in Task.detached(priority: .userInitiated) { await work() } },
-            runOnMain: { DispatchQueue.main.async(execute: $0) },
+            runOnMain: { work in Task { @MainActor in work() } },
             terminate: { NSApplication.shared.terminate(nil) }
         )
         return BenzoViewModel(dependencies: dependencies, startupPolicy: .automatic)
@@ -40,7 +58,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
         statusItem = NSStatusBar.system.statusItem(withLength: 44)
 
         if let button = statusItem.button {
-            updateIcon(active: viewModel.isActive)
+            updateIcon(state: viewModel.controlState)
             button.action = #selector(togglePopover)
             button.target = self
         }
@@ -60,12 +78,49 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
             object: hostingController.view,
             queue: .main
         ) { [weak self] _ in
-            self?.adjustPopoverFrame()
+            Task { @MainActor in self?.adjustPopoverFrame() }
         }
         hostingController.view.postsFrameChangedNotifications = true
 
-        viewModel.onStateChange = { [weak self] active in
-            self?.updateIcon(active: active)
+        viewModel.onStateChange = { [weak self] state in
+            self?.updateIcon(state: state)
+        }
+    }
+
+    func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
+        guard !terminationPending else { return .terminateLater }
+        terminationPending = true
+        Task { await settleTermination(sender) }
+        return .terminateLater
+    }
+
+    private func settleTermination(_ application: NSApplication) async {
+        while true {
+            if await viewModel.prepareToQuit() {
+                application.reply(toApplicationShouldTerminate: true)
+                return
+            }
+            application.activate(ignoringOtherApps: true)
+            let alert = NSAlert()
+            alert.alertStyle = .warning
+            alert.messageText = "Benzo could not finish restoring settings."
+            alert.informativeText = "\(viewModel.controlState.message)\n\nSettings may remain changed. Quit Anyway preserves the recovery evidence for the next launch."
+            alert.addButton(withTitle: "Retry")
+            alert.addButton(withTitle: "Stay Open")
+            alert.addButton(withTitle: "Quit Anyway")
+            // Escape dismisses the quit request; it never accepts unresolved restoration.
+            alert.buttons[1].keyEquivalent = "\u{1b}"
+            switch alert.runModal() {
+            case .alertFirstButtonReturn:
+                continue
+            case .alertThirdButtonReturn:
+                application.reply(toApplicationShouldTerminate: true)
+                return
+            default:
+                terminationPending = false
+                application.reply(toApplicationShouldTerminate: false)
+                return
+            }
         }
     }
 
@@ -83,8 +138,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
         }
     }
 
-    private func updateIcon(active: Bool) {
-        guard let button = statusItem.button else { return }
+    private func updateIcon(state: ControlState) {
+        guard let button = statusItem?.button else { return }
+        button.setAccessibilityLabel("Benzo: \(state.title)")
+        button.toolTip = "\(state.title). \(state.message)"
+        if state.isBusy || { if case .recoveryRequired = state { return true }; return false }() {
+            let symbol = state.isBusy ? "hourglass" : "exclamationmark.triangle.fill"
+            button.image = NSImage(systemSymbolName: symbol, accessibilityDescription: state.title)
+            button.contentTintColor = state.isBusy ? .secondaryLabelColor : .systemOrange
+            return
+        }
+        button.contentTintColor = nil
+        let active = state.isActive
         let pink = NSColor(red: 212/255, green: 116/255, blue: 156/255, alpha: 1)
 
         let size = NSSize(width: 28, height: 22)
@@ -139,7 +204,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
         popover.contentViewController?.view.window?.makeKey()
 
         eventMonitor = NSEvent.addGlobalMonitorForEvents(matching: [.leftMouseDown, .rightMouseDown]) { [weak self] _ in
-            self?.closePopover()
+            Task { @MainActor in self?.closePopover() }
         }
     }
 
@@ -155,6 +220,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
 // These adapters live at the app boundary so core tests cannot accidentally select them.
 extension UserDefaults: PreferenceStoring {}
 
-private struct LiveBenzoClock: BenzoClock {
-    var now: Date { Date() }
+private final class UnavailableRecoveryStore: RecoveryStoring {
+    private let error: Error
+    init(error: Error) { self.error = error }
+    func acquireLock() throws { throw error }
+    func loadJournal() throws -> RecoveryJournal? { throw error }
+    func commitJournal(_ journal: RecoveryJournal) throws { throw error }
+    func saveResolvedReceipt(_ journal: RecoveryJournal) throws { throw error }
+    func loadFence() throws -> ExecutionFence? { throw error }
+    func commitFence(_ fence: ExecutionFence) throws { throw error }
+    func loadLegacyEvidence() throws -> Data? { throw error }
 }

@@ -10,7 +10,7 @@ function ContentLink({ destination, children, ...props }) {
 
 export default function BenzoLanding() {
   const [demo, dispatch] = useBenzoDemo()
-  const active = demo.active && demo.running
+  const active = demo.phase === 'activeVerified' && demo.running
 
   return <div className="benzo-site" style={designVariables(active)} data-benzo-active={active}>
     <a className="bz-skip" href="#main">{copy.navigation.skip}</a>
