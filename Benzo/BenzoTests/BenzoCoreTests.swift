@@ -773,6 +773,16 @@ extension BenzoCoreTests {
         } catch { XCTAssertEqual(error as? ReleaseCheckError, .unavailable) }
         XCTAssertEqual(received, 1_048_577)
     }
+
+    func testUnexpectedResponseURLIsRejectedEvenWithValidMetadata() async throws {
+        let response = HTTPURLResponse(url: URL(string: "https://attacker.invalid/releases/latest")!,
+                                       statusCode: 200, httpVersion: nil, headerFields: nil)!
+        let checker = ReleaseChecker(load: { _ in (try releaseFixture(), response) })
+        do {
+            _ = try await checker.check(installed: AppVersion(shortVersion: "0.9.0", buildVersion: "1"))
+            XCTFail("Valid-looking metadata from another URL must not offer an update")
+        } catch { XCTAssertEqual(error as? ReleaseCheckError, .unavailable) }
+    }
 }
 
 extension BenzoCoreTests {
