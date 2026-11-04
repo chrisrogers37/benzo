@@ -75,8 +75,8 @@ Archive + cross-reference: `documentation/planning/system-review_2026-07-07/04_g
 ## Recovery release continuation — November 3
 
 - [x] Independently review and merge containment PR #99; merged-head build/security checks pass.
-- [ ] 01: bounded reads and observation-only permission panel, focused tests and review.
-- [ ] 04: adopt bounded reads and truthful diagnostic states.
+- [x] 01: PR #100 merged after independent review; full Xcode builds, 44 native tests, 39 web tests and security CI passed.
+- [ ] 04: implementation, local checks, browser parity and independent review complete on `implement/benzo-diagnostics` from `a763f95`; full Xcode/required CI and merge pending.
 - [ ] 02: settle dedicated target/authorization gates, implement recovery/quit, and verify on approved test hardware.
 - [ ] Publish the native installer only after recovery fixes and native acceptance pass.
 

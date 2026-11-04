@@ -23,11 +23,14 @@ final class BenzoViewModel: ObservableObject {
 
     // Diagnostics
     @Published var showDiagnostics = false
-    @Published var isLoadingDiagnostics = false
-    @Published var sleepSessions: [SleepSession] = []
-    @Published var lastWakeReason: String?
-    @Published var usbDevices: [USBDevice] = []
-    @Published var settingsVerification: [SettingVerification] = []
+    @Published private(set) var sleepData: DiagnosticState<SleepReadPayload> = .idle
+    @Published private(set) var usbDevices: DiagnosticState<[USBDevice]> = .idle
+    @Published private(set) var observedSettings: DiagnosticState<[ObservedSetting]> = .idle
+    private var diagnosticGeneration = 0
+
+    var isLoadingDiagnostics: Bool {
+        sleepData.isLoading || usbDevices.isLoading || observedSettings.isLoading
+    }
 
     var onStateChange: ((Bool) -> Void)?
     private var isInitialized = false
@@ -122,19 +125,33 @@ final class BenzoViewModel: ObservableObject {
     // MARK: - Diagnostics
 
     func loadDiagnostics() {
-        isLoadingDiagnostics = true
+        // Called by the UI; all generation and published state access stays on its main boundary.
+        diagnosticGeneration += 1
+        let generation = diagnosticGeneration
+        sleepData = .loading
+        usbDevices = .loading
+        observedSettings = .loading
         let dependencies = self.dependencies
-        dependencies.runInBackground { [weak self] in
-            let (sessions, wakeReason) = dependencies.fetchSleepData()
-            let usb = dependencies.fetchUSBDevices()
 
+        dependencies.runInBackground { [weak self] in
+            let result = await dependencies.fetchSleepData()
             dependencies.runOnMain {
-                guard let self else { return }
-                self.sleepSessions = sessions
-                self.lastWakeReason = wakeReason.map { SleepSession.humanReadableReason($0) }
-                self.usbDevices = usb
-                self.settingsVerification = dependencies.verifySettings(self.settingStates, self.isActive)
-                self.isLoadingDiagnostics = false
+                guard let self, self.diagnosticGeneration == generation else { return }
+                self.sleepData = DiagnosticState(result)
+            }
+        }
+        dependencies.runInBackground { [weak self] in
+            let result = await dependencies.fetchUSBDevices()
+            dependencies.runOnMain {
+                guard let self, self.diagnosticGeneration == generation else { return }
+                self.usbDevices = DiagnosticState(result)
+            }
+        }
+        dependencies.runInBackground { [weak self] in
+            let result = await dependencies.readObservedSettings()
+            dependencies.runOnMain {
+                guard let self, self.diagnosticGeneration == generation else { return }
+                self.observedSettings = DiagnosticState(result)
             }
         }
     }

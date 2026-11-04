@@ -43,6 +43,7 @@
 		D11000000000000000000009 /* BenzoDependencies.swift in Sources */ = {isa = PBXBuildFile; fileRef = D20000000000000000000002; };
 		D1100000000000000000000A /* LoginItemClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = D20000000000000000000003; };
 		D1100000000000000000000B /* BenzoViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000090000000000000009; };
+		D11000000000000000000012 /* DiagnosticService.swift in Sources */ = {isa = PBXBuildFile; fileRef = C20000030000000000000003; };
 		D1100000000000000000000C /* BenzoCoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D20000000000000000000005; };
 		D1100000000000000000000D /* TestDoubles.swift in Sources */ = {isa = PBXBuildFile; fileRef = D20000000000000000000006; };
 		E10000000000000000000001 /* PermissionObservation.swift in Sources */ = {isa = PBXBuildFile; fileRef = E20000000000000000000001; };
@@ -378,6 +379,7 @@
 				D11000000000000000000009 /* BenzoDependencies.swift in Sources */,
 				D1100000000000000000000A /* LoginItemClient.swift in Sources */,
 				D1100000000000000000000B /* BenzoViewModel.swift in Sources */,
+				D11000000000000000000012 /* DiagnosticService.swift in Sources */,
 				D1100000000000000000000C /* BenzoCoreTests.swift in Sources */,
 				D1100000000000000000000D /* TestDoubles.swift in Sources */,
 				E11000000000000000000001 /* PermissionObservation.swift in Sources */,

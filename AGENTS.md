@@ -29,7 +29,8 @@ Do not label fallback `swiftc` validation a full Xcode pass.
 
 The shared `Benzo` scheme builds the application without launching it. The
 shared `BenzoCoreTests` scheme runs an unhosted test bundle. Keep live command
-adapters, login, diagnostic and application composition out of that test target.
+adapters, login and application composition out of that test target. The injected
+DiagnosticService uses fake read outcomes in tests; it never selects a live runner.
 The bounded `CommandRunner` engine is the sole process-test exception: it may run
 only the owned child fixture, never real pmset, sudo, osascript or host diagnostics.
 ViewModel tests require explicit fakes and manual startup; no production defaults.

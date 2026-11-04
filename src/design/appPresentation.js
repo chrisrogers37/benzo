@@ -27,7 +27,13 @@ export const appPresentation = {
     note: ['This only checks for a legacy rule.', 'It does not verify authorization', 'or change permissions.'],
   },
   mainName: 'Benzo sleep controls',
-  diagnostics: { name: 'Benzo diagnostics', title: 'Diagnostics', back: 'Back', sessions: 'Recent Sleep Sessions', wakeReason: 'Last Wake Reason', usb: 'Connected USB Devices', settings: 'Settings Verification', verified: 'All settings verified', expected: 'expected', missing: 'N/A', drifted: count => `${count} setting${count === 1 ? '' : 's'} drifted` },
+  diagnostics: {
+    name: 'Benzo diagnostics', title: 'Diagnostics', back: 'Back',
+    sessions: 'Recent Sleep Sessions', wakeReason: 'Last Wake Reason', usb: 'Connected USB Devices', settings: 'Current Settings',
+    loading: 'Loading...', sleepFailure: 'Could not read sleep history', sleepEmpty: 'No sleep sessions reported',
+    usbFailure: 'Could not read USB devices', usbEmpty: 'No USB devices reported', settingsFailure: 'Could not read settings',
+    missing: 'Not reported', unknown: 'Unknown', summary: 'Reported by pmset. Changes are not verified.',
+  },
 }
 
 export const exampleReadings = {

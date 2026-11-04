@@ -94,7 +94,10 @@ final class FakeDependencies {
     var diagnosticCalls = 0
     var terminationCalls = 0
     var mainQueue: [() -> Void] = []
-    var backgroundQueue: [() -> Void] = []
+    var backgroundQueue: [() async -> Void] = []
+    var sleepResult: Result<SleepReadPayload, DiagnosticReadError> = .success(SleepReadPayload(sessions: [], lastWakeReason: nil))
+    var usbResult: Result<[USBDevice], DiagnosticReadError> = .success([])
+    var settingsResult: Result<[ObservedSetting], DiagnosticReadError> = .success([])
 
     func makeViewModel(startupPolicy: BenzoStartupPolicy = .manual, backupStore: (any BackupStoring)? = nil) -> BenzoViewModel {
         let dependencies = BenzoDependencies(
@@ -103,9 +106,9 @@ final class FakeDependencies {
             preferences: preferences,
             loginItem: login,
             observePermission: { self.permissionObservations += 1; return self.permissionObservation },
-            fetchSleepData: { self.diagnosticCalls += 1; return ([], nil) },
-            fetchUSBDevices: { self.diagnosticCalls += 1; return [] },
-            verifySettings: { _, _ in self.diagnosticCalls += 1; return [] },
+            fetchSleepData: { self.diagnosticCalls += 1; return self.sleepResult },
+            fetchUSBDevices: { self.diagnosticCalls += 1; return self.usbResult },
+            readObservedSettings: { self.diagnosticCalls += 1; return self.settingsResult },
             runInBackground: { self.backgroundQueue.append($0) },
             runOnMain: { self.mainQueue.append($0) },
             terminate: { self.terminationCalls += 1 }
@@ -113,15 +116,26 @@ final class FakeDependencies {
         return BenzoViewModel(dependencies: dependencies, startupPolicy: startupPolicy)
     }
 
-    func runBackgroundQueue() {
+    func runBackgroundQueue() async {
         let pending = backgroundQueue
         backgroundQueue = []
-        pending.forEach { $0() }
+        for work in pending { await work() }
     }
 
     func runMainQueue() {
         let pending = mainQueue
         mainQueue = []
         pending.forEach { $0() }
+    }
+}
+
+/// Supplies captured bytes only; never launches a process.
+final class FakeReadCommandRunner: ReadCommandRunning {
+    var calls: [ReadCommand] = []
+    var outcome = CommandOutcome(stdout: Data(), stderr: Data(), termination: .exited(0), outputComplete: true, outputTruncated: false, directChildStopped: true)
+
+    func run(_ command: ReadCommand) async -> CommandOutcome {
+        calls.append(command)
+        return outcome
     }
 }

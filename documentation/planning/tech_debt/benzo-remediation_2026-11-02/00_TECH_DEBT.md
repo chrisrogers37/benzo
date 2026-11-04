@@ -49,8 +49,8 @@ Filenames preserve existing links; **this table, not numeric order, controls exe
 | Order | Document | Deliverable |
 |---|---|---|
 | 1 — MERGED | [03 — Immediate containment](03_lifecycle.md) | Remove timer/kill/drift/launch mutation, freeze selections, disable delayed sleep, preserve cask recovery prerequisites. No new engine. |
-| 2 — IN PROGRESS | [01 — Bounded reads and authorization preparation](01_command-permissions.md) | Reusable bounded read transport and non-authorizing observation. No temporary grant or partial async mutation migration. |
-| 3 | [04 — Truthful existing diagnostics](04_diagnostics.md) | Adopt bounded reads, distinguish failure/empty, reject stale completions, show neutral observed settings. |
+| 2 — MERGED | [01 — Bounded reads and authorization preparation](01_command-permissions.md) | Reusable bounded read transport and non-authorizing observation. No temporary grant or partial async mutation migration. |
+| 3 — IN PROGRESS | [04 — Truthful existing diagnostics](04_diagnostics.md) | Adopt bounded reads, distinguish failure/empty, reject stale completions, show neutral observed settings. |
 | Conditional | [02 — Final frozen manual sessions and recovery](02_recovery-engine.md) | One final safe operation/authorization/recovery boundary after the gates below. Actual legacy recovery need independently justifies its bounded recovery scope. |
 | No PR | [05 — Helper cleanup decision](05_unused-parser.md) | Closed as a standalone project; optional adjacent deletion. |
 | No planned PR | [06 — Dependency maintenance decision](06_web-dependencies.md) | Ordinary maintenance, independent of native phase completion. |
@@ -122,3 +122,7 @@ On November 3 the owner approved branch publication, draft PR creation and the a
 ## November 3 merge and continuation
 
 PR #99 merged at `834db50d663170aef79a849158a43ba21438c85f` after independent native/cask and web reviews found no introduced blockers. Its merged-head build/security CI passed and the website deployed. The owner authorized reviewed merges and a native release, then explicitly chose completing the remaining recovery fixes before publication. 01 proceeds on that parent; 02 still requires its concrete workflow, transport and dedicated-Mac acceptance. No native release was created.
+
+## Phase 01 merged; phase 04 implementation — November 3
+
+PR #100 merged as `a763f95d25410cd6ff174ba4b720fe3386a1c1d7` after independent review and passing build/security checks. Full Xcode Debug/Release and 44 unhosted native tests passed; web tests passed 39/39. Merge-tree equality and merged-head CI were verified. Phase 04 starts on that parent. These checks do not establish privileged execution, recovery or physical sleep acceptance; the final recovery and native release gates remain open.

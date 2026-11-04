@@ -90,8 +90,9 @@ xcodebuild -project Benzo/Benzo.xcodeproj -scheme BenzoCoreTests -destination 'p
 ```
 
 `BenzoCoreTests` does not host or launch the app. Its source list excludes the live
-command, diagnostic and login adapters. Tests use in-memory preferences, fake
-commands and clocks, and task-owned temporary backup files. Do not run the
+command and login adapters. DiagnosticService receives fake reader outcomes. Tests
+use in-memory preferences, fake commands and clocks, and task-owned temporary
+backup files. Do not run the
 production app or privileged/lifecycle acceptance on an always-on fleet host.
 Physical sleep, permissions and recovery acceptance require a separately approved
 test Mac; a successful build or fake-based test does not prove those outcomes.

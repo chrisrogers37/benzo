@@ -35,12 +35,12 @@ struct SleepSession: Identifiable {
 
     static func humanReadableReason(_ reason: String) -> String {
         if reason.contains("LidOpen") || reason.contains("Lid Open") { return "Lid Opened" }
+        if reason.contains("UserActivity") { return "User Activity" }
         if reason.contains("PowerButton") || reason.contains("User") { return "Power Button" }
         if reason.contains("OHC") || reason.contains("EHC") || reason.contains("XHC") || reason.contains("USB") { return "USB Device" }
         if reason.contains("WOL") || reason.contains("Network") { return "Network (WoL)" }
         if reason.contains("RTC") || reason.contains("Alarm") { return "Scheduled Wake" }
         if reason.contains("Notification") { return "Push Notification" }
-        if reason.contains("UserActivity") { return "User Activity" }
         if reason.contains("SleepService") { return "Sleep Service" }
         return reason
     }
