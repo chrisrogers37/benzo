@@ -1,22 +1,22 @@
 ---
 title: "Benzo: remaining native accessibility and usability"
 type: plan
-status: draft
+status: partially-complete
 created: 2026-11-04
 ---
 
 # Remaining native accessibility and usability
 
-**Planning only: two small candidate presentation slices, followed by native verification.** This document does not authorize implementation. The [accepted YAGNI amendment](tech_debt/benzo-remediation_2026-11-02/00_TECH_DEBT.md) controls scope; [old P7](../plans/benzo-reorientation_2026-10-25/07_native-ux.md) is a reference, not an implementation queue.
+**Two bounded presentation slices are implemented locally; native acceptance remains open.** The user authorized execution in the follow-up request. No publication, merge or production native launch is authorized. The [accepted YAGNI amendment](tech_debt/benzo-remediation_2026-11-02/00_TECH_DEBT.md) controls scope; [old P7](../plans/benzo-reorientation_2026-10-25/07_native-ux.md) is a reference, not an implementation queue.
 
 ## Evidence and boundaries
 
 - Refreshed `origin/main` and GitHub on November 4 at **17:44 UTC**: `c3a9070b16c602c48b833a6e338fb40930ae4b04`, including merged #99–101. [#43](https://github.com/chrisrogers37/benzo/issues/43), [#79](https://github.com/chrisrogers37/benzo/issues/79), [#81](https://github.com/chrisrogers37/benzo/issues/81) and [#82](https://github.com/chrisrogers37/benzo/issues/82) remain open. [#98](https://github.com/chrisrogers37/benzo/pull/98) is open documentation at `90b78a4`; [#102](https://github.com/chrisrogers37/benzo/pull/102) is draft packaging at `6d34786`.
 - Read current AGENTS/CLAUDE, both requested plans and the reconciliation owner's available [draft findings](/Users/artemis/.codex/worktrees/benzo-backlog-reconciliation/benzo/documentation/planning/tech_debt/benzo-remediation_2026-11-02/07_backlog-reconciliation.md). Reuse its issue dispositions; this plan does not edit that ledger or close issues. Native paths below are relative to `Benzo/Benzo/`; references are pinned to main above.
 - Inspected [benzo.work](https://benzo.work/) through Chrome screenshots and its accessibility tree: default, First launch/Back, editable Options and diagnostics. Tab/Space operated Options and a checkbox with visible focus. Sampled expanded content/footer remained reachable at 200% browser zoom; state/zoom were reset. This was not a complete responsive or screen-reader pass. DOM automation was unavailable; ratios below come from source colors.
-- **Native evidence is source-only.** No production Benzo launch, VoiceOver session, host-setting change, publication or deployment occurred. The final branch changes only this document. The demo previews unreleased behavior and proves neither native accessibility nor installed v0.3.0 behavior.
+- **Native evidence is source-only.** No production Benzo launch, VoiceOver session, host-setting change, publication or deployment occurred. The implementation record below separates local source/browser checks from outstanding native acceptance. The demo previews unreleased behavior and proves neither native accessibility nor installed v0.3.0 behavior.
 
-## Findings and user impact
+## Baseline findings and user impact (c3a9070)
 
 | Finding / evidence class | Current evidence | User impact and disposition |
 |---|---|---|
@@ -41,11 +41,11 @@ Ratios use the standard sRGB relative-luminance calculation for opaque source co
 
 ## Ownership and sequencing
 
-1. **This session owns only this document**, in `/Users/artemis/Projects/benzo-worktrees/native-accessibility-plan`, branch `docs/native-accessibility-plan`. Preserve primary todo/plans and every other worktree. Reconciliation owns ledger/status edits and #98 integration.
+1. **This session owns slices A/B and this record** in `/Users/artemis/Projects/benzo-worktrees/native-accessibility-plan`, branch `implement/benzo-native-accessibility`. The original planning commit remains on `docs/native-accessibility-plan`. Preserve primary todo/plans and every other worktree. Reconciliation owns ledger/status edits and #98 integration.
 2. **Recovery/packaging/native acceptance/release** own final state wording, authorization, restore/quit meaning and eligibility. Consume those decisions; do not redesign them or defer truthful states to a cosmetic pass. Login failure/readback (#79/BZ-027) requires an agreed recovery/update owner; labeling the toggle does not fix persistence.
-3. **Updates:** local `implement/benzo-update-checker` at `e0ea820` is committed but absent from main. It overlaps `AppDelegate`, `FooterView`, `PopoverContentView`, demo/hook/presentation/CSS/tests and `src/design/README.md`. Its owner retains update controls, results, version display and installation design.
-4. **Website:** concurrent `implement/benzo-web-accessibility-trust` at `9aee7fe` has active WIP. General marketing/trust work stays there; coordinate matching app-demo edits without adopting its WIP.
-5. **A before B; one editor per shared file.** Theme/copy review can proceed independently. Before implementing shared view/demo changes, arrange a handoff with recovery/update/web owners and use their settled heads. Drop findings already resolved there; do not cherry-pick their WIP or create a competing footer/popover rewrite. Their unavailable final states are dependencies, not reasons to block this plan.
+3. **Updates:** local `implement/benzo-update-checker` at `38ea13d` is committed, in draft [PR #103](https://github.com/chrisrogers37/benzo/pull/103), and absent from main. It overlaps `AppDelegate`, `FooterView`, `PopoverContentView`, demo/hook/presentation/CSS/tests and `src/design/README.md`. Its owner retains update controls, results, version display and installation design.
+4. **Website:** concurrent `implement/benzo-web-accessibility-trust` was at `45aa217` on the final local-reference check; its owner continues independently. General marketing/trust work stays there; coordinate matching app-demo edits without adopting its WIP.
+5. **A before B; one editor per shared file.** Theme/copy review can proceed independently. The execution request authorizes independent small presentation hunks from current main; use owner-reviewed heads for subsequent shared integration. Drop findings already resolved there; do not cherry-pick their WIP or create a competing footer/popover rewrite. Their unavailable final states are dependencies, not reasons to block this plan.
 6. ViewModel/services, packaging, Xcode/version metadata and install/update plans remain outside ownership. Preserve historical, unbundled `BenzoHybrid`/`BenzoMockup`; active parity is `NativeAppDemo`.
 
 ## Proportionate acceptance
@@ -67,7 +67,18 @@ Ratios use the standard sRGB relative-luminance calculation for opaque source co
 - Empty Settings scene reachability (#82/BZ-048) remains unproven. No settings window/product. Icon color matches `#d4749c` (#82/BZ-049); no cosmetic change.
 - No generic components, design-system rewrite, new diagnostics panels/history/export/telemetry, full theme redesign, standalone parser/formatter cleanup or broad testing harness. No change to marketing, install/update, recovery or quit semantics to make screenshots look consistent.
 
-Validation: a cheaper read-only source review checked F1–F7; parent review adopted its Reduce Motion qualification. Three local links, 13 pinned source paths, all six listed contrast ratios and `git diff --check` passed. Native acceptance remains outstanding.
+Planning validation: a cheaper read-only source review checked F1–F7; parent review adopted its Reduce Motion qualification. Three local links, 13 pinned source paths, all six listed contrast ratios and `git diff --check` passed. Native acceptance remains outstanding.
+
+
+## Implementation and handoff — November 4, 18:10 UTC
+
+- **A/B source implemented at `8a0911e`**, based on `c3a9070`; no ViewModel, service, recovery, permission, quit, update, packaging or historical-demo changes. Retained descriptions now qualify requested outcomes. Meaningful text/control colors are darker; frozen option text stays readable while only its checkbox dims.
+- Native master/settings use labeled `Toggle` controls with local styles; Options is a Button with expanded/collapsed value. Login and the status item are named. Native Diagnostics is visible, focuses Back on entry and returns to its in-panel entry; Option-click remains. The demo mirrors the entry and returns focus to its actual internal/external/menu trigger, including repeated external activation. Descriptions remain associated with editable and frozen options. Standard Toggle styling follows [Apple's accessibility guidance](https://developer.apple.com/documentation/swiftui/view/accessibilityrepresentation(representation:)); actual native output remains unverified.
+- **Local checks:** Node 24.22.1 full web suite passed **49 tests**; final focused demo suite passed **28 tests** after strengthening the repeated-entry check. Final Vite build passed; moderate npm audit found zero vulnerabilities. Whole-app `swiftc -typecheck` targeting macOS 13 passed. Gitleaks 8.30.1 scanned 85 reachable commits with no leaks; its official release digest was verified before running the task-local binary. Diff whitespace passed.
+- **Browser observations:** task-local Chrome confirmed all three diagnostic focus/Back paths, keyboard Options/checkbox operation, visible focus, longer descriptions at 200% zoom, and a 320px viewport under reduced-motion emulation with no observed clipping. Browser DOM automation remained unavailable; contrast ratios are source calculations, not computed-style or pixel measurements. The owned preview tab/group was closed and server stopped. No global OS accessibility/appearance setting was changed.
+- **Review/delegation:** the cheaper `gpt-6-luna` worker completed only the test file; parent inspected it and strengthened the repeated-entry assertion. Independent `gpt-6.1-sol` review of `8a0911e` returned **NO FINDINGS**. Native Claude delegation was occupied by another session; its worker and bookkeeping were left untouched. All task workers completed.
+- **Shared-file handoff:** an object-only `git merge-tree` check against updater `38ea13d` combined without conflicts after using its existing muted-version color. No merge or foreign-branch edit occurred; this is not combined build/UI acceptance. When integrating #103, its owner should review the new release-link color against the semantic control accent and verify focus alongside the Diagnostics entry. Reconciliation and website branches remain separate.
+- **Still required:** full-Xcode Debug/Release and unhosted native tests (this host has CLT only), required final-head CI, native keyboard/VoiceOver/rendered contrast/appearance/large-text acceptance on the dedicated Mac, and final combined recovery/update UI acceptance. Native motion and dynamic announcements remain verify-first. No #43 closure, release readiness, physical-outcome acceptance, push, preview publication or merge is claimed.
 
 [theme]: https://github.com/chrisrogers37/benzo/blob/c3a9070b16c602c48b833a6e338fb40930ae4b04/Benzo/Benzo/Theme/BenzoTheme.swift#L4
 [setting]: https://github.com/chrisrogers37/benzo/blob/c3a9070b16c602c48b833a6e338fb40930ae4b04/Benzo/Benzo/Views/SettingRowView.swift#L12
