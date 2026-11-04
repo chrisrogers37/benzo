@@ -1,6 +1,33 @@
 # Benzo Open Work
 
-## Current gated work — 2026-10-25
+## Website trust follow-through — 2026-11-04
+
+- [x] Owner selected implementation of unowned website accessibility/trust work.
+- [x] Isolate from main; exclude native/demo accessibility, updater, recovery and release owners.
+- [x] Complete the [bounded website work](../documentation/planning/benzo-web-accessibility-trust_2026-11-04.md), including owner-approved MIT licensing and private reports to contact@benzo.work with best-effort handling.
+- [x] Record independent review and local evidence. Owner subsequently authorized consolidation/merge through PR #98; its final checks, merge state and matching website deployment record delivery. No native execution or unrelated issue closures.
+
+## Historical containment checkpoint — 2026-11-02
+
+The pending-merge/check states in the two checkpoints below are historical.
+P1/#95 and containment/reads/diagnostics #99–101 are merged. The
+[current reconciliation](../documentation/planning/tech_debt/benzo-remediation_2026-11-02/07_backlog-reconciliation.md)
+supersedes their queue: recovery/packaging/native acceptance remain with the
+existing #104/#102 owner, update/installation with #103, and native/demo
+accessibility with its separate session. This session's delivery is PR #98.
+
+- [x] YAGNI scope amended and independently reviewed; user requested implementation.
+- [x] Implement plan 03 on `implement/benzo-containment`, from `eed0a969b097142042dc4412424fbc71a04d2c0d`.
+- [x] Verify web behavior, inspect native changes and complete independent review; fix dangling-parent evidence finding.
+- [ ] Full-Xcode native checks and exact-head security CI; no native acceptance on this host.
+- [x] Owner approved branch push, draft PR and automatic Vercel preview on 2026-11-03; merge/release remain held.
+
+The current order is **03 → 01 → 04 → conditional 02**, as recorded in
+`documentation/planning/tech_debt/benzo-remediation_2026-11-02/00_TECH_DEBT.md`.
+Later dependent phases wait for user merge. This amendment supersedes the old
+queue below; remaining manual recovery defects prevent an intermediate native release.
+
+## Historical gated checkpoint — 2026-10-25
 
 - [x] Phase 1 evaluation: `documentation/plans/00_benzo-evaluation_2026-10-25.md`.
 - [x] Phase 2 plan and ironclad hardening: `documentation/plans/benzo-reorientation_2026-10-25/00_overview.md`; document corrections independently verified; recommended F1–F7 and Phase 3 approved with conditions on 2026-10-25.
@@ -58,3 +85,13 @@ Archive + cross-reference: `documentation/planning/system-review_2026-07-07/04_g
 ## Cleanup
 
 - [ ] Close duplicate test issues #51, #52
+
+## Recovery release continuation — November 3
+
+- [x] Independently review and merge containment PR #99; merged-head build/security checks pass.
+- [x] 01: PR #100 merged after independent review; full Xcode builds, 44 native tests, 39 web tests and security CI passed.
+- [ ] 04: implementation, local checks, browser parity and independent review complete on `implement/benzo-diagnostics` from `a763f95`; full Xcode/required CI and merge pending.
+- [ ] 02: settle dedicated target/authorization gates, implement recovery/quit, and verify on approved test hardware.
+- [ ] Publish the native installer only after recovery fixes and native acceptance pass.
+
+Owner requested reviewed merge then release and selected completing recovery fixes first. This supersedes earlier no-merge authority for this work; fleet host restrictions remain.

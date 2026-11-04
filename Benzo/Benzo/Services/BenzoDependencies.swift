@@ -6,7 +6,14 @@ protocol CommandRunning {
     func runDirectWithSudo(_ executable: String, _ arguments: [String]) throws
 }
 
+enum BackupEvidencePresence: Equatable {
+    case absent
+    case present
+    case unknown(String)
+}
+
 protocol BackupStoring {
+    func evidencePresence() -> BackupEvidencePresence
     func hasBackup() -> Bool
     func save(_ state: PMSetState) throws
     func load() throws -> OriginalSettingsBackup
@@ -18,14 +25,8 @@ protocol PreferenceStoring {
     func set(_ value: Any?, forKey key: String)
 }
 
-protocol BenzoCancellation {
-    func cancel()
-}
-
 protocol BenzoClock {
     var now: Date { get }
-    func schedule(after delay: TimeInterval, perform: @escaping () -> Void)
-    func scheduleRepeating(every interval: TimeInterval, perform: @escaping (any BenzoCancellation) -> Void) -> any BenzoCancellation
 }
 
 enum BenzoStartupPolicy {
@@ -40,16 +41,12 @@ struct BenzoDependencies {
     let commands: any CommandRunning
     let backup: any BackupStoring
     let preferences: any PreferenceStoring
-    let clock: any BenzoClock
     let loginItem: any LoginItemClient
-    let isSetupComplete: () -> Bool
-    let needsSudoersUpdate: () -> Bool
-    let installSudoersRule: () throws -> Void
-    let fetchSleepData: () -> (sessions: [SleepSession], lastWakeReason: String?)
-    let fetchUSBDevices: () -> [USBDevice]
-    let fetchSleepBlockers: () -> [SleepBlocker]
-    let verifySettings: ([SleepSetting: Bool], Bool) -> [SettingVerification]
-    let runInBackground: (@escaping () -> Void) -> Void
+    let observePermission: () -> PermissionObservation
+    let fetchSleepData: () async -> Result<SleepReadPayload, DiagnosticReadError>
+    let fetchUSBDevices: () async -> Result<[USBDevice], DiagnosticReadError>
+    let readObservedSettings: () async -> Result<[ObservedSetting], DiagnosticReadError>
+    let runInBackground: (@escaping () async -> Void) -> Void
     let runOnMain: (@escaping () -> Void) -> Void
     let terminate: () -> Void
 }
@@ -63,7 +60,9 @@ enum BenzoPreferenceKey {
 enum BenzoPaths {
     static let pmset = "/usr/bin/pmset"
     static let sudo = "/usr/bin/sudo"
-    static let sudoers = "/etc/sudoers.d/benzo"
+    // Canonical spelling of /etc/sudoers.d/benzo avoids following the standard /etc symlink.
+    // Used only for metadata observation; no installer or remover consumes this path.
+    static let sudoers = "/private/etc/sudoers.d/benzo"
     static let supportDirectory = "Benzo"
     static let backupFilename = "original-pmset.json"
 }

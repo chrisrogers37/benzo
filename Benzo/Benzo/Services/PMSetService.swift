@@ -6,7 +6,7 @@ enum PMSetError: LocalizedError {
     var errorDescription: String? {
         switch self {
         case .invalidBackupData(let key):
-            return "Backup data for '\(key)' is invalid. Delete ~/Library/Application Support/Benzo/original-pmset.json and re-activate."
+            return "Backup data for '\(key)' is invalid. Keep the recovery file and seek recovery assistance before making further changes."
         }
     }
 }
@@ -76,11 +76,5 @@ struct PMSetService {
             }
             try runner.runDirectWithSudo(pmsetPath, ["-a", key, value])
         }
-    }
-
-    /// Kill caffeinate processes owned by the current user
-    @discardableResult
-    func killCaffeinateProcesses() -> Bool {
-        return (try? runner.runDirect("/usr/bin/pkill", ["caffeinate"])) != nil
     }
 }

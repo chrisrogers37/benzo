@@ -42,7 +42,7 @@ This file provides project-specific guidance for Claude Code. Update this file w
 
 ## Project Overview
 
-**Benzo** is a macOS menubar sleep-configuration utility. Applying a pmset value is not proof of physical hibernation or USB power behavior. The landing page is React/Vite on Vercel. The approved re-orientation and delivery gates live in `documentation/plans/benzo-reorientation_2026-10-25/00_overview.md`.
+**Benzo** is a macOS menubar sleep-configuration utility. Applying a pmset value is not proof of physical hibernation or USB power behavior. The landing page is React/Vite on Vercel. The accepted scope and execution order live in `documentation/planning/tech_debt/benzo-remediation_2026-11-02/00_TECH_DEBT.md`: 03 → 01 → 04 → conditional 02. Earlier reorientation documents remain safety references, not authority to restore removed features.
 
 **Version**: 0.3.0
 
@@ -61,39 +61,41 @@ Benzo/Benzo/                     — Swift macOS menubar app
 │   └── USBDevice.swift          — USB device name and power draw
 ├── Services/
 │   ├── PMSetService.swift       — runs pmset commands via ShellExecutor
-│   ├── ShellExecutor.swift      — sudo via sudoers rule (post-setup) or osascript (first run)
+│   ├── ShellExecutor.swift      — legacy synchronous mutation transport; unreleased
+│   ├── CommandRunner.swift      — bounded fixed diagnostic reads and owned-fixture tests
+│   ├── PermissionObservation.swift — metadata-only legacy-rule evidence, never readiness
 │   ├── BackupService.swift      — save/load original pmset values to ~/Library/Application Support/Benzo/
-│   └── DiagnosticService.swift  — parses pmset logs, system_profiler, verifies settings
+│   └── DiagnosticService.swift  — bounded injected reads; parses logs/USB and observes settings
 ├── ViewModels/
-│   └── BenzoViewModel.swift     — all state: activate/deactivate, sleepNow, quit (restores defaults), diagnostics
+│   └── BenzoViewModel.swift     — state: legacy apply/restore/quit, disabled sleep action, diagnostic results
 ├── Views/
 │   ├── PopoverContentView.swift — main layout, switches between setup/normal/diagnostic views
 │   ├── MasterToggleView.swift   — "Deep Sleep is On/Off" header with toggle
-│   ├── SleepNowButton.swift     — pink capsule button, activates settings then sleeps
+│   ├── SleepNowButton.swift     — disabled sleep action with recovery explanation
 │   ├── SettingRowView.swift     — individual setting checkbox row
 │   ├── FooterView.swift         — launch at login, version, restore defaults, quit
-│   ├── SetupView.swift          — first-run permission grant screen
-│   └── DiagnosticView.swift     — ⌥-click view: sleep sessions, wake reason, USB, verification
+│   ├── SetupView.swift          — non-authorizing permission observation, Refresh and Back
+│   └── DiagnosticView.swift     — ⌥-click view: sleep sessions, wake reason, USB, observed settings
 └── Theme/
     └── BenzoTheme.swift         — colors (accent: #d4749c)
 
 src/BenzoHybrid.jsx              — unbundled historical page; legacy layout/copy only
-src/components/BenzoMockup.jsx   — interactive mockup; keep native UI parity here
+src/components/BenzoMockup.jsx   — unbundled historical mockup and tests
 src/landing/NativeAppDemo.jsx      — source-based interactive reproduction; original mockup retained as historical source
 src/landing/BenzoLanding.jsx         — public landing page; single owner of interactive demo state
 src/design/                     — core web tokens, CSS, copy, metadata, icons and app presentation
 src/demo/                       — browser state/hooks and legacy compatibility fixture exports
-Benzo/BenzoTests/                — unhosted core XCTest bundle; fakes only
+Benzo/BenzoTests/                — unhosted injected tests plus owned read-child fixture
 scripts/build-dmg.sh             — archive, sign, notarize, and package as DMG
 Casks/benzo.rb                   — Homebrew cask formula
 ```
 
 ### Key Principles
 
-- **Mockup sync**: Any UI or behavioral change to the native app must also be reflected in `src/components/BenzoMockup.jsx` and the shared demo state in `src/BenzoHybrid.jsx` / `src/demo/`.
+- **Mockup sync**: Any UI or behavioral change to the native app must also be reflected in `src/landing/NativeAppDemo.jsx`, `src/demo/useBenzoDemo.js` and `src/design/appPresentation.js`. `BenzoLanding` owns the single state. Preserve historical `BenzoHybrid`/`BenzoMockup` sources, reducer and tests.
 - **Draft fidelity**: Marketing redesigns must preserve the native UI and interactive controls in `src/landing/NativeAppDemo.jsx`; keep demo navigation/disclosures outside the app panel. Verify against current Swift source, and reserve pixel-parity claims for comparison with an approved native screenshot.
 - **Core web design**: Import redesigned page/demo presentation from `src/design/`. Keep one `useBenzoDemo` state in `BenzoLanding` for panel and page theme; never mirror the master switch in a second state. Marketing copy and native UI copy have separate owners inside the module. See `src/design/README.md`.
-- **Recovery scope**: The current app attempts backup restoration on quit, with known failure paths tracked in P4/P5. Never claim defaults or successful restoration without evidence.
+- **Recovery scope**: Containment removes automatic/timed writes and freezes selections while active or recovery evidence is present/unknown. Sleep Now is unavailable. Legacy manual apply/restore/quit still have known failure paths, held for 02 or an accepted recovery-only endpoint. Never claim an Off toggle proves restoration or release an incomplete native safety slice. Preserve originals and grants during app removal; removal is not verified restoration or retirement.
 - **Not App Store**: Benzo requires root access for pmset, incompatible with App Store sandboxing.
 
 ---
@@ -103,11 +105,11 @@ Casks/benzo.rb                   — Homebrew cask formula
 1. Make changes
 2. Compile Debug and Release with full Xcode, without launching the app; run the unhosted `BenzoCoreTests` scheme. Use README commands and task-owned DerivedData.
 3. Use Node 24 from `.nvmrc`; run `npm ci`, `npm test`, `npm run build`, and authorized browser checks with `npm run dev`.
-4. Before declaring a PR ready: verify both app configurations, core tests, site tests/build and browser parity; record blocked checks explicitly. User merges each ordered phase.
+4. Before declaring a PR ready: verify both app configurations, core tests, site tests/build and browser parity; record blocked checks explicitly. The owner authorized reviewed merges of the ordered recovery fixes on November 3.
 
 PRs run web/native build and test checks (`.github/workflows/build.yml`) plus `npm audit --audit-level=moderate` and Gitleaks (`.github/workflows/security.yml`). All required checks and independent review must pass before merge.
 
-This Mac Mini is an always-on fleet host: never launch production Benzo or mutate its power, sudoers, login or fleet state for acceptance. Core tests compile only injected services/models/ViewModel and fake dependencies; they must not link live adapters or app composition. Dedicated native acceptance is separately approved. Vercel can auto-deploy branch previews: obtain scoped deployment authority before remote push. Never push main or merge.
+This Mac Mini is an always-on fleet host: never launch production Benzo or mutate its power, sudoers, login or fleet state for acceptance. Core tests compile injected services/models/ViewModel and fake dependencies. The bounded process engine may run only its owned synthetic fixture; live adapters and app composition remain excluded. Dedicated native acceptance is separately approved. Vercel can auto-deploy branch previews: obtain scoped deployment authority before remote push. Do not push main directly. The owner authorized reviewed recovery-phase merges and a native release only after the recovery fixes and acceptance are complete.
 
 ## Commands Reference
 
@@ -153,7 +155,7 @@ npm run build        # Production build
 - `womp` = Wake-on-LAN (network wake), NOT physical USB device wake. Labeled "Disable Network Wake" in the app.
 - Do not promise USB wake prevention or zero power drain from `hibernatemode 25`; supported hardware/OS behavior must be observed separately.
 - Between `pmset sleepnow` and full hibernation, there's a brief window where the Mac is in normal sleep and USB devices could still wake it.
-- The sudoers rule (`/etc/sudoers.d/benzo`) grants passwordless access to a narrow allowlist of `pmset` invocations only: `pmset sleepnow` and `pmset -a <key> [0-9]*` for the keys defined in `SleepSetting.allCases.flatMap(\.pmsetKeys)`. Generated at install time from `SleepSetting`, validated with `visudo -cf` before install, versioned via `sudoersRuleVersion` in `UserDefaults` for migration.
+- Existing releases installed a legacy rule at `/etc/sudoers.d/benzo`. The current source only observes metadata at the canonical `/private/etc/sudoers.d/benzo` path. Presence never proves authorization or safe scope. Installer, remover, version-based readiness and privileged probe paths are removed; preserve old evidence and grants until reviewed recovery/retirement.
 
 ### Distribution
 

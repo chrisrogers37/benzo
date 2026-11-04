@@ -13,13 +13,27 @@ export const appPresentation = {
   version: 'v0.3.0',
   menu: { name: 'Benzo menu', hint: 'Click to open or close. Option-click when closed for diagnostics.', finder: 'Finder', wifi: 'Wi-Fi', time: '9:41 AM' },
   master: { name: 'Deep Sleep', on: 'Deep Sleep is On', off: 'Deep Sleep is Off', activeDescription: 'Sedated. Your Mac can rest.', inactiveDescription: 'Your Mac is awake.' },
-  sleep: { action: 'Sleep Now', sleeping: 'Sleeping...', countdown: 'Sleeping in', openTimer: 'Set sleep timer', closeTimer: 'Close timer', minutes: [5, 15, 30, 60], requestDelayMs: 500 },
+  sleep: { action: 'Sleep Now', unavailable: 'Sleep Now is unavailable while recovery controls are being updated.' },
   options: 'Options',
-  blockers: { singular: '1 app may prevent sleep:', exampleName: 'caffeinate' },
+  selectionBlocked: 'Resolve the current session or recovery before changing settings.',
   footer: { login: 'Launch at Login', restore: 'Restore System Defaults', quit: 'Quit', noBackup: 'Nothing to revert — activate Benzo first.' },
-  setup: { name: 'Benzo setup', title: 'Welcome to Benzo', description: "Benzo needs one-time permission to modify your Mac's sleep settings.", action: 'Grant Permission', note: ['This creates a system rule so Benzo', 'can adjust sleep settings without', 'repeatedly asking for your password.'] },
+  setup: {
+    name: 'Benzo permission status', title: 'Permission status', action: 'Refresh status', back: 'Back',
+    observations: {
+      noLegacyRule: 'No legacy permission rule found',
+      legacyRulePresent: 'Legacy permission rule found; authorization is unverified',
+      unknown: 'Permission status could not be determined',
+    },
+    note: ['This only checks for a legacy rule.', 'It does not verify authorization', 'or change permissions.'],
+  },
   mainName: 'Benzo sleep controls',
-  diagnostics: { name: 'Benzo diagnostics', title: 'Diagnostics', back: 'Back', sessions: 'Recent Sleep Sessions', wakeReason: 'Last Wake Reason', usb: 'Connected USB Devices', settings: 'Settings Verification', verified: 'All settings verified', expected: 'expected', missing: 'N/A', drifted: count => `${count} setting${count === 1 ? '' : 's'} drifted` },
+  diagnostics: {
+    name: 'Benzo diagnostics', title: 'Diagnostics', back: 'Back',
+    sessions: 'Recent Sleep Sessions', wakeReason: 'Last Wake Reason', usb: 'Connected USB Devices', settings: 'Current Settings',
+    loading: 'Loading...', sleepFailure: 'Could not read sleep history', sleepEmpty: 'No sleep sessions reported',
+    usbFailure: 'Could not read USB devices', usbEmpty: 'No USB devices reported', settingsFailure: 'Could not read settings',
+    missing: 'Not reported', unknown: 'Unknown', summary: 'Reported by pmset. Changes are not verified.',
+  },
 }
 
 export const exampleReadings = {

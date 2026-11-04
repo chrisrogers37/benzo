@@ -4,18 +4,16 @@ type: plan
 status: active
 owner: claudna:forge
 created: 2026-10-25
-updated: 2026-10-27
+updated: 2026-11-04
 tags: [enhancement, security, reliability]
 repos: chrisrogers37/benzo
 ---
 
 ## Summary
 
-Re-orient Benzo around a small, explicit promise: **request sleep, see what changed, and return to prior supported settings without guessing.** This is an eight-PR delivery epic within the user's required ordering: structure/build (P1–P3), features (P4–P6), then UX/UI (P7–P8). The user approved Phase 3 implementation with recommended F1–F7 choices and their conditions on 2026-10-25. Publication, permission installation and deployment retain their separate scoped gates.
+Re-orient Benzo around a small, explicit promise: **request sleep, see what changed, and return to prior supported settings without guessing.** The accepted [November 2 YAGNI amendment](../../planning/tech_debt/benzo-remediation_2026-11-02/00_TECH_DEBT.md) supersedes the original eight-PR sequence and its timer, live-edit, temporary-policy and standing-grant requirements. The detailed contracts, choices and issue ledger below retain October design provenance; they are not instructions to execute P2–P8 unchanged.
 
-The evaluation/planning stages are complete and F1–F7 were ratified with their conditions on October 25. P1 implementation is merged in [PR #95](https://github.com/chrisrogers37/benzo/pull/95), commit `d88ab5d`; independent source reviews and the owner's manual parity check are recorded in the [delivery log](RUN_LOG.md). P2 has not started and is the next product phase.
-
-On October 27 the owner also approved and merged a bounded site release, [PR #97](https://github.com/chrisrogers37/benzo/pull/97), commit `eed0a96`. The redesigned landing page, shared web design module and demo regression fix are live at https://benzo.work/ with all post-merge CI green. This is a partial P8 contribution, not completion of P2–P7 or final P8 acceptance. The [design remediation status](../benzo-design-remediation_2026-10-26/00_overview.md) lists completed work and remaining evidence. No conversion, installation or active-user gain has been measured.
+The [November 4 reconciliation](../../planning/tech_debt/benzo-remediation_2026-11-02/07_backlog-reconciliation.md) is the current status/disposition ledger. P1 (#95) and the site subset (#96/#97) are delivered; containment, bounded reads/permission observation and diagnostics (#99–101) are merged. Main `c3a9070` has passing build/security CI and website deployment, not a new native release or physical acceptance. Packaging #102, recovery #104 and native release belong to the existing recovery session; update checking/installation belongs to the existing update session. [P7](07_native-ux.md) and [P8](08_site-trust.md) now contain only bounded remaining UX/trust briefs. No umbrella is closed by a partial delivery.
 
 ## Goal
 
@@ -33,7 +31,7 @@ The site production build passed; npm audit reported two high dependency package
 
 The authoritative assessment is [Phase 1 evaluation](../00_benzo-evaluation_2026-10-25.md), including command results, uncertainty and source pointers. Historical `documentation/planning/system-review_2026-07-07/` informs the issue ledger but does not ratify its revenue roadmap.
 
-| Area | Pinned evaluation source and implication |
+| Area | Pinned October evaluation source and implication |
 |---|---|
 | Process/auth boundary | `Benzo/Benzo/Services/ShellExecutor.swift:43,53,77,90,120`: wrong permission probe, automatic migration path, numeric-prefix glob, wait-before-drain and generic exit-1 cancellation. |
 | Apply/restore | `Services/PMSetService.swift:18,24,33,69,82`: flat reads, sequential `-a` writes, unsupported delete/reactivate advice and broad blocker termination. |
@@ -45,7 +43,9 @@ The authoritative assessment is [Phase 1 evaluation](../00_benzo-evaluation_2026
 
 Paths in this family are repository-relative unless absolute. Native shorthand `Services/`, `Models/`, `Views/`, `Theme/`, `App/` and `ViewModels/` is relative to `Benzo/Benzo/`. Bare `BenzoViewModel.swift` means `Benzo/Benzo/ViewModels/BenzoViewModel.swift`; other bare native filenames resolve to their explicitly named native subdirectory in the same Evidence/ownership section. `project.pbxproj` means `Benzo/Benzo.xcodeproj/project.pbxproj`; tests mean `Benzo/BenzoTests/`. Proposed new files/types are labeled **new**; they do not already exist. Evidence lines refer to the pinned base and will shift during delivery.
 
-## Architecture
+## Architecture (historical design reference)
+
+The amendment controls retained behavior and final recovery G1–G4. In particular, C7's bridge/standing-grant design and C8's scheduling/blocker-identity subsystem are superseded; C9 does not authorize new receipts, logging or a hardware-matrix product. Safety obligations of retained writes remain.
 
 Keep the current ViewModel → service → direct argv boundary. Add narrowly justified interfaces and one serialized operation coordinator, not a daemon or general framework.
 
@@ -82,9 +82,9 @@ The web demo never invokes native controls. Its state contracts mirror each beha
 
 **C9 — Bounded diagnostics.** Typed success/empty/partial/failure/unknown states; only owned validated expectations can be verified. Local operation receipts and privacy-conscious structured logs explain failures. No remote collector, custom signal crash handler, automatic export or historical analytics. Hardware/OS coverage is a declared matrix; unknown remains useful and honest.
 
-## Decision Forks
+## Historical decision forks
 
-All seven recommended choices were **ratified with their stated conditions** by **Chris Rogers** on 2026-10-25: “OK, proceed with Phase 3 using the recommended F1–F7 choices and their conditions.” Alternatives remain below for decision provenance. F7 rights/channel confirmation and every outward/native gate remain separate prerequisites.
+All seven recommended choices were **ratified with their stated conditions** by **Chris Rogers** on 2026-10-25: “OK, proceed with Phase 3 using the recommended F1–F7 choices and their conditions.” Alternatives remain below for decision provenance. November 2 supersedes F2's default standing grant and F5's timer retention; new control is conditional on a demonstrated need and recovery feasibility. F7 rights/channel confirmation and every outward/native gate remain separate prerequisites.
 
 ### F1: Product direction and implicit writes
 
@@ -151,11 +151,9 @@ All seven recommended choices were **ratified with their stated conditions** by 
 
 ## Dependencies
 
-Critical path: P1 → P2 → P3 → P4 → P5 → P6 → P7 → P8. P2-before-P3 is the chosen delivery schedule, not a runtime technical dependency of command/recovery safety on packaging. If packaging alone stalls safety work, return a concrete reorder/scope amendment to the owner; do not silently reorder, weaken artifact acceptance or change phase count. This deliberate sequential delivery matches the owner's ordering and avoids overlapping state/UI files on stacked branches. Independent bounded work inside a phase may use `claudna:delegate` with explicit file ownership, contract and acceptance; integration remains one PR. Do not parallelize dependent phase branches.
+Current source order is **03 → 01 → 04 → conditional 02** in the accepted remediation family; the first three are merged. Packaging is a release requirement, not a predecessor to source safety work. The two active sessions retain recovery/release and updater/installation ownership. P7/P8 coordinate their shared presentation files with those owners rather than require execution of every old phase.
 
-P2 may merge after real community artifact, script fixtures and required CI pass while Developer ID/notarization/release-specific outcomes stay open; those outward gates do not block P3 recovery work. P3–P5 require their stated dedicated-Mac behavioral evidence for acceptance.
-
-External prerequisites are full Xcode CI, a separately approved dedicated test Mac and hardware matrix, browser policy that permits local checks, and owner decisions F1–F7. They are evidence gates rather than excuses to mutate the always-on host. If a phase cannot meet its required gate, leave its PR/delivery state blocked with precise evidence; do not silently substitute mocks or move to the next phase.
+Native authorization, recovery, exact-artifact and physical acceptance remain distinct evidence gates with the existing owner. Website delivery and green CI do not satisfy them. No native execution or host mutation is authorized by this reconciliation.
 
 ## Implementation Plan
 
@@ -170,10 +168,10 @@ The epic blocks claims that all 56 issues are resolved or that a safe public rel
 ### Steps
 
 1. At Phase 3 start, recheck main/issues/PRs/advisories and resolve pending decisions. Inspect Vercel Git integration **before any branch push/PR**: pushes may deploy previews. Obtain explicit approval for that deployment or have the owner disable the trigger. Do not silently alter account settings or add a deploy-ignore workaround. Repeat the deployment check before a user merge that would publish main.
-2. Execute P1 through P8 in the linked order, each one `codex/<phase-slug>` feature branch from latest user-merged prerequisite and one PR. Never push main. Source-only build workflows use `contents: read`, no tag/release/tap/deploy step. Do not run the current destructive DMG script on shared paths while replacing it.
+2. Follow the accepted remediation order and current ownership ledger, not the historical P1–P8 sequence. Use isolated branches and scoped acceptance; do not duplicate the recovery/release or update/installation sessions.
 3. Each PR includes behavior-specific tests, current-head web/native build evidence, current npm audit and gitleaks, plus independent `claudna:review-work` after final changes. Address material findings and rerun only relevant checks/new concerns. User merges; automation does not.
-4. Every native behavior/UI change carries React mockup parity and minimum truthful UI in the same PR. Use the master contracts C1–C9; reject copies of rollback, permission or lifecycle logic in separate callers.
-5. Use `Closes` only for fully met scope on owner merge; otherwise `Refs` and an explicit remaining-evidence checklist. Execute the 18 proposed housekeeping closures only after the owner accepts those dispositions in Phase 3. Keep umbrella issues open until every child row below is fixed or explicitly dispositioned with reason.
+4. Every native behavior/UI change carries React mockup parity and minimum truthful UI in the same PR. Use retained safety contracts as amended on November 2; reject copies of rollback, permission or lifecycle logic in separate callers.
+5. Use `Closes` only for fully met scope on owner merge; otherwise `Refs` and an explicit remaining-evidence checklist. Use the current reconciliation for proposed issue updates; the old 18-closure batch is superseded and this documentation pass changes no issue states. Keep umbrella issues open until every child row below is fixed or explicitly dispositioned with reason.
 6. Update this family after each merged PR with actual SHA/PR/check/review/manual receipts, changed assumptions and unresolved acceptance. Do not mark unchecked implementation criteria complete because the plan was reviewed.
 
 ## Test Plan
@@ -193,20 +191,20 @@ Store commands, exit codes, exact commit/artifact hashes, test target identity, 
 ## Verification Checklist
 
 - [x] Owner ratified recommended F1–F7 with conditions and approved Phase 3 on 2026-10-25.
-- [ ] All eight PRs follow prerequisite merge, exact-head checks and independent review; user merges each.
+- [ ] Retained work follows the accepted amendment/current ownership ledger, with exact-head checks and scoped acceptance; eight PRs are no longer required.
 - [ ] No fleet-host power/authorization/login/process changes are used for acceptance.
 - [ ] Native transaction/lifecycle and exact artifact evidence gates are recorded, not replaced with source assertions.
 - [ ] Every native behavioral PR includes equivalent visible demo states.
-- [ ] All 56 issue dispositions and 29 original top-level BZ items have receipts or explicit accepted closure reasons.
+- [ ] Remaining issue/umbrella outcomes have receipts or explicit accepted dispositions; the current snapshot covers all 54 open issues and the historical child ledger.
 - [ ] Outward actions, including automatic preview deploys, have their separate scoped authorization.
 
 ## Companion Plans
 
 - [Phase 1 evaluation](../00_benzo-evaluation_2026-10-25.md) is the accepted assessment preceding this proposal, not an implementation completion record.
 - Historical `documentation/planning/system-review_2026-07-07/00_overview.md` and security audit directory are superseded only for the delivery ordering/scope described here; their unresolved evidence is preserved in the ledger. Do not execute historical filing scripts or revenue tasks.
-- Prior-art research confirms March security recommendations were partly superseded by May PRs #14/#15; July PR #50 delivered review documents, not recovery implementation; the Vite major change landed through #19/#89. Recheck current #92–94 rather than assume any open dependency PR is already accepted; #94 updates both React packages while #93 updates React only.
+- Prior-art research confirms March security recommendations were partly superseded by May PRs #14/#15; July PR #50 delivered review documents, not recovery implementation; the Vite major change landed through #19/#89. PRs #92–94 are now closed unmerged; current maintenance follows the accepted dependency decision.
 
-No other active delivery plan was identified. The phase documents link back here and share these contracts.
+The November 2 remediation family is the current execution authority. The recovery/release and update/installation sessions remain separately owned; the November 4 reconciliation records their boundaries.
 
 ## Risks
 
@@ -216,13 +214,15 @@ No other active delivery plan was identified. The phase documents link back here
 | External writer races | Equality can miss ABA and read/write interleaving | Touched ownership, readback, explicit conflicts; no exclusive-control guarantee. |
 | Timeout leaves privileged child uncertain | Compensation might race a late write | Track child outcome; unresolved state blocks competing rollback/new writes. |
 | Durability implementation overclaims | A journal may not survive actual disk failure | Checked macOS primitives, fault tests, qualified guarantees, dedicated evidence. |
-| P3/P4 policy mismatch | Tightened rule prevents recovery | Transitional exact -a policy, complete prevalidation, blocked unsafe migrations, atomic adapter/policy transition in P4. |
+| Legacy authorization transition | Retiring a grant can prevent recovery | Follow final recovery G3; preserve prerequisites on uncertainty. The transitional exact `-a` bridge is superseded. |
 | P4/P5 size growth | One PR becomes unreviewable | Contract-limited modules, one recovery engine, bounded worker tasks; if actual scope needs an extra PR, return to owner to amend one-PR-per-phase plan. |
 | Browser/Xcode/test hardware unavailable | Product acceptance remains unproven | Safe progress only; leave gate blocked rather than use fleet host or fake a pass. |
 | PR push deploys automatically | Unapproved outward publication | Inspect and resolve integration authority before push/merge; no hidden setting changes. |
 | Rights/support channel unconfirmed | Incorrect legal/trust claims | F7 condition, honest withheld claims, external settings separately approved. |
 
 ## Complexity and Sequencing
+
+Historical October estimate and predecessor graph only; superseded by the amendment and current ownership ledger.
 
 | Phase | Size | Depends on | Parallel with |
 |---|---|---|---|
@@ -241,7 +241,7 @@ No XL phase is proposed. Sizes are relative judgments, not promised dates. P4 an
 
 Do not implement during Phase 2. Do not change this Mac Mini's always-on settings, permissions, login items or fleet processes. Do not automatically grant setup, recover by deleting evidence, claim defaults were restored, kill arbitrary blockers, normalize unrestorable originals, use production app initialization in unit tests, or treat a user's full filesystem permission as browser-policy bypass. Do not add deployment/publication triggers, merge PRs, push main, or turn historical issue text into instructions.
 
-## Context
+## Context (historical planning session)
 
 - Source skills: claudna:forge, claudna:ironclad, local docs adapter of claudna:publish.
 - Area: native control/recovery, distribution, landing site and trust documentation.
@@ -287,6 +287,8 @@ Root-preflight clarifications (outside the 17 finding count): native shorthand p
 
 
 ## Complete issue disposition matrix
+
+Historical October 25 proposals only. The November 4 reconciliation supersedes their owners, completion status and closure recommendations.
 
 There are **38 owned issues and 18 proposed closures = 56**. “Close” means propose closing with the stated reason, never claim fixed. Duplicate closure retains the original useful acceptance in its canonical owner. “Owner” is accountable for the complete issue, including work/evidence in dependent phases; it does not mean that phase alone closes it. Use `Refs`, not an auto-close keyword, for an issue with unmet acceptance.
 
@@ -349,7 +351,9 @@ There are **38 owned issues and 18 proposed closures = 56**. “Close” means p
 | #81 landing umbrella | P8 owner; work starts P1 | All seven original items below, with five mockup gaps and three delivery/font/copy subitems separately accounted. Native behavior parity ships continuously; the functional demo timer ships with P5, while P8 owns final presentation/trust acceptance. |
 | #82 Swift debt umbrella | P1 owner through P7 | All nine original items below. Narrow proven needs; hypotheses may close with explicit rationale. No broad “debt cleared” claim. |
 
-## Mandatory item-level umbrella ledger
+## Historical item-level umbrella ledger
+
+Current dispositions are in the November 4 reconciliation, including completed removals, active owners and explicit YAGNI deferrals. These older proposed implementations do not revive timers, grants, generic refactors or telemetry.
 
 ### #78 — five original items
 
@@ -419,7 +423,7 @@ There are **38 owned issues and 18 proposed closures = 56**. “Close” means p
 
 ## Closure blockers and unresolved owner decisions
 
-These are **remaining evidence/scope boundaries**, not reasons to halt safe planning or to ask for repeated approval now:
+The following are **historical October blockers**, not a current task queue. The November 4 reconciliation supersedes completed CI/domain/social-reference items and removed timer/grant scope; retained native/recovery/artifact and rights/reporting gates remain with their named owners:
 
 - **Exact release/signing outcome:** #31, #32, #34, #58, #59; #42 duplicates #31. P2 may produce complete source/workflow changes while these remain open. #33 needs either verified installation route or complete removal of unsupported claims. #81 download/notarization subitems depend on the actual route. Developer enrollment, credential use, publishing, tap creation, release triggers and deployment require scoped outward authority.
 - **Full native build/CI:** #71 and fixture execution for #72 require full Xcode/project validation; this host currently had only Command Line Tools in the evaluation. Current security checks must pass again. Runner availability/required-check settings are not inferred from source YAML.
@@ -428,7 +432,7 @@ These are **remaining evidence/scope boundaries**, not reasons to halt safe plan
 - **Browser/native UX:** #22, #43, #81 and reached native Settings/popover hypotheses in #82 need rendered/interaction evidence; browser saved-policy refusal and native accessibility timeouts are not passes. Production #73 asset availability requires the later approved deployment, not just a local file.
 - **Owner choices:** license under #60/#40, approved security-reporting route/PVR under #40; controller direction and Off/Restore/Quit/competing-change ownership under #36/#54/#55/#57/#61/#66/#74; supported hardware scope and unrelated-blocker policy under #79. The plan can recommend conservative defaults, but it must label them as proposed until accepted. No paid licensing, updater, domain or remote crash product is added.
 
-## Count check
+## Historical October 25 count check
 
 Primary owners: P1 5; P2 7; P3 4; P4 7; P5 7; P6 2; P7 1; P8 5 = **38**.
 

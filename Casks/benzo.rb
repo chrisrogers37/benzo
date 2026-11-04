@@ -11,11 +11,6 @@ cask "benzo" do
 
   app "Benzo.app"
 
-  uninstall quit: "com.benzo.app",
-            delete: "/etc/sudoers.d/benzo"
-
-  zap trash: [
-    "~/Library/Application Support/Benzo",
-    "~/Library/Preferences/com.benzo.app.plist",
-  ]
+  # Removing the app does not prove restoration or safe permission retirement.
+  # Preserve the existing grant, original-settings backup and preferences.
 end

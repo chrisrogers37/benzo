@@ -59,6 +59,6 @@ export default function BenzoLanding() {
       <section className="bz-final bz-width" aria-labelledby="final-title"><div className="bz-final-pill"><Pill /></div><div><h2 id="final-title">{copy.final.title}</h2><p>{copy.final.description}</p></div><div><DownloadLink /><span className="bz-final-note">{copy.download.shortNote}</span></div></section>
     </main>
 
-    <footer className="bz-footer bz-width"><Brand /><p>{copy.footer.tagline}</p><div><ContentLink destination="repository">{copy.footer.source}</ContentLink><ContentLink destination="help">{copy.footer.help} <Icon name="external" size={12} /></ContentLink><ContentLink destination="contact">{copy.footer.contact}</ContentLink></div></footer>
+    <footer className="bz-footer bz-width"><Brand /><p>{copy.footer.tagline}</p><div><ContentLink destination="repository">{copy.footer.source}</ContentLink><ContentLink destination="help">{copy.footer.help} <Icon name="external" size={12} /></ContentLink><ContentLink destination="contact">{copy.footer.contact}</ContentLink><ContentLink destination="privacy">{copy.footer.privacy}</ContentLink></div></footer>
   </div>
 }

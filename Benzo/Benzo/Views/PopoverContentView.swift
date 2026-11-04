@@ -5,10 +5,11 @@ struct PopoverContentView: View {
     @State private var showOptions = false
 
     var body: some View {
-        if viewModel.needsSetup {
+        if viewModel.showPermissionStatus {
             SetupView(
-                onSetup: viewModel.runSetup,
-                errorMessage: viewModel.errorMessage
+                observation: viewModel.permissionObservation,
+                onRefresh: viewModel.refreshPermissionObservation,
+                onBack: { viewModel.showPermissionStatus = false }
             )
         } else if viewModel.showDiagnostics {
             DiagnosticView(viewModel: viewModel, onBack: {
@@ -27,32 +28,9 @@ struct PopoverContentView: View {
                 onToggle: viewModel.toggleMaster
             )
 
-            SleepNowButton(
-                isSleeping: viewModel.isSleeping,
-                sleepTimerRemaining: viewModel.sleepTimerRemaining,
-                onSleep: viewModel.sleepNow,
-                onTimedSleep: viewModel.scheduleSleep,
-                onCancelTimer: viewModel.cancelScheduledSleep
-            )
+            SleepNowButton(onSleep: viewModel.sleepNow)
                 .padding(.horizontal, 20)
                 .padding(.bottom, 14)
-
-            if viewModel.isActive && !viewModel.sleepBlockers.isEmpty {
-                let names = viewModel.sleepBlockers.map(\.displayName).joined(separator: ", ")
-                VStack(spacing: 2) {
-                    HStack(spacing: 4) {
-                        Image(systemName: "exclamationmark.triangle")
-                            .font(.system(size: 9))
-                        Text("\(viewModel.sleepBlockers.count) app\(viewModel.sleepBlockers.count == 1 ? "" : "s") may prevent sleep:")
-                            .font(.system(size: 11))
-                    }
-                    Text(names)
-                        .font(.system(size: 10))
-                }
-                .foregroundColor(BenzoTheme.textMuted)
-                .padding(.horizontal, 20)
-                .padding(.bottom, 10)
-            }
 
             Divider().opacity(0.5)
 
@@ -76,12 +54,21 @@ struct PopoverContentView: View {
             }
 
             if showOptions {
+                let isEditBlocked = viewModel.isActive || viewModel.isSelectionEditBlocked
                 VStack(spacing: 0) {
+                    if isEditBlocked {
+                        Text(BenzoViewModel.selectionEditBlockedReason)
+                            .font(.system(size: 10))
+                            .foregroundColor(BenzoTheme.textMuted)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding(.horizontal, 20)
+                            .padding(.bottom, 6)
+                    }
                     ForEach(SleepSetting.allCases) { setting in
                         SettingRowView(
                             setting: setting,
                             isEnabled: viewModel.settingStates[setting] ?? false,
-                            isActive: viewModel.isActive,
+                            isEditBlocked: isEditBlocked,
                             onToggle: { viewModel.toggleSetting(setting) }
                         )
                     }

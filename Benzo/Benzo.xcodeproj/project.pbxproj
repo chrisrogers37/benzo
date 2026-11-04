@@ -43,8 +43,16 @@
 		D11000000000000000000009 /* BenzoDependencies.swift in Sources */ = {isa = PBXBuildFile; fileRef = D20000000000000000000002; };
 		D1100000000000000000000A /* LoginItemClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = D20000000000000000000003; };
 		D1100000000000000000000B /* BenzoViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000090000000000000009; };
+		D11000000000000000000012 /* DiagnosticService.swift in Sources */ = {isa = PBXBuildFile; fileRef = C20000030000000000000003; };
 		D1100000000000000000000C /* BenzoCoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D20000000000000000000005; };
 		D1100000000000000000000D /* TestDoubles.swift in Sources */ = {isa = PBXBuildFile; fileRef = D20000000000000000000006; };
+		E10000000000000000000001 /* PermissionObservation.swift in Sources */ = {isa = PBXBuildFile; fileRef = E20000000000000000000001; };
+		E10000000000000000000002 /* CommandRunner.swift in Sources */ = {isa = PBXBuildFile; fileRef = E20000000000000000000002; };
+		E11000000000000000000001 /* PermissionObservation.swift in Sources */ = {isa = PBXBuildFile; fileRef = E20000000000000000000001; };
+		E11000000000000000000002 /* CommandRunner.swift in Sources */ = {isa = PBXBuildFile; fileRef = E20000000000000000000002; };
+		E11000000000000000000003 /* PermissionObservationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E20000000000000000000003; };
+		E11000000000000000000004 /* CommandRunnerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E20000000000000000000004; };
+		E11000000000000000000005 /* owned-read-child.sh in Resources */ = {isa = PBXBuildFile; fileRef = E20000000000000000000005; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -78,6 +86,11 @@
 		D20000000000000000000005 /* BenzoCoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BenzoCoreTests.swift; sourceTree = "<group>"; };
 		D20000000000000000000006 /* TestDoubles.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TestDoubles.swift; sourceTree = "<group>"; };
 		D30000000000000000000001 /* BenzoCoreTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = BenzoCoreTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		E20000000000000000000001 /* PermissionObservation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "PermissionObservation.swift"; sourceTree = "<group>"; };
+		E20000000000000000000002 /* CommandRunner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "CommandRunner.swift"; sourceTree = "<group>"; };
+		E20000000000000000000003 /* PermissionObservationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "PermissionObservationTests.swift"; sourceTree = "<group>"; };
+		E20000000000000000000004 /* CommandRunnerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "CommandRunnerTests.swift"; sourceTree = "<group>"; };
+		E20000000000000000000005 /* owned-read-child.sh */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = "owned-read-child.sh"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -156,6 +169,8 @@
 			isa = PBXGroup;
 			children = (
 				A20000060000000000000006 /* ShellExecutor.swift */,
+				E20000000000000000000001 /* PermissionObservation.swift */,
+				E20000000000000000000002 /* CommandRunner.swift */,
 				A20000070000000000000007 /* PMSetService.swift */,
 				A20000080000000000000008 /* BackupService.swift */,
 				C20000030000000000000003 /* DiagnosticService.swift */,
@@ -209,8 +224,19 @@
 			children = (
 				D20000000000000000000005 /* BenzoCoreTests.swift */,
 				D20000000000000000000006 /* TestDoubles.swift */,
+				E20000000000000000000003 /* PermissionObservationTests.swift */,
+				E20000000000000000000004 /* CommandRunnerTests.swift */,
+				E50000000000000000000001 /* Fixtures */,
 			);
 			path = BenzoTests;
+			sourceTree = "<group>";
+		};
+		E50000000000000000000001 /* Fixtures */ = {
+			isa = PBXGroup;
+			children = (
+				E20000000000000000000005 /* owned-read-child.sh */,
+			);
+			path = Fixtures;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -239,6 +265,7 @@
 			buildPhases = (
 				D70000000000000000000001 /* Sources */,
 				D40000000000000000000001 /* Frameworks */,
+				E70000000000000000000001 /* Resources */,
 			);
 			buildRules = ();
 			dependencies = ();
@@ -293,6 +320,14 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		E70000000000000000000001 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				E11000000000000000000005 /* owned-read-child.sh in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
@@ -324,6 +359,8 @@
 				D10000000000000000000002 /* BenzoDependencies.swift in Sources */,
 				D10000000000000000000003 /* LoginItemClient.swift in Sources */,
 				D10000000000000000000004 /* LiveLoginItemClient.swift in Sources */,
+				E10000000000000000000001 /* PermissionObservation.swift in Sources */,
+				E10000000000000000000002 /* CommandRunner.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -342,8 +379,13 @@
 				D11000000000000000000009 /* BenzoDependencies.swift in Sources */,
 				D1100000000000000000000A /* LoginItemClient.swift in Sources */,
 				D1100000000000000000000B /* BenzoViewModel.swift in Sources */,
+				D11000000000000000000012 /* DiagnosticService.swift in Sources */,
 				D1100000000000000000000C /* BenzoCoreTests.swift in Sources */,
 				D1100000000000000000000D /* TestDoubles.swift in Sources */,
+				E11000000000000000000001 /* PermissionObservation.swift in Sources */,
+				E11000000000000000000002 /* CommandRunner.swift in Sources */,
+				E11000000000000000000003 /* PermissionObservationTests.swift in Sources */,
+				E11000000000000000000004 /* CommandRunnerTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

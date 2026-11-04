@@ -4,10 +4,14 @@ type: plan
 status: completed
 owner: claudna:forge
 created: 2026-10-25
-updated: 2026-10-27
+updated: 2026-11-04
 tags: [enhancement, security, reliability]
 repos: chrisrogers37/benzo
 ---
+
+## Completion checkpoint — November 4
+
+[PR #95](https://github.com/chrisrogers37/benzo/pull/95) merged October 26 as `d88ab5d`; #22/#71 are closed. Required checks and owner manual parity acceptance were delivered. #23 remains partial for the update owner's bundle-version display; #72/#82 retain their safety/umbrella remainder. Earlier pending-merge statements below are historical. See the [current ledger](../../planning/tech_debt/benzo-remediation_2026-11-02/07_backlog-reconciliation.md); P1 completion does not reinstate the original P2–P8 queue.
 
 ## Summary
 
@@ -56,18 +60,14 @@ Set `BENZO_TEST_DERIVED` to a newly created task-owned temporary directory, not 
 
 ## Verification Checklist
 
-- [x] Clean installation, web behavior/build/security jobs and full-Xcode Debug/Release/core tests passed for the accepted P1 delivery; PR #95 is merged at d88ab5d.
+- [x] Clean installation, web behavior/build/security and full-Xcode Debug/Release/core tests passed for accepted P1 delivery.
 - [x] Unit-test composition excludes production startup/live adapters; fake-boundary cases passed in unhosted XCTest at 776c08d.
 - [x] Extracted demo parity accepted by owner manual visual/interaction check at 0409b790; screenshot requirement explicitly waived. No conversion/design approval is implied.
 - [x] Current advisories resolved; local and remote audit at 776c08d pass without suppression.
-- [x] P1 issue scope is recorded: #22/#71 closed after merge; #23 stays open for P2 version policy, and #72/#82 retain their later-phase scope.
-- [x] Independent reviews completed, owner manual parity acceptance recorded, and user merged PR #95 on October 26.
+- [x] #22/#71 closed after merge; #23/#72/#82 retain explicitly recorded remainder.
+- [x] Independent reviews, owner manual parity acceptance and owner merge recorded in #95.
 
-## Completion checkpoint — 2026-10-27
-
-PR #95 merged on October 26 as `d88ab5dffa0695bfc0b1d91eb07939fd15fd5680`. The P1 foundation and required-check policy are delivered. #23's remaining version policy belongs to P2; P1 completion does not close parser/recovery/diagnostic umbrella scope. The separate site redesign later merged in PR #97. See the [current run checkpoint](RUN_LOG.md) for post-merge CI and site receipts.
-
-## Delivery receipt — 2026-10-25 (historical)
+## Historical delivery receipt — 2026-10-25
 
 Implementation and independent `claudna:review-work` are complete with no actionable source defects. Draft [PR #95](https://github.com/chrisrogers37/benzo/pull/95) is published with explicit approval for its automatic Vercel preview. At implementation SHA `776c08d99077d33f25a39462517fe12bd3d66139`, remote clean install, 17 web tests/build, audit, Gitleaks, full-Xcode Debug/Release and all 11 unhosted XCTest cases passed. Xcode was 16.4 (16F6) on macos-15; no production app or native test was run on the fleet Mac. Delivery-only follow-up commits require green checks at their resulting PR head.
 

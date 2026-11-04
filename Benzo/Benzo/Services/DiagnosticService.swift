@@ -1,200 +1,146 @@
 import Foundation
 
-enum DiagnosticService {
+struct DiagnosticService {
+    let reader: any ReadCommandRunning
 
-    // MARK: - Sleep Data (single log parse)
+    func fetchSleepData() async -> Result<SleepReadPayload, DiagnosticReadError> {
+        await read(.sleepLog).flatMap(Self.parseSleepLog)
+    }
 
-    static func fetchSleepData(limit: Int = 5) -> (sessions: [SleepSession], lastWakeReason: String?) {
-        guard let log = try? ShellExecutor.runDirect(BenzoPaths.pmset, ["-g", "log"]) else { return ([], nil) }
+    func fetchUSBDevices() async -> Result<[USBDevice], DiagnosticReadError> {
+        await read(.usbDevices).flatMap(Self.parseUSBDevices)
+    }
 
+    func readObservedSettings() async -> Result<[ObservedSetting], DiagnosticReadError> {
+        await read(.currentSettings).flatMap(Self.parseObservedSettings)
+    }
+
+    private func read(_ command: ReadCommand) async -> Result<String, DiagnosticReadError> {
+        let outcome = await reader.run(command)
+        guard outcome.termination == .exited(0) else { return .failure(.commandFailed(outcome)) }
+        guard outcome.outputComplete, !outcome.outputTruncated else { return .failure(.incompleteCapture(outcome)) }
+        guard let output = String(data: outcome.stdout, encoding: .utf8) else { return .failure(.malformedFormat) }
+        return .success(output)
+    }
+
+    // MARK: - Pure parsers
+
+    /// Supports timestamped pmset Sleep/Wake records and known non-event domains.
+    /// Headers or arbitrary text alone cannot establish that no events were reported.
+    static func parseSleepLog(_ log: String) -> Result<SleepReadPayload, DiagnosticReadError> {
         var sleepEvents: [(date: Date, battery: Int?)] = []
         var wakeEvents: [(date: Date, battery: Int?, reason: String?)] = []
-
-        let dateFormatter = DateFormatter()
-        dateFormatter.dateFormat = "yyyy-MM-dd HH:mm:ss Z"
+        var recognizedRecord = false
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.dateFormat = "yyyy-MM-dd HH:mm:ss Z"
+        formatter.isLenient = false
 
         for line in log.components(separatedBy: .newlines) {
             let trimmed = line.trimmingCharacters(in: .whitespaces)
-
-            if trimmed.contains("Entering Sleep state") || (trimmed.contains("\tSleep\t") && !trimmed.contains("Back to")) {
-                if let parsed = parsePMSetLogLine(trimmed, dateFormatter: dateFormatter) {
-                    sleepEvents.append((date: parsed.date, battery: parsed.battery))
+            let parts = trimmed.split(maxSplits: 3, whereSeparator: { $0.isWhitespace })
+            let body = parts.count == 4 ? String(parts[3]) : ""
+            let domain = body.split(whereSeparator: { $0.isWhitespace }).first.map(String.init)
+            let sleepCandidate = trimmed.contains("Entering Sleep") || trimmed.contains("\tSleep\t") || domain == "Sleep"
+            let wakeCandidate = trimmed.contains("Wake from") || trimmed.contains("\tWake\t") || (domain == "Wake" && !body.hasPrefix("Wake Requests")) || domain == "DarkWake"
+            let knownOtherDomain = ["Assertions", "Kernel", "PM", "Wake", "Notification", "Start", "Summary"].contains(domain ?? "")
+            guard sleepCandidate || wakeCandidate || knownOtherDomain else { continue }
+            guard parts.count == 4,
+                  let date = formatter.date(from: parts.prefix(3).joined(separator: " ")) else {
+                return .failure(.malformedFormat)
+            }
+            // A recognized event domain still needs the supported event message. Never
+            // discard a malformed candidate and present the remaining sessions as complete.
+            if sleepCandidate && !trimmed.contains("Entering Sleep state") {
+                return .failure(.unsupportedFormat)
+            }
+            if wakeCandidate && !trimmed.contains("Wake from") {
+                return .failure(.unsupportedFormat)
+            }
+            recognizedRecord = true
+            var battery: Int?
+            if let range = trimmed.range(of: "Charge:") {
+                let charge = trimmed[range.upperBound...].drop(while: { $0.isWhitespace })
+                let digits = charge.prefix(while: { $0.isASCII && $0.isNumber })
+                guard let value = Int(digits), (0...100).contains(value),
+                      charge.dropFirst(digits.count).first.map({ $0 == "%" || $0.isWhitespace }) ?? true else {
+                    return .failure(.malformedFormat)
                 }
-            } else if trimmed.contains("Wake from") || trimmed.contains("\tWake\t") {
-                if let parsed = parsePMSetLogLine(trimmed, dateFormatter: dateFormatter) {
-                    let reason = extractWakeReason(from: trimmed)
-                    wakeEvents.append((date: parsed.date, battery: parsed.battery, reason: reason))
-                }
+                battery = value
+            }
+            if sleepCandidate {
+                sleepEvents.append((date, battery))
+            } else if wakeCandidate {
+                wakeEvents.append((date, battery, extractWakeReason(from: trimmed)))
             }
         }
-
-        // Extract last wake reason before pairing consumes events
+        guard recognizedRecord else { return .failure(.unsupportedFormat) }
+        sleepEvents.sort { $0.date < $1.date }
+        wakeEvents.sort { $0.date < $1.date }
         let lastWakeReason = wakeEvents.last?.reason
-
-        // Pair sleep events with subsequent wake events chronologically
-        // Both lists are already in chronological order from the log
         var sessions: [SleepSession] = []
         var wakeIndex = 0
         for sleep in sleepEvents {
-            // Advance wake index past any wake events before this sleep
-            while wakeIndex < wakeEvents.count && wakeEvents[wakeIndex].date <= sleep.date {
-                wakeIndex += 1
-            }
-            let matchingWake = wakeIndex < wakeEvents.count ? wakeEvents[wakeIndex] : nil
+            while wakeIndex < wakeEvents.count && wakeEvents[wakeIndex].date <= sleep.date { wakeIndex += 1 }
+            let wake = wakeIndex < wakeEvents.count ? wakeEvents[wakeIndex] : nil
             sessions.append(SleepSession(
-                sleepTime: sleep.date,
-                wakeTime: matchingWake?.date,
-                batteryAtSleep: sleep.battery,
-                batteryAtWake: matchingWake?.battery,
-                wakeReason: matchingWake?.reason
+                sleepTime: sleep.date, wakeTime: wake?.date,
+                batteryAtSleep: sleep.battery, batteryAtWake: wake?.battery, wakeReason: wake?.reason
             ))
-            if matchingWake != nil {
-                wakeIndex += 1
-            }
+            if wake != nil { wakeIndex += 1 }
         }
-
-        // Return most recent sessions first, limited to requested count
-        let recentSessions = Array(sessions.suffix(limit).reversed())
-        return (recentSessions, lastWakeReason)
+        return .success(SleepReadPayload(sessions: Array(sessions.suffix(5).reversed()), lastWakeReason: lastWakeReason))
     }
 
-    // MARK: - USB Devices
-
-    static func fetchUSBDevices() -> [USBDevice] {
-        guard let json = try? ShellExecutor.runDirect("/usr/sbin/system_profiler", ["SPUSBDataType", "-json"]) else { return [] }
-        guard let data = json.data(using: .utf8) else { return [] }
-
-        guard let root = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-              let buses = root["SPUSBDataType"] as? [[String: Any]] else {
-            return []
+    static func parseUSBDevices(_ json: String) -> Result<[USBDevice], DiagnosticReadError> {
+        guard let root = try? JSONSerialization.jsonObject(with: Data(json.utf8)) as? [String: Any] else {
+            return .failure(.malformedFormat)
         }
-
+        guard let rawBuses = root["SPUSBDataType"] else { return .failure(.unsupportedFormat) }
+        guard let buses = rawBuses as? [[String: Any]] else { return .failure(.malformedFormat) }
         var devices: [USBDevice] = []
         for bus in buses {
-            collectUSBDevices(from: bus, into: &devices)
+            guard collectUSBDevices(from: bus, isBus: true, into: &devices) else { return .failure(.malformedFormat) }
         }
-        return devices
+        return .success(devices)
     }
 
-    // MARK: - Sleep Blockers
-
-    private static let filteredProcesses: Set<String> = ["WindowServer", "useractivityd", "powerd"]
-
-    private static let friendlyNames: [String: String] = [
-        "sharingd": "Handoff",
-        "coreaudiod": "Audio",
-        "caffeinate": "caffeinate",
-        "bluetoothd": "Bluetooth",
-        "mDNSResponder": "Bonjour",
-    ]
-
-    static func fetchSleepBlockers() -> [SleepBlocker] {
-        guard let output = try? ShellExecutor.runDirect(BenzoPaths.pmset, ["-g", "assertions"]) else { return [] }
-
-        var seen = Set<String>()
-        var blockers: [SleepBlocker] = []
-
+    static func parseObservedSettings(_ output: String) -> Result<[ObservedSetting], DiagnosticReadError> {
+        let keys = SleepSetting.allCases.flatMap(\.pmsetKeys)
+        var values: [String: String] = [:]
         for line in output.components(separatedBy: .newlines) {
-            let trimmed = line.trimmingCharacters(in: .whitespaces)
-            guard trimmed.contains("PreventUserIdleSystemSleep") || trimmed.contains("PreventSystemSleep") else {
-                continue
-            }
-
-            guard let processName = extractProcessName(from: trimmed) else { continue }
-            guard !filteredProcesses.contains(processName) else { continue }
-            guard !seen.contains(processName) else { continue }
-            seen.insert(processName)
-
-            let displayName = friendlyNames[processName] ?? processName
-            blockers.append(SleepBlocker(processName: processName, displayName: displayName))
+            let parts = line.split(whereSeparator: { $0.isWhitespace }).map(String.init)
+            guard let key = parts.first, keys.contains(key) else { continue }
+            guard parts.count == 2, values[key] == nil,
+                  parts[1].allSatisfy({ $0.isASCII && $0.isNumber }) else { return .failure(.malformedFormat) }
+            values[key] = parts[1]
         }
-
-        return blockers
+        guard !values.isEmpty else { return .failure(.unsupportedFormat) }
+        return .success(keys.map { ObservedSetting(key: $0, actualValue: values[$0]) })
     }
 
-    // MARK: - Settings Verification
-
-    static func verifySettings(settingStates: [SleepSetting: Bool], isActive: Bool) -> [SettingVerification] {
-        guard let state = try? PMSetService(runner: ShellCommandRunner()).readCurrentState() else { return [] }
-
-        var verifications: [SettingVerification] = []
-        for setting in SleepSetting.allCases {
-            let enabled = settingStates[setting] ?? setting.defaultEnabled
-            for (key, targetValue) in setting.pmsetCommands {
-                let actual = state.value(for: key) ?? "N/A"
-                let expected = (isActive && enabled) ? targetValue : actual
-                verifications.append(SettingVerification(
-                    setting: setting,
-                    key: key,
-                    expectedValue: expected,
-                    actualValue: actual,
-                    matches: !isActive || !enabled || actual == targetValue
-                ))
-            }
-        }
-        return verifications
-    }
-
-    // MARK: - Private
-
-    private static func parsePMSetLogLine(_ line: String, dateFormatter: DateFormatter) -> (date: Date, battery: Int?)? {
-        let components = line.split(separator: " ", maxSplits: 3)
-        guard components.count >= 3 else { return nil }
-
-        let dateString = "\(components[0]) \(components[1]) \(components[2])"
-        guard let date = dateFormatter.date(from: dateString) else { return nil }
-
-        var battery: Int?
-        if let range = line.range(of: "Charge:") {
-            let afterCharge = line[range.upperBound...]
-            let digits = afterCharge.prefix(while: { $0.isNumber })
-            battery = Int(digits)
-        }
-
-        return (date: date, battery: battery)
-    }
+    // MARK: - Parser helpers
 
     private static func extractWakeReason(from line: String) -> String? {
-        if let range = line.range(of: "due to ") {
-            let afterDue = line[range.upperBound...]
-            let reason = afterDue.prefix(while: { $0 != "\t" })
-                .trimmingCharacters(in: .whitespaces)
-            if !reason.isEmpty { return reason }
+        guard let range = line.range(of: "due to ") else { return nil }
+        let reason = line[range.upperBound...].prefix(while: { $0 != "\t" }).trimmingCharacters(in: .whitespaces)
+        return reason.isEmpty ? nil : reason
+    }
+
+    private static func collectUSBDevices(from node: [String: Any], isBus: Bool, into devices: inout [USBDevice]) -> Bool {
+        guard let name = node["_name"] as? String, !name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return false }
+        for key in ["manufacturer", "vendor_id", "bus_power_used"] where node[key] != nil {
+            guard let value = node[key] as? String, !value.isEmpty else { return false }
         }
-        return nil
-    }
-
-    /// Extract process name from "pid NNN(processName):" pattern
-    private static func extractProcessName(from line: String) -> String? {
-        guard let openParen = line.firstIndex(of: "("),
-              let closeParen = line.firstIndex(of: ")"),
-              openParen < closeParen else { return nil }
-        let name = String(line[line.index(after: openParen)..<closeParen])
-        return name.isEmpty ? nil : name
-    }
-
-    /// Extract the named assertion label from 'named: "..."'
-    private static func extractAssertionName(from line: String) -> String? {
-        guard let range = line.range(of: "named: \"") else { return nil }
-        let afterNamed = line[range.upperBound...]
-        guard let endQuote = afterNamed.firstIndex(of: "\"") else { return nil }
-        let name = String(afterNamed[afterNamed.startIndex..<endQuote])
-        return name.isEmpty ? nil : name
-    }
-
-    private static func collectUSBDevices(from dict: [String: Any], into devices: inout [USBDevice]) {
-        if let name = dict["_name"] as? String {
-            let hasIdentity = dict["manufacturer"] != nil || dict["vendor_id"] != nil
-            if hasIdentity {
-                let power = dict["bus_power_used"] as? String
-                devices.append(USBDevice(name: name, busPowerUsed: power))
-            }
-        }
-
-        if let items = dict["_items"] as? [[String: Any]] {
+        let hasIdentity = node["manufacturer"] != nil || node["vendor_id"] != nil
+        guard isBus || hasIdentity else { return false }
+        if hasIdentity { devices.append(USBDevice(name: name, busPowerUsed: node["bus_power_used"] as? String)) }
+        if let rawItems = node["_items"] {
+            guard let items = rawItems as? [[String: Any]] else { return false }
             for item in items {
-                collectUSBDevices(from: item, into: &devices)
+                guard collectUSBDevices(from: item, isBus: false, into: &devices) else { return false }
             }
         }
+        return true
     }
 }
