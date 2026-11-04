@@ -1,4 +1,4 @@
-import { Fragment, useId, useState } from 'react'
+import { Fragment, useEffect, useId, useRef, useState } from 'react'
 import { appPresentation as app, settingOptions, siteCopy, AppSymbol, MenuPill } from '../design'
 
 const copy = siteCopy.demo
@@ -7,9 +7,9 @@ function ReadStatus({ result, failure }) {
   return <div className="bn-session bn-faint">{result.status === 'failure' ? failure : app.diagnostics.loading}</div>
 }
 
-function Diagnostics({ onBack, sleepData, usbDevices, observedSettings }) {
+function Diagnostics({ onBack, backRef, sleepData, usbDevices, observedSettings }) {
   return <>
-    <div className="bn-diagnostic-header"><button onClick={onBack}><AppSymbol name="back" size={10} />{app.diagnostics.back}</button><strong>{app.diagnostics.title}</strong><span aria-hidden="true" /></div>
+    <div className="bn-diagnostic-header"><button ref={backRef} onClick={onBack}><AppSymbol name="back" size={10} />{app.diagnostics.back}</button><h3>{app.diagnostics.title}</h3><span aria-hidden="true" /></div>
     <div className="bn-diagnostic-scroll" role="region" aria-label={copy.resultsLabel} tabIndex={0}>
       <div className="bn-panel"><h3>{app.diagnostics.sessions}</h3>
         {sleepData.status !== 'success' ? <ReadStatus result={sleepData} failure={app.diagnostics.sleepFailure} /> : sleepData.value.sessions.length === 0 ? <div className="bn-session bn-faint">{app.diagnostics.sleepEmpty}</div> : sleepData.value.sessions.map(s => <div className="bn-session" key={s.sleep}><div>{s.sleep}{s.wake != null && <><span className="bn-faint"> → </span>{s.wake}</>}</div><div><span>{s.dur}</span>{s.bat && <span className={`bn-mono${s.delta === '0%' ? ' bn-green' : ''}`}>{s.bat}{s.delta && ` (${s.delta})`}</span>}</div></div>)}
@@ -38,20 +38,49 @@ export default function NativeAppDemo({ state, dispatch }) {
 
   const sleepUnavailableId = useId()
   const selectionBlockedId = useId()
+  const descriptionId = useId()
   const selectionBlocked = active || backup
+  const menuRef = useRef(null)
+  const diagnosticsRef = useRef(null)
+  const externalDiagnosticsRef = useRef(null)
+  const diagnosticBackRef = useRef(null)
+  const diagnosticOrigin = useRef('menu')
+  const returningFromDiagnostics = useRef(false)
+
+  useEffect(() => {
+    if (!running || !open) return
+    if (view === 'diagnostics') diagnosticBackRef.current?.focus()
+    else if (view === 'main' && returningFromDiagnostics.current) {
+      returningFromDiagnostics.current = false
+      const origin = { menu: menuRef, internal: diagnosticsRef, external: externalDiagnosticsRef }
+      origin[diagnosticOrigin.current].current?.focus()
+    }
+  }, [running, open, view])
+
+  const openDiagnostics = origin => {
+    diagnosticOrigin.current = origin
+    dispatch({ type: 'diagnostics' })
+    // The destination can already be mounted when the outside link is used again.
+    diagnosticBackRef.current?.focus()
+  }
+  const backFromDiagnostics = () => {
+    returningFromDiagnostics.current = true
+    dispatch({ type: 'back' })
+  }
 
   return <div className="bz-native-demo" aria-label={copy.name}>
     <div className="bn-demo-toolbar" aria-label={copy.navigation}><span>{copy.title}</span><div><button onClick={() => dispatch({ type: 'firstLaunch' })}>{copy.firstLaunch}</button><button onClick={() => dispatch({ type: 'reset' })}>{running ? copy.reset : copy.restart}</button></div></div>
     <div className="bn-stage">
-      <div className="bn-menubar"><span>{app.menu.finder}</span><div>{running && <button className="bn-menu-button" aria-label={app.menu.name} aria-expanded={open} title={app.menu.hint} onClick={e => dispatch({ type: 'pill', alt: e.altKey })}><MenuPill active={active} /></button>}<span>{app.menu.wifi}</span><span>{app.menu.time}</span></div></div>
+      <div className="bn-menubar"><span>{app.menu.finder}</span><div>{running && <button ref={menuRef} className="bn-menu-button" aria-label={app.menu.name} aria-expanded={open} title={app.menu.hint} onClick={e => { if (!open && e.altKey) diagnosticOrigin.current = 'menu'; dispatch({ type: 'pill', alt: e.altKey }) }}><MenuPill active={active} /></button>}<span>{app.menu.wifi}</span><span>{app.menu.time}</span></div></div>
       {running && open && <div className="bn-popover" aria-label={view === 'setup' ? app.setup.name : view === 'diagnostics' ? app.diagnostics.name : app.mainName}>
-        {view === 'setup' ? <Setup observation={state.permissionObservation} onRefresh={() => dispatch({ type: 'refreshPermission' })} onBack={() => dispatch({ type: 'back' })} /> : view === 'diagnostics' ? <Diagnostics sleepData={state.sleepData} usbDevices={state.usbDevices} observedSettings={state.observedSettings} onBack={() => dispatch({ type: 'back' })} /> : <>
+        {view === 'setup' ? <Setup observation={state.permissionObservation} onRefresh={() => dispatch({ type: 'refreshPermission' })} onBack={() => dispatch({ type: 'back' })} /> : view === 'diagnostics' ? <Diagnostics backRef={diagnosticBackRef} sleepData={state.sleepData} usbDevices={state.usbDevices} observedSettings={state.observedSettings} onBack={backFromDiagnostics} /> : <>
           <div className="bn-master"><div><strong>{active ? app.master.on : app.master.off}</strong><p>{active ? app.master.activeDescription : app.master.inactiveDescription}</p></div><button className={`bn-toggle${active ? ' bn-on' : ''}`} role="switch" aria-label={app.master.name} aria-checked={active} onClick={() => dispatch({ type: 'active' })}><span /></button></div>
           <div className="bn-sleep-wrap"><div className="bn-sleep-capsule">
             <button className="bn-sleep-now" disabled aria-describedby={sleepUnavailableId}><AppSymbol name="moon" size={11} />{app.sleep.action}</button>
           </div><p className="bn-control-reason" id={sleepUnavailableId}>{app.sleep.unavailable}</p></div>
           <div className="bn-options"><button aria-expanded={options} onClick={() => dispatch({ type: 'options' })}><span>{app.options}</span><span className={options ? 'bn-expanded' : ''}><AppSymbol name="chevron" size={9} /></span></button></div>
-          {options && <div className="bn-settings">{selectionBlocked && <p className="bn-control-reason" id={selectionBlockedId}>{app.selectionBlocked}</p>}{settingOptions.map(({ key, label, desc }) => <button className="bn-setting" role="checkbox" aria-checked={settings[key]} aria-label={label} disabled={selectionBlocked} aria-describedby={selectionBlocked ? selectionBlockedId : undefined} key={key} onClick={() => dispatch({ type: 'setting', key })}><span><strong>{label}</strong><small>{desc}</small></span><span className={`bn-checkbox${settings[key] ? ' bn-checked' : ''}`}>{settings[key] && <AppSymbol name="check" size={8} />}</span></button>)}</div>}
+          {options && <div className="bn-settings">{selectionBlocked && <p className="bn-control-reason" id={selectionBlockedId}>{app.selectionBlocked}</p>}{settingOptions.map(({ key, label, desc }) => <button className="bn-setting" role="checkbox" aria-checked={settings[key]} aria-label={label} disabled={selectionBlocked} aria-describedby={`${descriptionId}-${key}${selectionBlocked ? ` ${selectionBlockedId}` : ''}`} key={key} onClick={() => dispatch({ type: 'setting', key })}><span><strong>{label}</strong><small id={`${descriptionId}-${key}`}>{desc}</small></span><span aria-hidden="true" className={`bn-checkbox${settings[key] ? ' bn-checked' : ''}`}>{settings[key] && <AppSymbol name="check" size={8} />}</span></button>)}</div>}
+          <div className="bn-diagnostics-entry"><button ref={diagnosticsRef} onClick={() => openDiagnostics('internal')}>{app.diagnostics.title}</button></div>
           {state.error && <p className="bn-error" role="alert">{state.error}</p>}
           <div className="bn-footer"><div className="bn-login"><span>{app.footer.login}</span><button className={`bn-login-toggle${login ? ' bn-on' : ''}`} role="switch" aria-label={app.footer.login} aria-checked={login} onClick={() => dispatch({ type: 'login' })}><span /></button></div><div className="bn-footer-actions"><span>{app.version}</span><button onClick={() => dispatch({ type: 'restore' })}>{app.footer.restore}</button><button onClick={() => dispatch({ type: 'quit' })}>{app.footer.quit}</button></div></div>
         </>}
@@ -61,7 +90,7 @@ export default function NativeAppDemo({ state, dispatch }) {
     <div className="bn-demo-caption">
       <p>{copy.hint}</p>
       <div className="bn-demo-actions">
-        <button onClick={() => dispatch({ type: 'diagnostics' })}>{copy.diagnostics}<AppSymbol name="chevron" size={10} /></button>
+        <button ref={externalDiagnosticsRef} onClick={() => openDiagnostics('external')}>{copy.diagnostics}<AppSymbol name="chevron" size={10} /></button>
         <button aria-expanded={aboutOpen} aria-controls={aboutId} onClick={() => setAboutOpen(open => !open)}>{copy.disclosure}<span className={aboutOpen ? 'bn-expanded' : ''}><AppSymbol name="chevron" size={10} /></span></button>
       </div>
       <p id={aboutId} className="bn-demo-about" hidden={!aboutOpen}>{copy.disclosureBody}</p>

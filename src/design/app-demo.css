@@ -41,6 +41,7 @@
 .benzo-site .bn-checkbox { display: grid; place-items: center; width: 15px; height: 15px; border: 1.5px solid var(--native-toggle-off); border-radius: 3px; flex-shrink: 0; }
 .benzo-site .bn-checkbox.bn-checked { background: var(--native-control-accent); color: var(--white); border-color: transparent; box-shadow: 0 0 4px var(--native-pink-checkbox-glow); }
 .benzo-site .bn-error { color: var(--native-red); font-size: var(--native-small); padding: 6px 16px; }
+.benzo-site .bn-diagnostics-entry > button { width: 100%; padding: 8px 20px; color: var(--native-control-accent); font-size: var(--native-secondary); font-weight: 500; }
 .benzo-site .bn-footer { border-top: 1px solid var(--native-black-faint); color: var(--native-muted); font-size: var(--native-small); }
 .benzo-site .bn-login { display: flex; align-items: center; justify-content: space-between; padding: 8px 20px 0; }
 .benzo-site .bn-stage .bn-login-toggle { width: 23px; height: 14px; position: relative; border-radius: 8px; background: var(--native-login-off); margin: 2px 6.5px; box-shadow: inset 0 0 0 1px var(--native-black-line); }
@@ -58,7 +59,7 @@
 .benzo-site .bn-setup .bn-setup-note { color: var(--native-faint); font-size: var(--native-small); }
 .benzo-site .bn-diagnostic-header { display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; border-bottom: 1px solid var(--native-black-line); }
 .benzo-site .bn-diagnostic-header button { display: flex; align-items: center; gap: 4px; color: var(--native-control-accent); font-size: var(--native-secondary); font-weight: 500; }
-.benzo-site .bn-diagnostic-header strong { font-size: var(--native-title); font-weight: 600; }
+.benzo-site .bn-diagnostic-header h3 { font-size: var(--native-title); font-weight: 600; margin: 0; }
 .benzo-site .bn-diagnostic-header > span { width: 40px; }
 .benzo-site .bn-diagnostic-scroll { max-height: var(--native-diagnostic-height); overflow-y: auto; border-radius: 0 0 10px 10px; }
 .benzo-site .bn-diagnostic-scroll:focus-visible { outline: 2px solid var(--rose); outline-offset: 3px; }

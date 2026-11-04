@@ -3,6 +3,8 @@ import SwiftUI
 struct DiagnosticView: View {
     @ObservedObject var viewModel: BenzoViewModel
     let onBack: () -> Void
+    @FocusState private var backFocused: Bool
+    @AccessibilityFocusState private var backAccessibilityFocused: Bool
 
     var body: some View {
         VStack(spacing: 0) {
@@ -20,7 +22,11 @@ struct DiagnosticView: View {
         .frame(width: 320)
         .fixedSize(horizontal: false, vertical: true)
         .background(BenzoTheme.surface)
-        .onAppear { viewModel.loadDiagnostics() }
+        .onAppear {
+            viewModel.loadDiagnostics()
+            backFocused = true
+            backAccessibilityFocused = true
+        }
     }
 
     // MARK: - Header
@@ -37,12 +43,21 @@ struct DiagnosticView: View {
                 .foregroundColor(BenzoTheme.accentControl)
             }
             .buttonStyle(.plain)
+            .focused($backFocused)
+            .accessibilityFocused($backAccessibilityFocused)
+            .overlay {
+                RoundedRectangle(cornerRadius: 3)
+                    .stroke(backFocused ? BenzoTheme.accentControl : .clear, lineWidth: 2)
+                    .padding(-3)
+                    .allowsHitTesting(false)
+            }
 
             Spacer()
 
             Text("Diagnostics")
                 .font(.system(size: 13, weight: .semibold))
                 .foregroundColor(BenzoTheme.text)
+                .accessibilityAddTraits(.isHeader)
 
             Spacer()
 
@@ -54,6 +69,7 @@ struct DiagnosticView: View {
                     .font(.system(size: 11, weight: .medium))
             }
             .opacity(0)
+            .accessibilityHidden(true)
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 12)
