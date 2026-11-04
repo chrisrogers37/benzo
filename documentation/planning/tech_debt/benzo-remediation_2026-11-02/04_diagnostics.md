@@ -1,7 +1,7 @@
 ---
 title: "[enhancement] Show honest read results in existing diagnostics"
 type: plan
-status: draft
+status: active
 owner: claudna:audit
 created: 2026-11-02
 tags: [enhancement, reliability, "priority:medium"]
@@ -84,12 +84,12 @@ Extend `NativeAppDemo.test.jsx` with success-empty/failure fixtures and neutral 
 
 ## Verification Checklist
 
-- [ ] Accepted 03/01 parent and all `fetchSleepData|fetchUSBDevices|verifySettings|SettingVerification|loadDiagnostics` callers are reconciled.
-- [ ] Production reads use 01's bounded runner; malformed/incomplete/unavailable data never becomes successful empty.
-- [ ] Old refreshes cannot overwrite current results; failure never presents prior values as current.
-- [ ] Settings are neutral observations with missing values visible; no preference-derived verification remains in the active native/demo route.
+- [x] Accepted 03/01 parent and all `fetchSleepData|fetchUSBDevices|verifySettings|SettingVerification|loadDiagnostics` callers are reconciled.
+- [x] Production reads use 01's bounded runner; malformed/incomplete/unavailable data never becomes successful empty.
+- [x] Old refreshes cannot overwrite current results; failure never presents prior values as current.
+- [x] Settings are neutral observations with missing values visible; no preference-derived verification remains in the active native/demo route.
 - [ ] Focused fake/fixture tests, existing required checks and changed-panel parity evidence are recorded at the implementation head.
-- [ ] No claim of recovery completion, physical sleep behavior or native release acceptance is inferred from these results.
+- [x] No claim of recovery completion, physical sleep behavior or native release acceptance is inferred from these results.
 
 ## What NOT To Do
 
@@ -108,3 +108,9 @@ On November 2, 2026, two independent subagents performed targeted safety and YAG
 The verification confirmed the bounded scope of existing diagnostic reads, distinct failure/empty states, stale-completion rejection and neutral observed values without a new diagnostics product.
 
 This verdict concerns the revised documents. Implementation, authorization feasibility, native acceptance and release remain unverified; the unchecked implementation gates remain open. No application tests, native actions or network operations were performed by these two reviewers.
+
+## Implementation checkpoint — November 3
+
+Implementation parent is merged phase 01 `a763f95d25410cd6ff174ba4b720fe3386a1c1d7`. A fresh read-only comparison confirmed the existing async `ReadCommandRunning` boundary supports this scope without another runner or a legacy-write conversion. Native and active-demo owners are implementing the listed files; parser fixtures are synthetic and do not claim dedicated-device acceptance. Required checks and independent review remain pending.
+
+Local verification: Node 24.22.1 passed 45 web tests, build and moderate audit (zero vulnerabilities). All app Swift sources pass CLT typechecking; 11 new XCTest methods were added but full XCTest execution awaits CI. Eleven synthetic parser/injected-read/obsolete-publication smoke scenarios passed outside the app. Independent native and web reviewers returned no remaining findings after tab-message parser validation and optional-value demo corrections. Reuse, Altitude, Efficiency and Simplification review found no further justified changes. Targeted screenshots cover the canonical successful panel and synthetic result states mounted with the existing component; these are browser evidence, not native acceptance.

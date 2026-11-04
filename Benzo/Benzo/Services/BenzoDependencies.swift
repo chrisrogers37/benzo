@@ -43,10 +43,10 @@ struct BenzoDependencies {
     let preferences: any PreferenceStoring
     let loginItem: any LoginItemClient
     let observePermission: () -> PermissionObservation
-    let fetchSleepData: () -> (sessions: [SleepSession], lastWakeReason: String?)
-    let fetchUSBDevices: () -> [USBDevice]
-    let verifySettings: ([SleepSetting: Bool], Bool) -> [SettingVerification]
-    let runInBackground: (@escaping () -> Void) -> Void
+    let fetchSleepData: () async -> Result<SleepReadPayload, DiagnosticReadError>
+    let fetchUSBDevices: () async -> Result<[USBDevice], DiagnosticReadError>
+    let readObservedSettings: () async -> Result<[ObservedSetting], DiagnosticReadError>
+    let runInBackground: (@escaping () async -> Void) -> Void
     let runOnMain: (@escaping () -> Void) -> Void
     let terminate: () -> Void
 }

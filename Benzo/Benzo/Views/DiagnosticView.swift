@@ -12,7 +12,7 @@ struct DiagnosticView: View {
                     sleepSessionsPanel
                     wakeReasonPanel
                     usbDevicesPanel
-                    settingsVerificationPanel
+                    observedSettingsPanel
                 }
             }
             .frame(maxHeight: 400)
@@ -67,13 +67,16 @@ struct DiagnosticView: View {
 
     private var sleepSessionsPanel: some View {
         panelContainer(title: "Recent Sleep Sessions") {
-            if viewModel.isLoadingDiagnostics {
+            switch viewModel.sleepData {
+            case .idle, .loading:
                 loadingRow
-            } else if viewModel.sleepSessions.isEmpty {
-                emptyRow("No sleep sessions found")
-            } else {
-                ForEach(viewModel.sleepSessions) { session in
-                    sleepSessionRow(session)
+            case .failure:
+                emptyRow("Could not read sleep history")
+            case .success(let data):
+                if data.sessions.isEmpty {
+                    emptyRow("No sleep sessions reported")
+                } else {
+                    ForEach(data.sessions) { session in sleepSessionRow(session) }
                 }
             }
         }
@@ -122,11 +125,14 @@ struct DiagnosticView: View {
 
     private var wakeReasonPanel: some View {
         panelContainer(title: "Last Wake Reason") {
-            if viewModel.isLoadingDiagnostics {
+            switch viewModel.sleepData {
+            case .idle, .loading:
                 loadingRow
-            } else {
+            case .failure:
+                emptyRow("Could not read sleep history")
+            case .success(let data):
                 HStack {
-                    let reason = viewModel.lastWakeReason ?? "Unknown"
+                    let reason = data.lastWakeReason.map(SleepSession.humanReadableReason) ?? "Unknown"
                     Image(systemName: wakeReasonIcon(reason))
                         .font(.system(size: 11))
                         .foregroundColor(BenzoTheme.accent)
@@ -146,73 +152,64 @@ struct DiagnosticView: View {
 
     private var usbDevicesPanel: some View {
         panelContainer(title: "Connected USB Devices") {
-            if viewModel.isLoadingDiagnostics {
+            switch viewModel.usbDevices {
+            case .idle, .loading:
                 loadingRow
-            } else if viewModel.usbDevices.isEmpty {
-                emptyRow("No USB devices connected")
-            } else {
-                ForEach(viewModel.usbDevices) { device in
-                    HStack {
-                        Text(device.name)
-                            .font(.system(size: 11, weight: .medium))
-                            .foregroundColor(BenzoTheme.text)
-                            .lineLimit(1)
-                        Spacer()
-                        if let power = device.busPowerUsed {
-                            Text("\(power) mA")
-                                .font(.system(size: 10, design: .monospaced))
-                                .foregroundColor(BenzoTheme.textMuted)
+            case .failure:
+                emptyRow("Could not read USB devices")
+            case .success(let devices):
+                if devices.isEmpty {
+                    emptyRow("No USB devices reported")
+                } else {
+                    ForEach(devices) { device in
+                        HStack {
+                            Text(device.name)
+                                .font(.system(size: 11, weight: .medium))
+                                .foregroundColor(BenzoTheme.text)
+                                .lineLimit(1)
+                            Spacer()
+                            if let power = device.busPowerUsed {
+                                Text("\(power) mA")
+                                    .font(.system(size: 10, design: .monospaced))
+                                    .foregroundColor(BenzoTheme.textMuted)
+                            }
                         }
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 4)
                     }
-                    .padding(.horizontal, 16)
-                    .padding(.vertical, 4)
                 }
             }
         }
     }
 
-    // MARK: - Settings Verification
+    // MARK: - Current Settings
 
-    private var settingsVerificationPanel: some View {
-        panelContainer(title: "Settings Verification") {
-            if viewModel.isLoadingDiagnostics {
+    private var observedSettingsPanel: some View {
+        panelContainer(title: "Current Settings") {
+            switch viewModel.observedSettings {
+            case .idle, .loading:
                 loadingRow
-            } else if viewModel.settingsVerification.isEmpty {
+            case .failure:
                 emptyRow("Could not read settings")
-            } else {
-                ForEach(viewModel.settingsVerification) { v in
+            case .success(let settings):
+                ForEach(settings) { setting in
                     HStack(spacing: 6) {
-                        Image(systemName: v.matches ? "checkmark.circle.fill" : "xmark.circle.fill")
-                            .font(.system(size: 10))
-                            .foregroundColor(v.matches ? .green : .red)
-                        Text(v.key)
+                        Text(setting.key)
                             .font(.system(size: 11, design: .monospaced))
                             .foregroundColor(BenzoTheme.text)
                         Spacer()
-                        Text(v.actualValue)
+                        Text(setting.actualValue ?? "Not reported")
                             .font(.system(size: 11, design: .monospaced))
-                            .foregroundColor(v.matches ? BenzoTheme.textMuted : .red)
-                        if !v.matches {
-                            Text("(expected \(v.expectedValue))")
-                                .font(.system(size: 9))
-                                .foregroundColor(.red.opacity(0.7))
-                        }
+                            .foregroundColor(BenzoTheme.textMuted)
                     }
                     .padding(.horizontal, 16)
                     .padding(.vertical, 3)
                 }
-
-                let matchCount = viewModel.settingsVerification.filter(\.matches).count
-                let total = viewModel.settingsVerification.count
-                let allMatch = matchCount == total
-                HStack {
-                    Spacer()
-                    Text(allMatch ? "All settings verified" : "\(total - matchCount) setting\(total - matchCount == 1 ? "" : "s") drifted")
-                        .font(.system(size: 10, weight: .medium))
-                        .foregroundColor(allMatch ? .green : .red)
-                    Spacer()
-                }
-                .padding(.vertical, 6)
+                Text("Reported by pmset. Changes are not verified.")
+                    .font(.system(size: 10))
+                    .foregroundColor(BenzoTheme.textMuted)
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 6)
             }
         }
     }

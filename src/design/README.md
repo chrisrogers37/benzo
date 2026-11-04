@@ -4,7 +4,7 @@
 
 - `tokens.js`: semantic colors, typography, space, layout, motion and current native reference values. `designVariables(active)` supplies scoped CSS custom properties; do not copy palette/font values into page components.
 - `siteCopy.js`: marketing copy, metadata, approved personal tagline, public URLs, and explanations outside the simulated app. Vite renders the same metadata into built HTML and the dev page.
-- `appPresentation.js`: current native source wording, settings order/defaults, containment explanations, and explicitly fictional diagnostic readings. This is a presentation reference, never an OS execution interface.
+- `appPresentation.js`: current native source wording, settings order/defaults, containment explanations, and explicitly fictional diagnostic result fixtures. This is a presentation reference, never an OS execution interface.
 - `primitives.jsx`: shared brand, pills, symbols, icons and download link.
 - `site.css` and `app-demo.css`: scoped web and app presentation. Keep site typography independent from the small sizes inside the current native panel.
 
@@ -19,6 +19,8 @@ another observation, and Back only navigates; neither installs a rule or changes
 activity, settings or recovery evidence. Existing release setup is described
 separately in the website FAQ. Historical mockups retain their original behavior.
 
+Diagnostic datasets have separate loading, success and failure states. Empty results are distinguished from failed reads; sleep sessions and wake reason share one result. Current Settings displays reported values and missing keys without comparisons to preferences or a restoration claim. Fixtures remain browser-only; no device reads are performed.
+
 The native Swift sources remain authoritative: `Benzo/Benzo/Views/`, `Models/SleepSetting.swift`, `ViewModels/BenzoViewModel.swift` and `Theme/BenzoTheme.swift`. SwiftUI does not import this JavaScript module. A native design/copy change must be reflected in the active simulation and reviewed together. No generated contract or new framework is required by the containment plan.
 
 The current panel keeps native wording such as “USB ports disabled” so it does not silently advertise a different app UI. The external explanation qualifies physical behavior; correcting those native claims and low contrast belongs to P7, then P8. Web SVGs approximate SF Symbols. Native pixel rendering, macOS prompts, physical sleep, recovery, and hardware behavior remain unobserved on this protected host.
@@ -29,4 +31,4 @@ The current panel keeps native wording such as “USB ports disabled” so it do
 
 ## Validation
 
-Run the existing `npm test` and `npm run build` on Node 24. Interaction coverage includes disabled sleep, active/recovery selection guards, editable first-launch choices, and page integration after master/restore/first launch/quit/restart. Historical timer tests belong only to the unbundled baseline. Render desktop/mobile checks separately: jsdom cannot verify computed colors, wrapping or native pixel parity. Follow the [accepted remediation scope](../../documentation/planning/tech_debt/benzo-remediation_2026-11-02/00_TECH_DEBT.md) for order and release boundaries. This source simulation does not establish which behavior is in an existing downloaded DMG.
+Run the existing `npm test` and `npm run build` on Node 24. Interaction coverage includes disabled sleep, active/recovery selection guards, editable first-launch choices, diagnostic loading/error/empty outcomes and neutral observations, and page integration after master/restore/first launch/quit/restart. Historical timer tests belong only to the unbundled baseline. Render desktop/mobile checks separately: jsdom cannot verify computed colors, wrapping or native pixel parity. Follow the [accepted remediation scope](../../documentation/planning/tech_debt/benzo-remediation_2026-11-02/00_TECH_DEBT.md) for order and release boundaries. This source simulation does not establish which behavior is in an existing downloaded DMG.

@@ -65,9 +65,9 @@ Benzo/Benzo/                     — Swift macOS menubar app
 │   ├── CommandRunner.swift      — bounded fixed diagnostic reads and owned-fixture tests
 │   ├── PermissionObservation.swift — metadata-only legacy-rule evidence, never readiness
 │   ├── BackupService.swift      — save/load original pmset values to ~/Library/Application Support/Benzo/
-│   └── DiagnosticService.swift  — parses pmset logs, system_profiler, verifies settings
+│   └── DiagnosticService.swift  — bounded injected reads; parses logs/USB and observes settings
 ├── ViewModels/
-│   └── BenzoViewModel.swift     — all state: activate/deactivate, sleepNow, quit (restores defaults), diagnostics
+│   └── BenzoViewModel.swift     — state: legacy apply/restore/quit, disabled sleep action, diagnostic results
 ├── Views/
 │   ├── PopoverContentView.swift — main layout, switches between setup/normal/diagnostic views
 │   ├── MasterToggleView.swift   — "Deep Sleep is On/Off" header with toggle
@@ -75,7 +75,7 @@ Benzo/Benzo/                     — Swift macOS menubar app
 │   ├── SettingRowView.swift     — individual setting checkbox row
 │   ├── FooterView.swift         — launch at login, version, restore defaults, quit
 │   ├── SetupView.swift          — non-authorizing permission observation, Refresh and Back
-│   └── DiagnosticView.swift     — ⌥-click view: sleep sessions, wake reason, USB, verification
+│   └── DiagnosticView.swift     — ⌥-click view: sleep sessions, wake reason, USB, observed settings
 └── Theme/
     └── BenzoTheme.swift         — colors (accent: #d4749c)
 
@@ -85,7 +85,7 @@ src/landing/NativeAppDemo.jsx      — source-based interactive reproduction; or
 src/landing/BenzoLanding.jsx         — public landing page; single owner of interactive demo state
 src/design/                     — core web tokens, CSS, copy, metadata, icons and app presentation
 src/demo/                       — browser state/hooks and legacy compatibility fixture exports
-Benzo/BenzoTests/                — unhosted core XCTest bundle; fakes only
+Benzo/BenzoTests/                — unhosted injected tests plus owned read-child fixture
 scripts/build-dmg.sh             — archive, sign, notarize, and package as DMG
 Casks/benzo.rb                   — Homebrew cask formula
 ```

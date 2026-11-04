@@ -11,6 +11,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
     /// The only production composition root; it is never compiled into BenzoCoreTests.
     private static func makeViewModel() -> BenzoViewModel {
         let clock = LiveBenzoClock()
+        let diagnostics = DiagnosticService(reader: CommandRunner())
         let backupURL = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
             .appendingPathComponent(BenzoPaths.supportDirectory, isDirectory: true)
             .appendingPathComponent(BenzoPaths.backupFilename)
@@ -25,10 +26,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
                     metadata: { try FileManager.default.attributesOfItem(atPath: $0) }
                 ).observe()
             },
-            fetchSleepData: { DiagnosticService.fetchSleepData() },
-            fetchUSBDevices: { DiagnosticService.fetchUSBDevices() },
-            verifySettings: { DiagnosticService.verifySettings(settingStates: $0, isActive: $1) },
-            runInBackground: { DispatchQueue.global(qos: .userInitiated).async(execute: $0) },
+            fetchSleepData: { await diagnostics.fetchSleepData() },
+            fetchUSBDevices: { await diagnostics.fetchUSBDevices() },
+            readObservedSettings: { await diagnostics.readObservedSettings() },
+            runInBackground: { work in Task.detached(priority: .userInitiated) { await work() } },
             runOnMain: { DispatchQueue.main.async(execute: $0) },
             terminate: { NSApplication.shared.terminate(nil) }
         )

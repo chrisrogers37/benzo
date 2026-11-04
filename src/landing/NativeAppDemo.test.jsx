@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { act, cleanup, fireEvent, render, renderHook, screen } from '@testing-library/react'
+import { act, cleanup, fireEvent, render, renderHook, screen, within } from '@testing-library/react'
 import NativeAppDemo from './NativeAppDemo'
 import { useBenzoDemo } from '../demo/useBenzoDemo'
 
@@ -10,6 +10,15 @@ function Demo() {
 }
 
 const click = (name) => fireEvent.click(screen.getByRole('button', { name, exact: true }))
+const panel = name => screen.getByRole('heading', { name, exact: true }).parentElement
+const success = value => ({ status: 'success', value })
+const diagnosticFixture = overrides => ({
+  running: true, open: true, view: 'diagnostics', active: false,
+  sleepData: success({ sessions: [], lastWakeReason: null }),
+  usbDevices: success([]),
+  observedSettings: success([{ key: 'hibernatemode', actualValue: '25' }, { key: 'womp', actualValue: null }]),
+  ...overrides,
+})
 afterEach(() => { cleanup(); vi.useRealTimers() })
 
 describe('source-matched browser simulation', () => {
@@ -165,7 +174,7 @@ describe('source-matched browser simulation', () => {
     expect(screen.queryByRole('switch', { name: 'Deep Sleep' })).toBeNull()
     fireEvent.click(screen.getByRole('button', { name: 'Benzo menu' }), { altKey: true })
     expect(screen.getByText('Diagnostics')).toBeTruthy()
-    expect(screen.getByText('All settings verified')).toBeTruthy()
+    expect(screen.getByText('Reported by pmset. Changes are not verified.')).toBeTruthy()
     click('Back')
     expect(screen.getByRole('switch', { name: 'Deep Sleep' })).toBeTruthy()
     click('View diagnostics')
@@ -174,22 +183,89 @@ describe('source-matched browser simulation', () => {
     expect(screen.getByRole('switch', { name: 'Deep Sleep' })).toBeTruthy()
   })
 
-  it('compares diagnostic readings only against active, enabled settings', () => {
+  it('keeps observed settings unchanged when activity and preferences change', () => {
     render(<Demo />)
     click('View diagnostics')
-    expect(screen.getByText('All settings verified')).toBeTruthy()
+    const before = panel('Current Settings').textContent
+    expect(before).toContain('tcpkeepalive1')
+    expect(screen.queryByText('All settings verified')).toBeNull()
+    expect(panel('Current Settings').querySelector('.bn-result, .bn-green, .bn-red, svg')).toBeNull()
     click('Back')
     click('First launch'); click('Back'); click('Options')
     fireEvent.click(screen.getByRole('checkbox', { name: 'Disable TCP Keep-Alive' }))
     fireEvent.click(screen.getByRole('switch', { name: 'Deep Sleep' }))
     click('View diagnostics')
-    expect(screen.getByText('1 setting drifted')).toBeTruthy()
-    expect(screen.getByText('(expected 0)')).toBeTruthy()
+    expect(panel('Current Settings').textContent).toBe(before)
+    expect(screen.queryByText(/drifted|\(expected/)).toBeNull()
     click('Back')
     fireEvent.click(screen.getByRole('switch', { name: 'Deep Sleep' }))
     click('View diagnostics')
-    expect(screen.getByText('All settings verified')).toBeTruthy()
-    expect(screen.queryByText('(expected 0)')).toBeNull()
+    expect(panel('Current Settings').textContent).toBe(before)
+  })
+
+  it('distinguishes supported empty results and missing observations from read failures', () => {
+    const { rerender } = render(<NativeAppDemo state={diagnosticFixture()} dispatch={vi.fn()} />)
+    expect(screen.getByText('No sleep sessions reported')).toBeTruthy()
+    expect(screen.getByText('No USB devices reported')).toBeTruthy()
+    expect(screen.getByText('Unknown')).toBeTruthy()
+    expect(within(panel('Current Settings')).getByText('Not reported')).toBeTruthy()
+    expect(within(panel('Current Settings')).getByText('25')).toBeTruthy()
+    expect(screen.queryByText(/Could not read/)).toBeNull()
+
+    const failure = { status: 'failure' }
+    rerender(<NativeAppDemo state={diagnosticFixture({ sleepData: failure, usbDevices: failure, observedSettings: failure })} dispatch={vi.fn()} />)
+    expect(screen.getAllByText('Could not read sleep history')).toHaveLength(2)
+    expect(screen.getByText('Could not read USB devices')).toBeTruthy()
+    expect(screen.getByText('Could not read settings')).toBeTruthy()
+    expect(screen.queryByText('No sleep sessions reported')).toBeNull()
+    expect(screen.queryByText('No USB devices reported')).toBeNull()
+    expect(screen.queryByText('Unknown')).toBeNull()
+    expect(screen.queryByText('25')).toBeNull()
+    expect(screen.queryByText('Reported by pmset. Changes are not verified.')).toBeNull()
+  })
+
+  it.each(['idle', 'loading'])('shows %s without treating old payloads as current', status => {
+    const stale = diagnosticFixture({
+      sleepData: success({ sessions: [{ sleep: 'Old sleep', wake: 'Old wake', dur: '1h' }], lastWakeReason: 'Old reason' }),
+      usbDevices: success([{ name: 'Old device', power: '100' }]),
+    })
+    render(<NativeAppDemo state={{ ...stale, sleepData: { ...stale.sleepData, status }, usbDevices: { ...stale.usbDevices, status }, observedSettings: { ...stale.observedSettings, status } }} dispatch={vi.fn()} />)
+    expect(screen.getAllByText('Loading...')).toHaveLength(4)
+    expect(screen.queryByText(/Old/)).toBeNull()
+    expect(screen.queryByText('hibernatemode')).toBeNull()
+    expect(screen.queryByText(/No .* reported|Could not read/)).toBeNull()
+  })
+
+  it('keeps independent fresh results when another dataset fails or is still loading', () => {
+    render(<NativeAppDemo state={diagnosticFixture({
+      sleepData: { status: 'failure' },
+      usbDevices: success([{ name: 'Example keyboard', power: '100' }]),
+      observedSettings: { status: 'loading' },
+    })} dispatch={vi.fn()} />)
+    expect(screen.getAllByText('Could not read sleep history')).toHaveLength(2)
+    expect(screen.getByText('Example keyboard')).toBeTruthy()
+    expect(within(panel('Current Settings')).getByText('Loading...')).toBeTruthy()
+    expect(screen.queryByText('Could not read USB devices')).toBeNull()
+  })
+
+  it('renders a supported session without inventing missing battery or wake-reason values', () => {
+    render(<NativeAppDemo state={diagnosticFixture({
+      sleepData: success({ sessions: [{ sleep: 'Nov 2, 11:30 PM', wake: '7:15 AM', dur: '7h 45m' }], lastWakeReason: null }),
+    })} dispatch={vi.fn()} />)
+    expect(within(panel('Recent Sleep Sessions')).getByText('7h 45m')).toBeTruthy()
+    expect(panel('Recent Sleep Sessions').textContent).not.toContain('%')
+    expect(screen.getByText('Unknown')).toBeTruthy()
+  })
+
+  it('omits unavailable wake and USB power details while retaining reported zero power', () => {
+    render(<NativeAppDemo state={diagnosticFixture({
+      sleepData: success({ sessions: [{ sleep: 'Nov 2, 11:30 PM', dur: 'In progress' }], lastWakeReason: null }),
+      usbDevices: success([{ name: 'Unknown power device' }, { name: 'Zero power device', power: 0 }]),
+    })} dispatch={vi.fn()} />)
+    expect(panel('Recent Sleep Sessions').textContent).not.toContain('→')
+    expect(within(panel('Recent Sleep Sessions')).getByText('In progress')).toBeTruthy()
+    expect(screen.getByText('Unknown power device').parentElement.textContent).toBe('Unknown power device')
+    expect(screen.getByText('Zero power device').parentElement.textContent).toBe('Zero power device0 mA')
   })
 
   it('quits and resets the login preference', () => {

@@ -1,24 +1,28 @@
 import { Fragment, useId, useState } from 'react'
-import { appPresentation as app, exampleReadings, settingOptions, siteCopy, AppSymbol, MenuPill } from '../design'
+import { appPresentation as app, settingOptions, siteCopy, AppSymbol, MenuPill } from '../design'
 
 const copy = siteCopy.demo
 
-function Diagnostics({ onBack, active, settings }) {
-  // DiagnosticService compares the example readings with active, enabled settings.
-  const readings = exampleReadings.values
-  const verification = settingOptions.flatMap(({ key: setting, commands }) => commands.map(([key, target]) => {
-    const val = readings[key] ?? app.diagnostics.missing
-    const expected = active && settings[setting] ? target : val
-    return { key, val, expected, ok: val === expected }
-  }))
-  const drifted = verification.filter(row => !row.ok).length
+function ReadStatus({ result, failure }) {
+  return <div className="bn-session bn-faint">{result.status === 'failure' ? failure : app.diagnostics.loading}</div>
+}
+
+function Diagnostics({ onBack, sleepData, usbDevices, observedSettings }) {
   return <>
     <div className="bn-diagnostic-header"><button onClick={onBack}><AppSymbol name="back" size={10} />{app.diagnostics.back}</button><strong>{app.diagnostics.title}</strong><span aria-hidden="true" /></div>
     <div className="bn-diagnostic-scroll" role="region" aria-label={copy.resultsLabel} tabIndex={0}>
-      <div className="bn-panel"><h3>{app.diagnostics.sessions}</h3>{exampleReadings.sleepSessions.map(s => <div className="bn-session" key={s.sleep}><div>{s.sleep}<span className="bn-faint"> → </span>{s.wake}</div><div><span>{s.dur}</span><span className={`bn-mono${s.delta === '0%' ? ' bn-green' : ''}`}>{s.bat} ({s.delta})</span></div></div>)}</div>
-      <div className="bn-panel"><h3>{app.diagnostics.wakeReason}</h3><div className="bn-wake"><AppSymbol name="laptop" size={16} /><span>{exampleReadings.wakeReason}</span></div></div>
-      <div className="bn-panel"><h3>{app.diagnostics.usb}</h3>{exampleReadings.usbDevices.map(d => <div className="bn-usb" key={d.name}><span>{d.name}</span><span className="bn-mono">{d.power} mA</span></div>)}</div>
-      <div className="bn-panel"><h3>{app.diagnostics.settings}</h3>{verification.map(s => <div className="bn-verification" key={s.key}><span className={`bn-result ${s.ok ? 'bn-success' : 'bn-failure'}`}><AppSymbol name={s.ok ? 'check' : 'x'} size={7} /></span><span className="bn-mono">{s.key}</span><span className={`bn-mono bn-value${s.ok ? '' : ' bn-red'}`}>{s.val}</span>{!s.ok && <small>({app.diagnostics.expected} {s.expected})</small>}</div>)}<div className={`bn-verification-summary${drifted ? ' bn-red' : ' bn-green'}`}>{drifted ? app.diagnostics.drifted(drifted) : app.diagnostics.verified}</div></div>
+      <div className="bn-panel"><h3>{app.diagnostics.sessions}</h3>
+        {sleepData.status !== 'success' ? <ReadStatus result={sleepData} failure={app.diagnostics.sleepFailure} /> : sleepData.value.sessions.length === 0 ? <div className="bn-session bn-faint">{app.diagnostics.sleepEmpty}</div> : sleepData.value.sessions.map(s => <div className="bn-session" key={s.sleep}><div>{s.sleep}{s.wake != null && <><span className="bn-faint"> → </span>{s.wake}</>}</div><div><span>{s.dur}</span>{s.bat && <span className={`bn-mono${s.delta === '0%' ? ' bn-green' : ''}`}>{s.bat}{s.delta && ` (${s.delta})`}</span>}</div></div>)}
+      </div>
+      <div className="bn-panel"><h3>{app.diagnostics.wakeReason}</h3>
+        {sleepData.status !== 'success' ? <ReadStatus result={sleepData} failure={app.diagnostics.sleepFailure} /> : <div className="bn-wake"><AppSymbol name="laptop" size={16} /><span>{sleepData.value.lastWakeReason ?? app.diagnostics.unknown}</span></div>}
+      </div>
+      <div className="bn-panel"><h3>{app.diagnostics.usb}</h3>
+        {usbDevices.status !== 'success' ? <ReadStatus result={usbDevices} failure={app.diagnostics.usbFailure} /> : usbDevices.value.length === 0 ? <div className="bn-session bn-faint">{app.diagnostics.usbEmpty}</div> : usbDevices.value.map(d => <div className="bn-usb" key={d.name}><span>{d.name}</span>{d.power != null && <span className="bn-mono">{d.power} mA</span>}</div>)}
+      </div>
+      <div className="bn-panel"><h3>{app.diagnostics.settings}</h3>
+        {observedSettings.status !== 'success' ? <ReadStatus result={observedSettings} failure={app.diagnostics.settingsFailure} /> : <>{observedSettings.value.map(s => <div className="bn-verification" key={s.key}><span className="bn-mono">{s.key}</span><span className="bn-mono bn-value">{s.actualValue ?? app.diagnostics.missing}</span></div>)}<div className="bn-verification-summary bn-faint">{app.diagnostics.summary}</div></>}
+      </div>
     </div>
   </>
 }
@@ -41,7 +45,7 @@ export default function NativeAppDemo({ state, dispatch }) {
     <div className="bn-stage">
       <div className="bn-menubar"><span>{app.menu.finder}</span><div>{running && <button className="bn-menu-button" aria-label={app.menu.name} aria-expanded={open} title={app.menu.hint} onClick={e => dispatch({ type: 'pill', alt: e.altKey })}><MenuPill active={active} /></button>}<span>{app.menu.wifi}</span><span>{app.menu.time}</span></div></div>
       {running && open && <div className="bn-popover" aria-label={view === 'setup' ? app.setup.name : view === 'diagnostics' ? app.diagnostics.name : app.mainName}>
-        {view === 'setup' ? <Setup observation={state.permissionObservation} onRefresh={() => dispatch({ type: 'refreshPermission' })} onBack={() => dispatch({ type: 'back' })} /> : view === 'diagnostics' ? <Diagnostics active={active} settings={settings} onBack={() => dispatch({ type: 'back' })} /> : <>
+        {view === 'setup' ? <Setup observation={state.permissionObservation} onRefresh={() => dispatch({ type: 'refreshPermission' })} onBack={() => dispatch({ type: 'back' })} /> : view === 'diagnostics' ? <Diagnostics sleepData={state.sleepData} usbDevices={state.usbDevices} observedSettings={state.observedSettings} onBack={() => dispatch({ type: 'back' })} /> : <>
           <div className="bn-master"><div><strong>{active ? app.master.on : app.master.off}</strong><p>{active ? app.master.activeDescription : app.master.inactiveDescription}</p></div><button className={`bn-toggle${active ? ' bn-on' : ''}`} role="switch" aria-label={app.master.name} aria-checked={active} onClick={() => dispatch({ type: 'active' })}><span /></button></div>
           <div className="bn-sleep-wrap"><div className="bn-sleep-capsule">
             <button className="bn-sleep-now" disabled aria-describedby={sleepUnavailableId}><AppSymbol name="moon" size={11} />{app.sleep.action}</button>

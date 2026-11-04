@@ -1,5 +1,5 @@
 import { useReducer } from 'react'
-import { appPresentation, settingOptions } from '../design/appPresentation'
+import { appPresentation, exampleReadings, settingOptions } from '../design/appPresentation'
 import { siteCopy } from '../design/siteCopy'
 
 // Browser simulation only. No device APIs, permission requests or OS actions.
@@ -8,6 +8,10 @@ const defaults = () => ({
   running: true, open: true, view: 'main', permissionDestination: 'main', active: true, options: true,
   settings: Object.fromEntries(settingOptions.map(({ key, defaultEnabled }) => [key, defaultEnabled])),
   login: false, backup: true, error: null, notice: '', permissionObservation: 'legacyRulePresent',
+  // Independent fictional read results, never derived from activity or choices.
+  sleepData: { status: 'success', value: { sessions: exampleReadings.sleepSessions, lastWakeReason: exampleReadings.wakeReason } },
+  usbDevices: { status: 'success', value: exampleReadings.usbDevices },
+  observedSettings: { status: 'success', value: settingOptions.flatMap(({ commands }) => commands.map(([key]) => ({ key, actualValue: exampleReadings.values[key] }))) },
 })
 
 function reducer(state, action) {
