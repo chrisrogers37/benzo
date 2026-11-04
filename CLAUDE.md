@@ -125,7 +125,8 @@ npm run dev          # Dev server
 npm run build        # Production build
 
 # Distribution
-./scripts/build-dmg.sh   # Build DMG (set APPLE_ID, APPLE_TEAM_ID, APP_PASSWORD for notarization)
+./scripts/build-dmg.sh --help  # Explicit mode/output; Developer ID uses a configured keychain profile
+bash scripts/tests/build-dmg-test.sh  # Stub-only packaging regressions; no live Apple tools
 ```
 
 ## Code Style & Conventions
@@ -159,9 +160,12 @@ npm run build        # Production build
 
 ### Distribution
 
-- **GitHub Releases** — signed `.dmg` (notarized when Apple Developer credentials are available)
-- **Homebrew** — `brew install --cask benzo` (personal tap; official homebrew-cask tap requires notarized DMG)
-- Gatekeeper bypass: right-click → Open, or `xattr -d com.apple.quarantine /Applications/Benzo.app`
+- **Selected release mode (November 4, 2026)** — the owner selected GitHub distribution of an explicitly unnotarized community build; no Developer ID is available. An ad-hoc signature establishes neither Developer ID identity, Apple notarization nor Gatekeeper acceptance. Do not make Apple Developer membership a blocker for this selected mode.
+- **Community candidate CI** — after native tests/archive checks, the existing full-Xcode `build` job runs `build-dmg.sh --mode community` in a unique new output directory. Only the DMG, `SHA256SUMS` and `artifact.txt` are uploaded as `benzo-community-candidate` for 7 days. It preserves the source version/build and does not publish a release. Recovery/artifact acceptance and final version/checksum metadata precede publication.
+- **Native packaging** — `scripts/build-dmg.sh --mode community|developer-id --output-dir <new-absolute-dir>`; see README for the build number and Developer ID identity/team/keychain-profile arguments. Full Xcode is required. Developer ID mode uploads to Apple, requires Accepted results and validated app/DMG staples, and never downgrades on failure. Community mode is explicitly ad-hoc signed and unnotarized. No mode is selected implicitly and neither mode publishes a release.
+- **Future Developer ID target** — revisit only when broader distribution/support needs justify it. Securely configure the certificate/team and notary keychain profile on the selected signing Mac, then use the existing explicit Developer ID mode. Real signature/runtime, Accepted/staple/Gatekeeper and clean-Mac installation/launch evidence must support the resulting trust claim. See README; no credential, updater or release-platform work is implied now.
+- **Artifact evidence** — actual version/build, universal slices and signatures are checked before final output. `artifact.txt` and `SHA256SUMS` describe the final DMG. Fixture tests do not establish real signing, installation or native recovery acceptance. Release publication remains gated on those outcomes.
+- **Install route** — GitHub Releases only. Keep the maintained cask's version/checksum tied to final release bytes, but do not advertise an unverified Homebrew tap or infer Gatekeeper acceptance from packaging success.
 - Vercel Git integration can deploy previews on branch pushes and production on main; deployment remains separately approved.
 
 ---

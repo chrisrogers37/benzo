@@ -26,15 +26,10 @@ Existing downloads still use their older setup flow.
 
 **Download** the latest `.dmg` from [Releases](https://github.com/chrisrogers37/benzo/releases).
 
-Since Benzo isn't notarized yet, macOS will block it on first launch. Either:
-- Right-click the app → **Open**
-- Or run: `xattr -d com.apple.quarantine /Applications/Benzo.app`
-
-**Homebrew** (personal tap):
-```
-brew tap chrisrogers37/benzo
-brew install --cask benzo
-```
+GitHub Releases is the current distribution route. The selected community build
+is ad-hoc signed and unnotarized; review the release notes for its trust and
+acceptance limits. Preparing new source or CI artifacts does not replace an
+existing download or update installed apps.
 
 ## What it does
 
@@ -95,6 +90,80 @@ production app or privileged/lifecycle acceptance on an always-on fleet host.
 Physical sleep, permissions and recovery acceptance require a separately approved
 test Mac; a successful build or fake-based test does not prove those outcomes.
 
+The `build` workflow's native job also archives a universal Release app with
+distribution signing disabled (`CODE_SIGNING_ALLOWED=NO`). After
+the tests pass, it checks the archive's bundle identifier, version, build number and
+arm64/x86_64 slices, then uploads `benzo-ci-build-evidence` (a tar.gz of the
+`.xcarchive`, `benzo-ci-manifest.txt` and `SHA256SUMS`) for 7 days. This is build
+evidence for inspection only: it is not distribution signing, notarization, a
+release candidate or native acceptance.
+
+### Package a native artifact
+
+The selected release path is an explicitly **unnotarized community build** on
+GitHub Releases. No Developer ID is available. The app uses an ad-hoc signature;
+this does not establish a Developer ID identity, Apple notarization, or Gatekeeper
+acceptance. Apple Developer membership is not a prerequisite for this selected path.
+
+After its native tests and archive checks pass, the existing `build` workflow
+runs the packaging script in community mode on its full-Xcode runner. It uploads
+only the DMG, `SHA256SUMS` and `artifact.txt` as `benzo-community-candidate`, retained
+for 7 days. The candidate keeps the checked-out native project's version and build
+number. This prepares inspectable bytes; it does not publish a GitHub Release.
+Final version/build allocation, artifact acceptance, and approved native recovery,
+restore and quit acceptance still precede publication.
+
+`scripts/build-dmg.sh` requires an explicit distribution mode, full Xcode, and a
+new absolute output directory whose parent already exists. It never reuses or
+deletes a shared `build/` directory. Choose a positive release build number;
+`MARKETING_VERSION` in the native project remains the app version authority.
+The site's private npm version is independent metadata.
+
+```sh
+# Explicitly ad-hoc signed and unnotarized; no Gatekeeper acceptance claimed.
+./scripts/build-dmg.sh --mode community --output-dir "$HOME/Benzo-community-candidate" --build-number 2
+
+# Safe packaging regression checks: all Apple and host tools are stubbed.
+bash scripts/tests/build-dmg-test.sh
+```
+
+Both modes verify the app's actual version/build, arm64 and x86_64 slices, and
+signatures. Successful output includes `artifact.txt`, `SHA256SUMS`, and the
+verified DMG; failed runs
+retain logs and an `INCOMPLETE` marker without a distributable DMG. The script
+does not publish a release. Real artifact checks and approved native recovery,
+restore and quit acceptance remain required before publication; fixture success
+and a website deployment do not complete those gates.
+
+### Future Developer ID distribution
+
+Revisit Developer ID signing and notarization when broader distribution or support
+needs justify the Apple Developer setup. It is a future target, not the current
+release mode or a blocker for the community release. The existing script already
+has an explicit mode for that work; no updater or release platform is required.
+
+On the selected signing Mac, install a valid Developer ID Application certificate
+and configure a `notarytool` keychain profile securely. Then use the certificate's
+SHA1 and team ID with that profile; never put passwords or private keys in chat,
+repository files, or CLI arguments:
+
+```sh
+# Future use only: uploads the app ZIP and DMG to Apple.
+./scripts/build-dmg.sh --mode developer-id --output-dir "$HOME/Benzo-signed-candidate" --build-number 2 \
+  --signing-identity '<40-character-certificate-SHA1>' --team-id '<10-character-team-ID>' \
+  --notary-profile '<configured-profile-name>'
+```
+
+That path requires the real artifact's Developer ID signature and hardened
+runtime, Apple's Accepted results, validated app and DMG staples, Gatekeeper
+assessment, and approved clean-Mac installation/launch acceptance before claiming
+signed/notarized distribution. Any signing, export, notarization, stapling or
+assessment error fails the build; it never silently downgrades to community mode.
+
+The maintained `Casks/benzo.rb` records release version and checksum metadata;
+it does not establish a supported Homebrew tap. Advertise a Homebrew install
+route only after that route is independently verified.
+
 ## Landing page
 
 [benzo.work](https://benzo.work/) — built with React/Vite, includes an interactive demo of unreleased app changes.
@@ -121,10 +190,13 @@ Its tests may execute only an owned synthetic child fixture. This narrow excepti
 does not permit production commands or demonstrate privileged-chain completion.
 Legacy mutation transport remains synchronous and unreleased pending recovery work.
 
-The `build` workflow runs web tests/build and full-Xcode Debug/Release/core tests.
-The separate `security` workflow retains npm audit and Gitleaks. Neither workflow
-publishes artifacts. The connected Vercel Git integration can deploy previews on
-branch pushes and the site on main; inspect and authorize deployment before push.
+The `build` workflow runs web tests/build, full-Xcode Debug and Release
+archive builds, and core tests. Its native job keeps the CI build evidence described
+above and the unnotarized community candidate as separate short-lived workflow
+artifacts. Neither publishes a release. The separate `security` workflow retains
+npm audit and Gitleaks and publishes no artifacts. The connected Vercel Git
+integration can deploy previews on branch pushes and the site on main; inspect and
+authorize deployment before push.
 
 The accepted delivery order is 03 → 01 → 04 → conditional 02 in the
 [remediation plan](documentation/planning/tech_debt/benzo-remediation_2026-11-02/00_TECH_DEBT.md).
