@@ -29,7 +29,6 @@ struct SettingRowView: View {
                 : Color.clear
         )
         .disabled(isEditBlocked)
-        .opacity(isEditBlocked ? 0.5 : 1)
         .onHover { hovering in
             isHovered = hovering && !isEditBlocked
         }
@@ -37,6 +36,7 @@ struct SettingRowView: View {
 }
 
 private struct SettingRowToggleStyle: ToggleStyle {
+    @Environment(\.isEnabled) private var isEnabled
     @FocusState private var isFocused: Bool
 
     func makeBody(configuration: Configuration) -> some View {
@@ -45,6 +45,7 @@ private struct SettingRowToggleStyle: ToggleStyle {
                 configuration.label
                 Spacer()
                 PinkCheckbox(isChecked: configuration.isOn)
+                    .opacity(isEnabled ? 1 : 0.5)
                     .accessibilityHidden(true)
             }
             .padding(.horizontal, 20)

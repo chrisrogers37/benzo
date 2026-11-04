@@ -26,7 +26,7 @@ struct FooterView: View {
             HStack {
                 Text("v0.3.0")
                     .font(.system(size: 10))
-                    .foregroundColor(BenzoTheme.textFaint)
+                    .foregroundColor(BenzoTheme.textMuted)
 
                 Spacer()
 

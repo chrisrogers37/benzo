@@ -33,7 +33,7 @@
 .benzo-site .bn-options > button > span:last-child { color: var(--native-faint); }
 .benzo-site .bn-expanded { transform: rotate(90deg); }
 .benzo-site .bn-stage .bn-setting { width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 9px 20px; }
-.benzo-site .bn-setting:disabled { opacity: .5; }
+.benzo-site .bn-setting:disabled .bn-checkbox { opacity: .5; }
 .benzo-site .bn-setting:not(:disabled):hover { background: var(--native-black-faint); }
 .benzo-site .bn-setting[aria-checked=true]:not(:disabled):hover { background: var(--native-pink-hover); }
 .benzo-site .bn-setting strong { display: block; font-size: var(--native-setting); font-weight: 500; }

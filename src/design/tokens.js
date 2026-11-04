@@ -35,7 +35,7 @@ export const designTokens = Object.freeze({
   // Improving its contrast or dimensions requires a native/parity decision.
   native: {
     ink: '#1a1a1a', muted: '#666', faint: '#707070', description: '#666',
-    version: '#707070', toggleOff: '#767676', loginOff: '#767676', blue: '#007aff',
+    version: '#666', toggleOff: '#767676', loginOff: '#767676', blue: '#007aff',
     controlAccent: '#a54370', green: '#23752f', red: '#b42318', redMuted: '#b42318', hoverText: '#555',
     menubar: '#ffffffd9', menubarBorder: '#e6e1dd', whiteSoft: '#ffffffe6',
     whiteLine: '#ffffff38', whiteFaint: '#ffffff55', blackFaint: '#00000005',
