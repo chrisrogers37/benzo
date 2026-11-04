@@ -26,15 +26,10 @@ Existing downloads still use their older setup flow.
 
 **Download** the latest `.dmg` from [Releases](https://github.com/chrisrogers37/benzo/releases).
 
-Since Benzo isn't notarized yet, macOS will block it on first launch. Either:
-- Right-click the app → **Open**
-- Or run: `xattr -d com.apple.quarantine /Applications/Benzo.app`
-
-**Homebrew** (personal tap):
-```
-brew tap chrisrogers37/benzo
-brew install --cask benzo
-```
+GitHub Releases is the current distribution route. The selected community build
+is ad-hoc signed and unnotarized; review the release notes for its trust and
+acceptance limits. Preparing new source or CI artifacts does not replace an
+existing download or update installed apps.
 
 ## What it does
 
@@ -164,6 +159,10 @@ runtime, Apple's Accepted results, validated app and DMG staples, Gatekeeper
 assessment, and approved clean-Mac installation/launch acceptance before claiming
 signed/notarized distribution. Any signing, export, notarization, stapling or
 assessment error fails the build; it never silently downgrades to community mode.
+
+The maintained `Casks/benzo.rb` records release version and checksum metadata;
+it does not establish a supported Homebrew tap. Advertise a Homebrew install
+route only after that route is independently verified.
 
 ## Landing page
 
