@@ -99,4 +99,42 @@ reject --mode community --mode community --output-dir "$task/duplicate-mode"
 reject --mode community --output-dir
 check test ! -e "$task/duplicate-mode"
 check test ! -e "$task/rejected-argv.log"
+
+# Model xcodebuild's separate version writes. A large suffix makes early pipe
+# closure reproducible without timing sleeps or invoking the real Xcode tool.
+mkdir "$task/original"
+ln -s "$repo/scripts/tests/fixtures/packaging-tool.sh" "$task/original/xcodebuild"
+rm "$task/bin/xcodebuild"
+cat > "$task/bin/xcodebuild" <<'STUB'
+#!/bin/bash
+set -euo pipefail
+if [[ "${1:-}" == -version ]]; then
+    printf 'xcodebuild\t-version\n' >> "$BENZO_FIXTURE_LOG"
+    case "$BENZO_FIXTURE_SCENARIO" in
+        xcode-split)
+            printf 'Xcode 16.4\n'
+            printf 'Build version 16F6\n'
+            printf -v suffix '%65536s' ''
+            for ((chunk=0; chunk<16; chunk++)); do printf '%s\n' "$suffix"; done
+            exit 0 ;;
+        xcode-malformed) printf 'Command Line Tools only\n'; exit 0 ;;
+        xcode-failure) printf 'Xcode 16.4\n'; exit 42 ;;
+    esac
+fi
+exec "$(dirname "$0")/../original/xcodebuild" "$@"
+STUB
+chmod +x "$task/bin/xcodebuild"
+if PATH="$task/bin" BENZO_FIXTURE_LOG="$task/old-pipeline-argv.log" BENZO_FIXTURE_SCENARIO=xcode-split \
+    /bin/bash -o pipefail -c 'xcodebuild -version | grep -q "^Xcode "' > "$task/old-pipeline.log" 2>&1; then
+    printf 'FAIL: old pipeline did not reproduce early pipe closure\n' >&2; exit 1
+fi
+count=$((count+1))
+printf 'PASS old version pipeline reproduces early pipe closure\n'
+run_case xcode-split community xcode-split success
+run_case xcode-malformed community xcode-malformed failure
+check grep -q 'Full Xcode is required' "$case_dir/result.log"
+check test ! -e "$case_dir/output"
+run_case xcode-failure community xcode-failure failure
+check grep -q 'Could not read Xcode version' "$case_dir/result.log"
+check test ! -e "$case_dir/output"
 printf 'PASS %s packaging fixtures (Apple/host tools stubbed)\n' "$count"

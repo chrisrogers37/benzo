@@ -56,7 +56,9 @@ for tool in "${tools[@]}"; do
     command -v "$tool" >/dev/null || fail "Missing tool: $tool"
 done
 [[ "$(uname -s)" == Darwin ]] || fail 'Packaging requires macOS and full Xcode'
-xcodebuild -version | grep -q '^Xcode ' || fail 'Full Xcode is required'
+# Drain Xcode's output before matching; grep -q must not close its pipe early.
+xcode_version=$(xcodebuild -version) || fail 'Could not read Xcode version'
+grep -q '^Xcode ' <<< "$xcode_version" || fail 'Full Xcode is required'
 
 # Exclusive creation prevents reuse of a shared build directory. Only our private
 # mktemp scratch is recursively deleted, including on failure or interruption.
