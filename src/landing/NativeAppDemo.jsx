@@ -33,6 +33,10 @@ function Setup({ observation, onRefresh, onBack }) {
 
 export default function NativeAppDemo({ state, dispatch }) {
   const { running, open, view, options, settings, login, phase } = state
+  const statusTitle = app.recovery.titles[phase] ?? app.recovery.titles.recoveryRequired
+  const statusMessage = phase === 'recoveryRequired' && state.error
+    ? state.error
+    : app.recovery.messages[phase] ?? app.recovery.messages.recoveryRequired
   const active = phase === 'activeVerified'
   const busy = ['checking', 'applying', 'restoring'].includes(phase)
   const canToggleMaster = active || (phase === 'off' && settingOptions.some(option => option.available && settings[option.key]))
@@ -48,10 +52,10 @@ export default function NativeAppDemo({ state, dispatch }) {
   return <div className="bz-native-demo" aria-label={copy.name}>
     <div className="bn-demo-toolbar" aria-label={copy.navigation}><span>{copy.title}</span><div><button onClick={() => dispatch({ type: 'firstLaunch' })}>{copy.firstLaunch}</button><button onClick={() => dispatch({ type: 'reset' })}>{running ? copy.reset : copy.restart}</button></div></div>
     <div className="bn-stage">
-      <div className="bn-menubar"><span>{app.menu.finder}</span><div>{running && <button className="bn-menu-button" aria-label={app.menu.name} aria-expanded={open} title={app.menu.hint} onClick={e => dispatch({ type: 'pill', alt: e.altKey })}><MenuPill active={active} /></button>}<span>{app.menu.wifi}</span><span>{app.menu.time}</span></div></div>
+      <div className="bn-menubar"><span>{app.menu.finder}</span><div>{running && <button className="bn-menu-button" aria-label={app.menu.name} aria-description={`Benzo: ${statusTitle}. ${statusMessage}`} aria-expanded={open} title={`${statusTitle}. ${statusMessage}`} onClick={e => dispatch({ type: 'pill', alt: e.altKey })}><MenuPill active={active} status={phase} /></button>}<span>{app.menu.wifi}</span><span>{app.menu.time}</span></div></div>
       {running && open && <div className="bn-popover" aria-label={view === 'setup' ? app.setup.name : view === 'diagnostics' ? app.diagnostics.name : app.mainName}>
         {view === 'setup' ? <Setup observation={state.permissionObservation} onRefresh={() => dispatch({ type: 'refreshPermission' })} onBack={() => dispatch({ type: 'back' })} /> : view === 'diagnostics' ? <Diagnostics sleepData={state.sleepData} usbDevices={state.usbDevices} observedSettings={state.observedSettings} onBack={() => dispatch({ type: 'back' })} /> : <>
-          <div className="bn-master"><div><strong>{app.recovery.titles[phase] ?? app.recovery.titles.recoveryRequired}</strong><p>{phase === 'recoveryRequired' && state.error ? state.error : app.recovery.messages[phase] ?? app.recovery.messages.recoveryRequired}</p></div><button className={`bn-toggle${active ? ' bn-on' : ''}`} role="switch" aria-label={app.master.name} aria-checked={active} disabled={!canToggleMaster} onClick={() => dispatch({ type: 'active' })}><span /></button></div>
+          <div className="bn-master"><div><strong>{statusTitle}</strong><p>{statusMessage}</p></div><button className={`bn-toggle${active ? ' bn-on' : ''}`} role="switch" aria-label={app.master.name} aria-checked={active} disabled={!canToggleMaster} onClick={() => dispatch({ type: 'active' })}><span /></button></div>
           <div className="bn-sleep-wrap"><div className="bn-sleep-capsule">
             <button className="bn-sleep-now" disabled aria-describedby={sleepUnavailableId}><AppSymbol name="moon" size={11} />{app.sleep.action}</button>
           </div><p className="bn-control-reason" id={sleepUnavailableId}>{app.sleep.unavailable}</p></div>

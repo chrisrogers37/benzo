@@ -163,6 +163,23 @@ describe('source-matched browser simulation', () => {
     for (const name of ['Retry', 'Stay Open', 'Quit Anyway']) expect(screen.getByRole('button', { name, exact: true })).toBeTruthy()
   })
 
+  it('exposes busy and recovery status from the menu bar while the popover is closed', () => {
+    const dispatch = vi.fn()
+    const { rerender } = render(<NativeAppDemo state={{ ...initialDemoState(true), open: false, phase: 'applying' }} dispatch={dispatch} />)
+    let menu = screen.getByRole('button', { name: 'Benzo menu' })
+    expect(menu.getAttribute('aria-description')).toContain('Benzo: Applying Settings.')
+    expect(menu.title).toContain('Applying your frozen selection')
+    expect(menu.querySelector('[data-status="busy"]')).toBeTruthy()
+    expect(screen.queryByRole('switch', { name: 'Deep Sleep' })).toBeNull()
+
+    rerender(<NativeAppDemo state={{ ...initialDemoState(true), open: false, phase: 'recoveryRequired', error: 'Restore failed.' }} dispatch={dispatch} />)
+    menu = screen.getByRole('button', { name: 'Benzo menu' })
+    expect(menu.getAttribute('aria-description')).toContain('Benzo: Recovery Required.')
+    expect(menu.title).toContain('Restore failed.')
+    expect(menu.querySelector('[data-status="recovery"]')).toBeTruthy()
+    expect(screen.queryByRole('switch', { name: 'Deep Sleep' })).toBeNull()
+  })
+
   it('disables the master without an available Off selection and disables restore without a session', () => {
     const emptySelection = { ...initialDemoState(false), settings: Object.fromEntries(Object.keys(initialDemoState(false).settings).map(key => [key, false])) }
     const { rerender } = render(<NativeAppDemo state={emptySelection} dispatch={vi.fn()} />)

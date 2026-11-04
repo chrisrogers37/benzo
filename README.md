@@ -80,6 +80,19 @@ backup and existing rule during removal. Do not delete invalid or unreadable
 evidence to reactivate the app. Seek help through
 [GitHub issues](https://github.com/chrisrogers37/benzo/issues).
 
+Legacy backup bytes, an unretired rule, or saved legacy-active state without a
+final journal keep normal controls unavailable. This version has no in-app legacy acknowledgement or
+migration; administrator review alone does not clear those gates. Preserve the
+evidence while arranging recovery and retirement outside the app.
+
+Recovery storage requires an account-owned private directory (0700) and regular
+private files (0600). Older installations may have different permissions. An
+interrupted save may also leave `.benzo-*.tmp` evidence in
+`~/Library/Application Support/Benzo`. For either storage error, preserve the
+entire directory and ask an administrator to inspect its ownership, permissions,
+and recovery generations together with execution evidence. Do not automatically
+change permissions or remove temporary files to bypass Recovery Required.
+
 ## Requirements
 
 - macOS Ventura (13.0) or later

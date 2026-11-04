@@ -177,6 +177,33 @@ final class RecoveryEngineTests: XCTestCase {
         XCTAssertFalse(subject.state.isActive)
     }
 
+    func testFailedRestoreCompensatesOwnedCellsAndPreservesOriginalsForRetry() async {
+        let store = EngineStore(), transport = EngineTransport([acNap: 1, acWake: 1])
+        let subject = engine(store, transport)
+        await subject.apply(settings: [.disablePowerNap, .disableNetworkWake])
+        transport.onWrite = { [unowned transport] cell, value, count in
+            transport.values[cell] = value
+            return .completed(status: count == 4 ? 1 : 0)
+        }
+
+        await subject.restore()
+        XCTAssertEqual(transport.writes.map(\.cell), [acNap, acWake, acNap, acWake, acWake, acNap])
+        XCTAssertEqual(transport.writes.map(\.value), [0, 0, 1, 1, 0, 0])
+        XCTAssertEqual(store.journal?.cells.map(\.original), [1, 1])
+        XCTAssertEqual(store.journal?.cells.map(\.lastVerified), [0, 0])
+        XCTAssertEqual(store.journal?.cells.map(\.owned), [true, true])
+        XCTAssertNil(store.receipt)
+        guard case .recoveryRequired = subject.state else { return XCTFail("Failed restore must remain visible") }
+
+        let canQuit = await subject.prepareToQuit()
+        XCTAssertTrue(canQuit)
+        XCTAssertEqual(transport.writes.map(\.value), [0, 0, 1, 1, 0, 0, 1, 1])
+        XCTAssertEqual(transport.values[acNap], 1)
+        XCTAssertEqual(transport.values[acWake], 1)
+        XCTAssertEqual(subject.state, .off)
+        XCTAssertEqual(store.journal, store.receipt)
+    }
+
     func testPostRestoreConflictNeverCompensatesReleasedCells() async {
         let hib = ManagedCell(profile: .ac, key: .hibernatemode)
         let standby = ManagedCell(profile: .ac, key: .standby)
