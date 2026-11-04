@@ -17,16 +17,19 @@ value() {
     return 1
 }
 args=("$@")
-make_app() {
+make_app() (
+    # Xcode's archived bundle is public; keep its enclosing scratch private.
+    umask 022
     mkdir -p "$1/Contents/MacOS"
     printf 'fixture executable\n' > "$1/Contents/MacOS/Benzo"
+    chmod 755 "$1/Contents/MacOS/Benzo"
     cat > "$1/Contents/Info.plist" <<INFO
 CFBundleIdentifier=com.benzo.app
 CFBundleShortVersionString=$([[ "$scenario" == bundle-version ]] && printf '0.2.0' || printf '0.3.0')
 CFBundleVersion=$([[ "$scenario" == bundle-build ]] && printf '999' || printf '%s' "${BENZO_FIXTURE_BUILD:-7}")
 CFBundleExecutable=Benzo
 INFO
-}
+)
 case "$tool" in
     uname) printf 'Darwin\n' ;;
     xcodebuild)
@@ -60,7 +63,7 @@ case "$tool" in
         if [[ "$1" == -c ]]; then
             [[ "$2" == -k && "$3" == --keepParent && "$4" == *.app && "$5" == *.zip ]] || exit 90
             printf 'fixture zip\n' > "$5"
-        else cp -R "$1" "$2"; fi ;;
+        else cp -pR "$1" "$2"; fi ;;
     lipo) printf '%s\n' "$([[ "$scenario" == missing-slice ]] && printf arm64 || printf 'arm64 x86_64')" ;;
     codesign)
         if has --verify; then
@@ -76,6 +79,11 @@ case "$tool" in
             fi
         elif has --sign; then
             [[ "$scenario" != sign-failure ]] || exit 42
+            if [[ "$(value --sign)" == - && "$last" == *.app ]]; then
+                mkdir -m 755 "$last/Contents/_CodeSignature"
+                # Like codesign, this file inherits the signing process umask.
+                printf 'fixture signature resource\n' > "$last/Contents/_CodeSignature/CodeResources"
+            fi
         else exit 90; fi ;;
     xcrun)
         if [[ "$1" == notarytool && "$2" == submit ]]; then
@@ -95,6 +103,19 @@ case "$tool" in
             root=$(value -srcfolder)
             [[ -d "$root/Benzo.app" && ! -e "$root/Packaging.log" ]] || exit 90
             [[ "$(stat -f '%Lp' "$root")" == 755 ]] || exit 90
+            if [[ "$scenario" == signature-permissions ]]; then
+                for directory in "$root/Benzo.app" "$root/Benzo.app/Contents" "$root/Benzo.app/Contents/MacOS" "$root/Benzo.app/Contents/_CodeSignature"; do
+                    [[ "$(stat -f '%Lp' "$directory")" == 755 ]] || exit 90
+                done
+                [[ "$(stat -f '%Lp' "$root/Benzo.app/Contents/_CodeSignature/CodeResources")" == 644 ]] || exit 90
+                [[ "$(stat -f '%Lp' "$root/Benzo.app/Contents/MacOS/Benzo")" == 755 ]] || exit 90
+                scratch=$(dirname "$root")
+                output=$(dirname "$scratch")
+                [[ "$(stat -f '%Lp' "$scratch")" == 700 && "$(stat -f '%Lp' "$output")" == 700 ]] || exit 90
+                for log in "$output/sign.log" "$output/archive.log" "$output/dmg.log"; do
+                    [[ "$(stat -f '%Lp' "$log")" == 600 ]] || exit 90
+                done
+            fi
             printf 'fixture DMG\n' > "$last"
         elif [[ "$1" == verify ]]; then
             [[ "$scenario" != dmg-invalid ]] || exit 42

@@ -127,7 +127,9 @@ PLIST
         -exportOptionsPlist "$scratch/ExportOptions.plist" > "$output/export.log" 2>&1
 else
     ditto "$archive/Products/Applications/Benzo.app" "$app"
-    codesign --force --sign - "$app" > "$output/sign.log" 2>&1
+    # Signature resources ship inside the public app. The parent creates the log
+    # with its private umask; only the signing subprocess uses public file modes.
+    (umask 022; codesign --force --sign - "$app") > "$output/sign.log" 2>&1
 fi
 
 [[ -d "$app" && ! -L "$app" ]] || fail 'Expected exported app is missing'

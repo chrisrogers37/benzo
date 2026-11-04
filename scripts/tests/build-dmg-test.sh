@@ -5,7 +5,7 @@ repo=$(cd "$(dirname "$0")/../.." && pwd -P)
 task=$(mktemp -d "${TMPDIR:-/tmp}/benzo-packaging-test.XXXXXX")
 trap 'rm -rf -- "$task"' EXIT
 mkdir "$task/bin"
-for tool in awk basename cat cp dirname grep mkdir mktemp mv rm shasum stat tr; do
+for tool in awk basename cat chmod cp dirname grep mkdir mktemp mv rm shasum stat tr; do
     ln -s "$(command -v "$tool")" "$task/bin/$tool"
 done
 for tool in uname xcodebuild plutil security ditto lipo codesign xcrun hdiutil spctl; do
@@ -55,6 +55,7 @@ if grep -Eq '^(xcrun|security|spctl)' "$case_dir/argv.log"; then check false; fi
 check grep -q 'CODE_SIGNING_ALLOWED=NO' "$case_dir/argv.log"
 check grep -q 'ARCHS=arm64 x86_64' "$case_dir/argv.log"
 check grep -q 'ONLY_ACTIVE_ARCH=NO' "$case_dir/argv.log"
+run_case signature-permissions community signature-permissions success
 
 run_case developer developer-id success success --build-number 7
 check grep -q '<string>developer-id</string>' "$case_dir/export-options.plist"
