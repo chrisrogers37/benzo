@@ -1,7 +1,7 @@
 ---
 title: "[safety] Prepare bounded reads and truthful permission observation"
 type: plan
-status: draft
+status: active
 owner: claudna:audit
 created: 2026-11-02
 tags: [safety, security, performance, "priority:high"]
@@ -9,6 +9,14 @@ repos: chrisrogers37/benzo
 ---
 
 ## Summary
+
+**IN PROGRESS — started November 3, 2026.** Parent PR #99 is merged at
+`834db50d663170aef79a849158a43ba21438c85f`; its merged-head native/web and security
+CI passed. The owner requested reviewed merges followed by a release and then
+explicitly selected completing the recovery fixes first. A fresh source comparison
+found no scope drift. 03 already removed the `needsSudoersUpdate` dependency;
+01 removes its remaining unused implementation. Native acceptance and 02's
+workflow/authorization gates remain separate from this preparation.
 
 One PR adds a reusable bounded read runner and replaces misleading permission readiness with nonmutating observation. It removes the setup/install entrypoint; the existing legacy grant remains untouched. It does not install a temporary exact `-a` policy, controller manifest, ACL, helper or new standing grant. Explicit per-operation authorization is the default to evaluate for conditional [02](02_recovery-engine.md), with transport feasibility settled before implementation.
 
@@ -128,3 +136,11 @@ On November 2, 2026, two independent subagents performed targeted safety and YAG
 The verification confirmed that bounded asynchronous transport is limited to reads. Metadata observation does not authorize writes, and the legacy capture-to-write sequence is not partially migrated before 02.
 
 This verdict concerns the revised documents. Implementation, authorization feasibility, native acceptance and release remain unverified; the unchecked implementation gates remain open. No application tests, native actions or network operations were performed by these two reviewers.
+
+## November 3 implementation checkpoint
+
+Bounded read transport and observation-only permission navigation are implemented. Legacy synchronous mutation transport remains isolated; diagnostics will adopt the reader in 04. Metadata observation uses canonical `/private/etc/sudoers.d/benzo` to avoid following the standard `/etc` alias or substituted ancestors.
+
+Local validation: all 26 application Swift sources pass CLT typecheck; the engine passes strict-concurrency typecheck and 11 owned-fixture runtime scenarios. Full XCTest still requires CI. Web tests pass 39/39, production build and moderate audit pass. Browser desktop/mobile checks cover Refresh/Back, preserved inactive state, Option-click diagnostic navigation and 390px overflow; screenshots are retained outside Git.
+
+Independent native/permission/web review found one minor Back-navigation mismatch; it was fixed and the focused re-review returned no findings. Separate engine review found no findings. Reuse, altitude, simplification and efficiency lenses yielded no justified additional edits. Native host acceptance and 02 authorization/recovery gates remain open.

@@ -42,8 +42,7 @@ struct BenzoDependencies {
     let backup: any BackupStoring
     let preferences: any PreferenceStoring
     let loginItem: any LoginItemClient
-    let isSetupComplete: () -> Bool
-    let installSudoersRule: () throws -> Void
+    let observePermission: () -> PermissionObservation
     let fetchSleepData: () -> (sessions: [SleepSession], lastWakeReason: String?)
     let fetchUSBDevices: () -> [USBDevice]
     let verifySettings: ([SleepSetting: Bool], Bool) -> [SettingVerification]
@@ -61,7 +60,9 @@ enum BenzoPreferenceKey {
 enum BenzoPaths {
     static let pmset = "/usr/bin/pmset"
     static let sudo = "/usr/bin/sudo"
-    static let sudoers = "/etc/sudoers.d/benzo"
+    // Canonical spelling of /etc/sudoers.d/benzo avoids following the standard /etc symlink.
+    // Used only for metadata observation; no installer or remover consumes this path.
+    static let sudoers = "/private/etc/sudoers.d/benzo"
     static let supportDirectory = "Benzo"
     static let backupFilename = "original-pmset.json"
 }

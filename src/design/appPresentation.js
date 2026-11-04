@@ -17,7 +17,15 @@ export const appPresentation = {
   options: 'Options',
   selectionBlocked: 'Resolve the current session or recovery before changing settings.',
   footer: { login: 'Launch at Login', restore: 'Restore System Defaults', quit: 'Quit', noBackup: 'Nothing to revert — activate Benzo first.' },
-  setup: { name: 'Benzo setup', title: 'Welcome to Benzo', description: "Benzo needs one-time permission to modify your Mac's sleep settings.", action: 'Grant Permission', note: ['This creates a system rule so Benzo', 'can adjust sleep settings without', 'repeatedly asking for your password.'] },
+  setup: {
+    name: 'Benzo permission status', title: 'Permission status', action: 'Refresh status', back: 'Back',
+    observations: {
+      noLegacyRule: 'No legacy permission rule found',
+      legacyRulePresent: 'Legacy permission rule found; authorization is unverified',
+      unknown: 'Permission status could not be determined',
+    },
+    note: ['This only checks for a legacy rule.', 'It does not verify authorization', 'or change permissions.'],
+  },
   mainName: 'Benzo sleep controls',
   diagnostics: { name: 'Benzo diagnostics', title: 'Diagnostics', back: 'Back', sessions: 'Recent Sleep Sessions', wakeReason: 'Last Wake Reason', usb: 'Connected USB Devices', settings: 'Settings Verification', verified: 'All settings verified', expected: 'expected', missing: 'N/A', drifted: count => `${count} setting${count === 1 ? '' : 's'} drifted` },
 }

@@ -19,8 +19,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
             backup: BackupService(fileURL: backupURL, clock: clock),
             preferences: UserDefaults.standard,
             loginItem: LiveLoginItemClient(),
-            isSetupComplete: { ShellExecutor.isSetupComplete },
-            installSudoersRule: { try ShellExecutor.installSudoersRule() },
+            observePermission: {
+                PermissionObserver(
+                    ruleURL: URL(fileURLWithPath: BenzoPaths.sudoers),
+                    metadata: { try FileManager.default.attributesOfItem(atPath: $0) }
+                ).observe()
+            },
             fetchSleepData: { DiagnosticService.fetchSleepData() },
             fetchUSBDevices: { DiagnosticService.fetchUSBDevices() },
             verifySettings: { DiagnosticService.verifySettings(settingStates: $0, isActive: $1) },

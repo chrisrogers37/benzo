@@ -13,18 +13,32 @@ const click = (name) => fireEvent.click(screen.getByRole('button', { name, exact
 afterEach(() => { cleanup(); vi.useRealTimers() })
 
 describe('source-matched browser simulation', () => {
-  it('keeps first-launch setup ahead of diagnostics until permission is simulated', () => {
+  it('keeps permission status ahead of diagnostics until Back without granting access', () => {
     render(<Demo />)
     click('First launch')
     click('View diagnostics')
-    expect(screen.getByRole('button', { name: 'Grant Permission' })).toBeTruthy()
-    expect(screen.queryByRole('button', { name: 'Back', exact: true })).toBeNull()
+    expect(screen.getByRole('button', { name: 'Refresh status' })).toBeTruthy()
+    expect(screen.getByText('No legacy permission rule found')).toBeTruthy()
+    expect(screen.queryByRole('button', { name: 'Grant Permission' })).toBeNull()
     click('Benzo menu')
     fireEvent.click(screen.getByRole('button', { name: 'Benzo menu' }), { altKey: true })
-    expect(screen.getByRole('button', { name: 'Grant Permission' })).toBeTruthy()
-    click('Grant Permission')
-    click('View diagnostics')
+    expect(screen.getByRole('button', { name: 'Refresh status' })).toBeTruthy()
+    click('Refresh status')
+    expect(screen.getByText('No legacy permission rule found')).toBeTruthy()
+    expect(screen.getByRole('status').textContent).toContain('No permission was requested or changed')
+    click('Back')
+    expect(screen.getByText('Diagnostics')).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Back', exact: true })).toBeTruthy()
+  })
+
+  it('opens main after normally reopening permission status even if diagnostics was previously requested', () => {
+    render(<Demo />)
+    click('First launch')
+    click('View diagnostics')
+    click('Benzo menu'); click('Benzo menu')
+    click('Back')
+    expect(screen.getByRole('switch', { name: 'Deep Sleep' })).toBeTruthy()
+    expect(screen.queryByText('Diagnostics')).toBeNull()
   })
 
   it('disables Sleep Now with an explanation and omits timer and blocker controls', () => {
@@ -35,7 +49,7 @@ describe('source-matched browser simulation', () => {
     expect(screen.queryByRole('button', { name: /timer/i })).toBeNull()
     expect(screen.queryByText('caffeinate')).toBeNull()
     expect(screen.queryByText(/app may prevent sleep/)).toBeNull()
-    click('First launch'); click('Grant Permission')
+    click('First launch'); click('Back')
     click('Sleep Now')
     expect(screen.getByRole('switch', { name: 'Deep Sleep' }).getAttribute('aria-checked')).toBe('false')
     expect(screen.getByRole('button', { name: 'Sleep Now' }).disabled).toBe(true)
@@ -43,7 +57,7 @@ describe('source-matched browser simulation', () => {
 
   it.each([
     ['active', []],
-    ['before activation', ['firstLaunch', 'setup']],
+    ['before activation', ['firstLaunch', 'back']],
     ['after Restore', ['restore']],
   ])('refuses direct sleep actions %s without changing state or queuing work', (_label, actions) => {
     vi.useFakeTimers()
@@ -62,7 +76,7 @@ describe('source-matched browser simulation', () => {
     const initialSetting = screen.getByRole('checkbox', { name: 'Hibernate Mode' })
     expect(initialSetting.disabled).toBe(true)
     expect(document.getElementById(initialSetting.getAttribute('aria-describedby')).textContent).toBe('Resolve the current session or recovery before changing settings.')
-    click('First launch'); click('Grant Permission'); click('Options')
+    click('First launch'); click('Back'); click('Options')
     const setting = screen.getByRole('checkbox', { name: 'Disable TCP Keep-Alive' })
     expect(setting.disabled).toBe(false)
     expect(screen.queryByText('Resolve the current session or recovery before changing settings.')).toBeNull()
@@ -101,11 +115,12 @@ describe('source-matched browser simulation', () => {
     expect(result.current[0]).toEqual({ ...before, error: 'Resolve the current session or recovery before changing settings.' })
   })
 
-  it('simulates first setup and the native no-backup restore error', () => {
+  it('leaves permission status without changing activity and preserves the no-backup restore error', () => {
     render(<Demo />)
     click('First launch')
-    expect(screen.getByText('Welcome to Benzo')).toBeTruthy()
-    click('Grant Permission')
+    expect(screen.getByText('Permission status')).toBeTruthy()
+    click('Refresh status')
+    click('Back')
     expect(screen.getByRole('status').textContent).toContain('No permission was requested')
     expect(screen.getByRole('button', { name: 'Options' }).getAttribute('aria-expanded')).toBe('false')
     click('Restore System Defaults')
@@ -113,6 +128,35 @@ describe('source-matched browser simulation', () => {
     fireEvent.click(screen.getByRole('switch', { name: 'Deep Sleep' }))
     click('Restore System Defaults')
     expect(screen.queryByRole('alert')).toBeNull()
+  })
+
+  it.each([
+    ['noLegacyRule', 'No legacy permission rule found'],
+    ['legacyRulePresent', 'Legacy permission rule found; authorization is unverified'],
+    ['unknown', 'Permission status could not be determined'],
+  ])('renders %s as evidence only', (permissionObservation, text) => {
+    const dispatch = vi.fn()
+    render(<NativeAppDemo state={{ running: true, open: true, view: 'setup', permissionObservation }} dispatch={dispatch} />)
+    expect(screen.getByText(text)).toBeTruthy()
+    expect(screen.queryByRole('button', { name: 'Grant Permission' })).toBeNull()
+    click('Refresh status')
+    expect(dispatch).toHaveBeenLastCalledWith({ type: 'refreshPermission' })
+    click('Back')
+    expect(dispatch).toHaveBeenLastCalledWith({ type: 'back' })
+  })
+
+  it('keeps refresh and Back independent of settings, recovery evidence, and active state', () => {
+    const { result } = renderHook(useBenzoDemo)
+    act(() => result.current[1]({ type: 'firstLaunch' }))
+    const before = result.current[0]
+    act(() => result.current[1]({ type: 'refreshPermission' }))
+    expect(result.current[0]).toEqual({ ...before, notice: 'Status refresh simulated. No permission was requested or changed.' })
+    const refreshed = result.current[0]
+    act(() => result.current[1]({ type: 'back' }))
+    expect(result.current[0]).toEqual({ ...refreshed, view: 'main' })
+    const returned = result.current[0]
+    act(() => result.current[1]({ type: 'setup' }))
+    expect(result.current[0]).toEqual(returned)
   })
 
   it('matches native Option-click semantics and offers a touch-accessible diagnostic path', () => {
@@ -135,7 +179,7 @@ describe('source-matched browser simulation', () => {
     click('View diagnostics')
     expect(screen.getByText('All settings verified')).toBeTruthy()
     click('Back')
-    click('First launch'); click('Grant Permission'); click('Options')
+    click('First launch'); click('Back'); click('Options')
     fireEvent.click(screen.getByRole('checkbox', { name: 'Disable TCP Keep-Alive' }))
     fireEvent.click(screen.getByRole('switch', { name: 'Deep Sleep' }))
     click('View diagnostics')

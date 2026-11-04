@@ -5,10 +5,11 @@ struct PopoverContentView: View {
     @State private var showOptions = false
 
     var body: some View {
-        if viewModel.needsSetup {
+        if viewModel.showPermissionStatus {
             SetupView(
-                onSetup: viewModel.runSetup,
-                errorMessage: viewModel.errorMessage
+                observation: viewModel.permissionObservation,
+                onRefresh: viewModel.refreshPermissionObservation,
+                onBack: { viewModel.showPermissionStatus = false }
             )
         } else if viewModel.showDiagnostics {
             DiagnosticView(viewModel: viewModel, onBack: {

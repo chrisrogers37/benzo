@@ -13,8 +13,9 @@ power settings, install/remove permission rules, register login items, sleep or
 reboot the host, or terminate blockers/fleet processes for testing. Native
 privileged/lifecycle acceptance requires a separately approved test Mac.
 
-Use one feature branch/PR per plan phase, in order. Never push main or merge;
-the user handles merges. Do not start a dependent branch until its predecessor
+Use one feature branch/PR per plan phase, in order. The owner authorized reviewed
+merges and completing recovery fixes before a native release on November 3.
+Do not start a dependent branch until its predecessor
 is merged. Inspect the Vercel integration before pushes: previews can deploy
 automatically and require separate approval, as do releases and production deploys.
 Containment is not a safe native release: remaining manual apply/restore/quit
@@ -27,9 +28,11 @@ only Command Line Tools cannot run the required project build/XCTest checks.
 Do not label fallback `swiftc` validation a full Xcode pass.
 
 The shared `Benzo` scheme builds the application without launching it. The
-shared `BenzoCoreTests` scheme runs an unhosted test bundle. Keep all live command,
-login, diagnostic and application composition out of that test target. ViewModel
-tests require explicit fakes and manual startup; no production defaults.
+shared `BenzoCoreTests` scheme runs an unhosted test bundle. Keep live command
+adapters, login, diagnostic and application composition out of that test target.
+The bounded `CommandRunner` engine is the sole process-test exception: it may run
+only the owned child fixture, never real pmset, sudo, osascript or host diagnostics.
+ViewModel tests require explicit fakes and manual startup; no production defaults.
 
 Use the Debug/Release/core-test commands in README with a fresh task-owned
 `BENZO_TEST_DERIVED`. No app launch or signing credentials are needed for these

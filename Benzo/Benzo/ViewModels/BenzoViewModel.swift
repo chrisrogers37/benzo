@@ -17,7 +17,8 @@ final class BenzoViewModel: ObservableObject {
             updateLaunchAtLogin()
         }
     }
-    @Published var needsSetup: Bool = false
+    @Published private(set) var permissionObservation: PermissionObservation = .unknown("Not checked")
+    @Published var showPermissionStatus = true
     @Published var errorMessage: String?
 
     // Diagnostics
@@ -58,20 +59,12 @@ final class BenzoViewModel: ObservableObject {
         self.isInitialized = true
 
         if startupPolicy == .automatic {
-            self.needsSetup = !dependencies.isSetupComplete()
+            refreshPermissionObservation()
         }
     }
 
-    func runSetup() {
-        do {
-            try dependencies.installSudoersRule()
-            needsSetup = false
-            errorMessage = nil
-        } catch ShellError.userCancelled {
-            // Stay on setup screen
-        } catch {
-            errorMessage = error.localizedDescription
-        }
+    func refreshPermissionObservation() {
+        permissionObservation = dependencies.observePermission()
     }
 
     var activeCount: Int {

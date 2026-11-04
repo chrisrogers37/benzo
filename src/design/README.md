@@ -14,6 +14,11 @@
 
 ## Native ownership and parity
 
+The permission panel has three non-authorizing evidence states. Refresh simulates
+another observation, and Back only navigates; neither installs a rule or changes
+activity, settings or recovery evidence. Existing release setup is described
+separately in the website FAQ. Historical mockups retain their original behavior.
+
 The native Swift sources remain authoritative: `Benzo/Benzo/Views/`, `Models/SleepSetting.swift`, `ViewModels/BenzoViewModel.swift` and `Theme/BenzoTheme.swift`. SwiftUI does not import this JavaScript module. A native design/copy change must be reflected in the active simulation and reviewed together. No generated contract or new framework is required by the containment plan.
 
 The current panel keeps native wording such as “USB ports disabled” so it does not silently advertise a different app UI. The external explanation qualifies physical behavior; correcting those native claims and low contrast belongs to P7, then P8. Web SVGs approximate SF Symbols. Native pixel rendering, macOS prompts, physical sleep, recovery, and hardware behavior remain unobserved on this protected host.
