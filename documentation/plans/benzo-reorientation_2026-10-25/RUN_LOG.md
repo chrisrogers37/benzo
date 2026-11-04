@@ -4,14 +4,22 @@ type: plan
 status: active
 owner: claudna:build-all
 created: 2026-10-25
-updated: 2026-10-26
+updated: 2026-11-04
 tags: [reliability, security]
 repos: chrisrogers37/benzo
 ---
 
 # Delivery run
 
-Epic: [approved re-orientation](00_overview.md). User ratified recommended F1–F7 with their conditions and authorized Phase 3 on 2026-10-25. User merges; no push to main. Goal: all eight ordered PRs accepted with their specified tests, build, independent review and outcome evidence; issue dispositions recorded honestly. The goal is not yet met.
+Epic: [re-orientation](00_overview.md), as amended by the accepted [November 2 YAGNI scope](../../planning/tech_debt/benzo-remediation_2026-11-02/00_TECH_DEBT.md). This log preserves historical delivery receipts; the original eight-PR completion target and predecessor queue are superseded.
+
+## Current checkpoint — November 4
+
+The [reconciliation](../../planning/tech_debt/benzo-remediation_2026-11-02/07_backlog-reconciliation.md) records fresh source, CI, deployment, release inventory, issue dispositions and active owners. P1/#95 and site #96/#97 are merged; #99/#100/#101 deliver source containment, bounded reads and diagnostics. Main `c3a9070` passes build/security CI and is the READY website deployment. Latest native publication remains June's v0.3.0; no new published native installer or complete physical acceptance is established. #102 packaging now has a CI build archive, distinct from distribution evidence, and remains draft/held with the recovery/release owner; updater/installation is separately owned in draft #103. Draft #104 adds recovery source/CI evidence; its owner-reported partial native acceptance used a superseded build. Current-head apply/restore/quit acceptance remains pending. P7/P8 hold narrow remaining UX/trust briefs.
+
+PR #98's October 27 patch records useful launch receipts: #97 merged as `eed0a96`, [build](https://github.com/chrisrogers37/benzo/actions/runs/40542235848) and [security](https://github.com/chrisrogers37/benzo/actions/runs/40542235661) passed, and production `dpl_4dmJ6tesPWax2tzv7i5eU5E2cXAG` served that source. It reports owner design approval and desktop/mobile browser checks, with native/accessibility limits retained. Those are historical receipts, not fresh browser execution here. [Its original diff](https://github.com/chrisrogers37/benzo/commit/90b78a476179086001eafe00ab0c790803b9a27b) retains measurements and screenshot locations. The owner authorized consolidating this session into #98 and merging after verification. The integrated patch replaces the obsolete sequence/timer requirements and includes the reviewed website privacy/license/security work. PR-head checks, merge state and a matching production deployment provide the new delivery receipt.
+
+All older gates, phase states and decision queues below are historical snapshots, superseded where the current checkpoint and amendment differ.
 
 ## Kickoff gates
 

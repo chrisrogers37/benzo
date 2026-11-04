@@ -4,13 +4,17 @@ type: plan
 status: active
 owner: claudna:audit
 created: 2026-11-02
-updated: 2026-11-02
+updated: 2026-11-04
 tags: [tech-debt, reliability]
 repos: [chrisrogers37/benzo]
 x-execution-order: [03_lifecycle, 01_command-permissions, 04_diagnostics, 02_recovery-engine]
 ---
 
 # Benzo remediation after YAGNI review
+
+## Current checkpoint — November 4
+
+[Backlog reconciliation](07_backlog-reconciliation.md) records the refreshed issue/PR inventory, evidence layers, remaining owners and proposed GitHub updates. Source slices 03, 01 and 04 are merged through #99–101 on `c3a9070`; current-main build/security checks and website deployment passed. This is not native artifact publication or physical acceptance. Recovery/packaging/native acceptance/release and update-checker/installation remain owned by their existing sessions; #102 packaging, #103 update checking and #104 recovery are drafts. The narrow [P7](../../../plans/benzo-reorientation_2026-10-25/07_native-ux.md) and [P8](../../../plans/benzo-reorientation_2026-10-25/08_site-trust.md) briefs replace obsolete broad UX queues.
 
 ## Summary
 
@@ -26,7 +30,7 @@ This accepted scope amendment supersedes this family's former requirement to ret
 
 The safety obligations of retained privileged writes remain: correct durable originals, full validation, serialized admission, cooperating-instance exclusion, honest execution uncertainty, readback, conflict preservation and truthful restoration/quit. The [canonical C1–C7 contracts](https://github.com/chrisrogers37/benzo/blob/eed0a969b097142042dc4412424fbc71a04d2c0d/documentation/plans/benzo-reorientation_2026-10-25/00_overview.md#L63) explain them. Their live-edit, timer, temporary-policy and standing-grant choices are amended here.
 
-Source is verified main `eed0a969b097142042dc4412424fbc71a04d2c0d`. Primary local source remains `a0c12f1ddde45a36be2b89e603d3a4ae080871cd` with pre-existing todo/canonical-plan work; it is not the implementation base. Refresh symbols/heads on the actual parent. This revision changes only this seven-document family, not those existing files, source, issues or PR #98.
+The amendment was reviewed against historical main `eed0a969b097142042dc4412424fbc71a04d2c0d`. Primary local source remains `a0c12f1ddde45a36be2b89e603d3a4ae080871cd` with pre-existing todo/canonical-plan work; it is not the implementation base. Refresh symbols/heads on the actual parent. That amendment changed only this seven-document family. The November 4 reconciliation now corrects the canonical planning status as well; local originals and PR #98 remain untouched.
 
 ## Scope decisions
 
@@ -50,8 +54,8 @@ Filenames preserve existing links; **this table, not numeric order, controls exe
 |---|---|---|
 | 1 — MERGED | [03 — Immediate containment](03_lifecycle.md) | Remove timer/kill/drift/launch mutation, freeze selections, disable delayed sleep, preserve cask recovery prerequisites. No new engine. |
 | 2 — MERGED | [01 — Bounded reads and authorization preparation](01_command-permissions.md) | Reusable bounded read transport and non-authorizing observation. No temporary grant or partial async mutation migration. |
-| 3 — IN PROGRESS | [04 — Truthful existing diagnostics](04_diagnostics.md) | Adopt bounded reads, distinguish failure/empty, reject stale completions, show neutral observed settings. |
-| Conditional | [02 — Final frozen manual sessions and recovery](02_recovery-engine.md) | One final safe operation/authorization/recovery boundary after the gates below. Actual legacy recovery need independently justifies its bounded recovery scope. |
+| 3 — MERGED | [04 — Truthful existing diagnostics](04_diagnostics.md) | Adopt bounded reads, distinguish failure/empty, reject stale completions, show neutral observed settings. |
+| Conditional — existing recovery session | [02 — Final frozen manual sessions and recovery](02_recovery-engine.md) | One final safe operation/authorization/recovery boundary after the gates below. Actual legacy recovery need independently justifies its bounded recovery scope. |
 | No PR | [05 — Helper cleanup decision](05_unused-parser.md) | Closed as a standalone project; optional adjacent deletion. |
 | No planned PR | [06 — Dependency maintenance decision](06_web-dependencies.md) | Ordinary maintenance, independent of native phase completion. |
 
@@ -69,6 +73,8 @@ Before implementing 02, record:
 A personal need is sufficient; no market-size or payment evidence is required. Actual supported legacy recovery need can justify recovery work without approving new acquisition. If the necessary write guarantees cannot be established, keep mutation unavailable instead of weakening them.
 
 ## Complete audit disposition
+
+These are historical audit findings, not a fresh source audit. F1 and F5 are complete in merged source; F3/F4 have completed read/observation slices with write/authorization work still owned by recovery; F2 remains owned recovery work. F6's helper is already gone; F7 has no dedicated upgrade task. The reconciliation gives current evidence and dependencies.
 
 Original blast-radius / complexity / incorrect-fix risk scores use 1 low–5 high; they are qualitative, not a mandate to build every remedy.
 
@@ -113,7 +119,7 @@ The verification covered execution order, the scope amendment, removed automatio
 
 This verdict concerns the revised documents. Implementation, authorization feasibility, native acceptance and release remain unverified; the unchecked implementation gates remain open. No application tests, native actions or network operations were performed by these two reviewers.
 
-## Implementation checkpoint — 2026-11-02
+## Historical implementation checkpoint — 2026-11-02
 
 03 is implemented locally on `implement/benzo-containment` from `eed0a969b097142042dc4412424fbc71a04d2c0d`; see its checkpoint for verification and review. It remains active: native Xcode/XCTest and remote CI are unverified, and branch publication awaits separate preview/push authority. No dependent phase has started; no merge or release occurred.
 
@@ -123,6 +129,6 @@ On November 3 the owner approved branch publication, draft PR creation and the a
 
 PR #99 merged at `834db50d663170aef79a849158a43ba21438c85f` after independent native/cask and web reviews found no introduced blockers. Its merged-head build/security CI passed and the website deployed. The owner authorized reviewed merges and a native release, then explicitly chose completing the remaining recovery fixes before publication. 01 proceeds on that parent; 02 still requires its concrete workflow, transport and dedicated-Mac acceptance. No native release was created.
 
-## Phase 01 merged; phase 04 implementation — November 3
+## Historical phase 01 merge; phase 04 implementation — November 3
 
 PR #100 merged as `a763f95d25410cd6ff174ba4b720fe3386a1c1d7` after independent review and passing build/security checks. Full Xcode Debug/Release and 44 unhosted native tests passed; web tests passed 39/39. Merge-tree equality and merged-head CI were verified. Phase 04 starts on that parent. These checks do not establish privileged execution, recovery or physical sleep acceptance; the final recovery and native release gates remain open.

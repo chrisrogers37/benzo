@@ -1,12 +1,16 @@
 ---
 title: "[enhancement] Show honest read results in existing diagnostics"
 type: plan
-status: active
+status: source-complete
 owner: claudna:audit
 created: 2026-11-02
 tags: [enhancement, reliability, "priority:medium"]
 repos: chrisrogers37/benzo
 ---
+
+## Current checkpoint — November 4
+
+[PR #101](https://github.com/chrisrogers37/benzo/pull/101) merged as `c3a9070`. Its head passed full-Xcode Debug/Release, 55 unhosted native tests, 45 web tests/build and security CI; merged-head CI and website deployment were independently refreshed in the [reconciliation](07_backlog-reconciliation.md). Source/fixture scope is complete. Dedicated native rendering and real OS/device coverage remain unverified; no recovery, artifact or physical-sleep acceptance is implied. Historical pending-CI statements below describe the pre-publication checkpoint.
 
 ## Summary
 
@@ -88,7 +92,8 @@ Extend `NativeAppDemo.test.jsx` with success-empty/failure fixtures and neutral 
 - [x] Production reads use 01's bounded runner; malformed/incomplete/unavailable data never becomes successful empty.
 - [x] Old refreshes cannot overwrite current results; failure never presents prior values as current.
 - [x] Settings are neutral observations with missing values visible; no preference-derived verification remains in the active native/demo route.
-- [ ] Focused fake/fixture tests, existing required checks and changed-panel parity evidence are recorded at the implementation head.
+- [x] Focused fake/fixture tests, required CI and browser panel evidence recorded at #101 head `3854911`.
+- [ ] Dedicated native presentation and real OS/device coverage accepted by the existing native-acceptance owner; browser fixtures do not fill this gap.
 - [x] No claim of recovery completion, physical sleep behavior or native release acceptance is inferred from these results.
 
 ## What NOT To Do
