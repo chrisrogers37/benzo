@@ -7,13 +7,13 @@ struct MasterToggleView: View {
 
     var body: some View {
         HStack {
-            VStack(alignment: .leading, spacing: 3) {
+            VStack(alignment: .leading, spacing: 2) {
                 Text(state.title)
                     .font(.system(size: 13, weight: .semibold))
                     .foregroundColor(BenzoTheme.text)
                 Text(state.message)
                     .font(.system(size: 11))
-                    .foregroundColor(BenzoTheme.textMuted)
+                    .foregroundColor(BenzoTheme.textFaint)
                     .fixedSize(horizontal: false, vertical: true)
             }
             Spacer()
@@ -35,13 +35,19 @@ struct PinkToggle: View {
     var body: some View {
         Button(action: action) {
             ZStack(alignment: isOn ? .trailing : .leading) {
-                Capsule().fill(isOn ? BenzoTheme.accent : Color(hex: "dddddd"))
-                Circle().fill(.white).padding(2)
-                    .shadow(color: .black.opacity(0.1), radius: 1, y: 1)
+                Capsule()
+                    .fill(isOn ? BenzoTheme.accent : Color(hex: "dddddd"))
+                    .frame(width: 44, height: 26)
+                    .shadow(color: isOn ? BenzoTheme.accent.opacity(0.3) : .clear, radius: 8, y: 2)
+
+                Circle()
+                    .fill(Color.white)
+                    .frame(width: 20, height: 20)
+                    .shadow(color: .black.opacity(0.12), radius: 2, y: 1)
+                    .padding(3)
             }
-            .frame(width: 38, height: 22)
+            .animation(.easeInOut(duration: 0.2), value: isOn)
         }
         .buttonStyle(.plain)
-        .animation(.easeInOut(duration: 0.15), value: isOn)
     }
 }
