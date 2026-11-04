@@ -16,7 +16,8 @@ struct FooterView: View {
 
                 Toggle("Launch at Login", isOn: $launchAtLogin)
                     .labelsHidden()
-                    .toggleStyle(.switch)
+                    .toggleStyle(PinkToggleStyle())
+                    .accessibilityLabel("Launch at Login")
                     .scaleEffect(0.6)
                     .frame(width: 36)
             }

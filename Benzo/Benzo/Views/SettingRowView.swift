@@ -52,12 +52,18 @@ private struct SettingRowToggleStyle: ToggleStyle {
             .padding(.vertical, 9)
             .contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(SettingRowButtonStyle())
         .focused($isFocused)
         .overlay {
             Rectangle().stroke(isFocused ? BenzoTheme.accentControl : .clear, lineWidth: 2)
                 .allowsHitTesting(false)
         }
+    }
+}
+
+private struct SettingRowButtonStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
     }
 }
 

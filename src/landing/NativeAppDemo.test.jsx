@@ -94,6 +94,39 @@ describe('source-matched browser simulation', () => {
     expect(document.activeElement).toBe(menuButton)
   })
 
+  it.each(['main', 'setup', 'diagnostics'])('closes the %s panel on Escape and preserves its state', view => {
+    render(<Demo />)
+    const activeStateBefore = screen.getByRole('switch', { name: 'Deep Sleep' }).getAttribute('aria-checked')
+    if (view === 'setup') click('First launch')
+    if (view === 'diagnostics') click('View diagnostics')
+
+    const menuButton = screen.getByRole('button', { name: 'Benzo menu', exact: true })
+    const permissionStatus = view === 'setup' ? screen.getByText('No legacy permission rule found').textContent : null
+    const escapeTarget = view === 'setup'
+      ? screen.getByRole('button', { name: 'Refresh status', exact: true })
+      : view === 'diagnostics'
+        ? screen.getByRole('button', { name: 'Back', exact: true })
+        : screen.getByRole('switch', { name: 'Deep Sleep' })
+    escapeTarget.focus()
+
+    fireEvent.keyDown(escapeTarget, { key: 'Escape' })
+    expect(menuButton.getAttribute('aria-expanded')).toBe('false')
+    expect(document.activeElement).toBe(menuButton)
+    if (view === 'setup') expect(screen.queryByRole('button', { name: 'Refresh status' })).toBeNull()
+    if (view === 'diagnostics') expect(screen.queryByRole('button', { name: 'Back', exact: true })).toBeNull()
+    if (view === 'main') expect(screen.queryByRole('switch', { name: 'Deep Sleep' })).toBeNull()
+
+    click('Benzo menu')
+    expect(menuButton.getAttribute('aria-expanded')).toBe('true')
+    if (view === 'setup') {
+      expect(screen.getByText('No legacy permission rule found').textContent).toBe(permissionStatus)
+      click('Back')
+      expect(screen.getByRole('switch', { name: 'Deep Sleep' }).getAttribute('aria-checked')).toBe('false')
+    } else {
+      expect(screen.getByRole('switch', { name: 'Deep Sleep' }).getAttribute('aria-checked')).toBe(activeStateBefore)
+    }
+  })
+
   it('disables Sleep Now with an explanation and omits timer and blocker controls', () => {
     render(<Demo />)
     const sleepButton = screen.getByRole('button', { name: 'Sleep Now' })

@@ -35,10 +35,11 @@ struct PinkToggle: View {
     var body: some View {
         Toggle("Deep Sleep", isOn: Binding(get: { isOn }, set: { _ in action() }))
             .toggleStyle(PinkToggleStyle())
+            .accessibilityLabel("Deep Sleep")
     }
 }
 
-private struct PinkToggleStyle: ToggleStyle {
+struct PinkToggleStyle: ToggleStyle {
     @FocusState private var isFocused: Bool
 
     func makeBody(configuration: Configuration) -> some View {

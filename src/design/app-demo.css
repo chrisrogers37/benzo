@@ -73,8 +73,9 @@
 .benzo-site .bn-green { color: var(--native-green); }
 .benzo-site .bn-wake { display: flex; align-items: center; gap: 8px; padding: 6px 16px; font-size: var(--native-base); font-weight: 500; }
 .benzo-site .bn-wake svg { color: var(--pink); }
-.benzo-site .bn-usb { display: flex; align-items: center; justify-content: space-between; padding: 4px 16px; font-size: var(--native-secondary); font-weight: 500; }
-.benzo-site .bn-usb .bn-mono { color: var(--native-muted); font-size: var(--native-small); font-weight: 400; }
+.benzo-site .bn-usb { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; padding: 4px 16px; font-size: var(--native-secondary); font-weight: 500; }
+.benzo-site .bn-usb > span:first-child { min-width: 0; overflow-wrap: anywhere; }
+.benzo-site .bn-usb .bn-mono { flex-shrink: 0; white-space: nowrap; color: var(--native-muted); font-size: var(--native-small); font-weight: 400; }
 .benzo-site .bn-verification { display: flex; align-items: center; gap: 6px; padding: 3px 16px; font-size: var(--native-secondary); }
 .benzo-site .bn-result { width: 10px; height: 10px; border-radius: 50%; display: grid; place-items: center; color: var(--white); }
 .benzo-site .bn-success { background: var(--native-green); }
