@@ -77,20 +77,26 @@ run_case contradictory-mode community success failure --notary-profile forbidden
 
 # Argument/output rejections happen before any build tools run and never erase an
 # existing output, a shared build folder, or a symlink target.
+reject() {
+    if PATH="$task/bin" BENZO_FIXTURE_LOG="$task/rejected-argv.log" /bin/bash "$repo/scripts/build-dmg.sh" "$@" > "$task/rejection.log" 2>&1; then
+        printf 'FAIL: accepted %s\n' "$*" >&2; exit 1
+    fi
+    count=$((count+1))
+}
 mkdir "$task/existing" "$task/build"
 printf 'preserve\n' > "$task/existing/sentinel"
 printf 'preserve\n' > "$task/build/sentinel"
 ln -s "$task/existing" "$task/link"
 for output in "$task/existing" "$task/link" "$task/missing/child" relative "$task/new/"; do
-    if PATH="$task/bin" BENZO_FIXTURE_LOG="$task/rejected-argv.log" /bin/bash "$repo/scripts/build-dmg.sh" --mode community --output-dir "$output" > "$task/rejection.log" 2>&1; then check false; fi
-    count=$((count+1))
+    reject --mode community --output-dir "$output"
 done
 check test -f "$task/existing/sentinel"
 check test -f "$task/build/sentinel"
 check test -L "$task/link"
-if PATH="$task/bin" BENZO_FIXTURE_LOG="$task/rejected-argv.log" /bin/bash "$repo/scripts/build-dmg.sh" --output-dir "$task/no-mode" > "$task/rejection.log" 2>&1; then check false; fi
-count=$((count+1))
-if PATH="$task/bin" BENZO_FIXTURE_LOG="$task/rejected-argv.log" /bin/bash "$repo/scripts/build-dmg.sh" --mode developer-id --output-dir "$task/no-identity" > "$task/rejection.log" 2>&1; then check false; fi
-count=$((count+1))
+reject --output-dir "$task/no-mode"
+reject --mode developer-id --output-dir "$task/no-identity"
+reject --mode community --mode community --output-dir "$task/duplicate-mode"
+reject --mode community --output-dir
+check test ! -e "$task/duplicate-mode"
 check test ! -e "$task/rejected-argv.log"
 printf 'PASS %s packaging fixtures (Apple/host tools stubbed)\n' "$count"

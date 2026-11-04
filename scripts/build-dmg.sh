@@ -20,19 +20,18 @@ mode= output= build_number= identity= team= profile=
 while [[ $# -gt 0 ]]; do
     case "$1" in
         --help) usage; exit 0 ;;
-        --mode|--output-dir|--build-number|--signing-identity|--team-id|--notary-profile)
-            [[ $# -ge 2 && -n "$2" && "$2" != --* ]] || fail "Missing value for $1"
-            case "$1" in
-                --mode) [[ -z "$mode" ]] || fail 'Duplicate mode'; mode=$2 ;;
-                --output-dir) [[ -z "$output" ]] || fail 'Duplicate output'; output=$2 ;;
-                --build-number) [[ -z "$build_number" ]] || fail 'Duplicate build number'; build_number=$2 ;;
-                --signing-identity) [[ -z "$identity" ]] || fail 'Duplicate identity'; identity=$2 ;;
-                --team-id) [[ -z "$team" ]] || fail 'Duplicate team'; team=$2 ;;
-                --notary-profile) [[ -z "$profile" ]] || fail 'Duplicate profile'; profile=$2 ;;
-            esac
-            shift 2 ;;
+        --mode) option_var=mode ;;
+        --output-dir) option_var=output ;;
+        --build-number) option_var=build_number ;;
+        --signing-identity) option_var=identity ;;
+        --team-id) option_var=team ;;
+        --notary-profile) option_var=profile ;;
         *) fail 'Unknown argument (see --help)' ;;
     esac
+    [[ $# -ge 2 && -n "$2" && "$2" != --* ]] || fail "Missing value for $1"
+    [[ -z "${!option_var}" ]] || fail "Duplicate $1"
+    printf -v "$option_var" '%s' "$2"
+    shift 2
 done
 [[ "$mode" == community || "$mode" == developer-id ]] || fail 'An explicit distribution mode is required'
 [[ "$output" == /* && "$output" != */ && "$output" != *$'\n'* ]] || fail 'Output must be a new absolute directory without a trailing slash'
@@ -51,14 +50,11 @@ leaf=$(basename "$output")
 [[ "$leaf" != . && "$leaf" != .. && -d "$parent" ]] || fail 'Output parent must already exist'
 output="$(cd "$parent" && pwd -P)/$leaf"
 [[ ! -e "$output" && ! -L "$output" ]] || fail 'Output already exists; choose a new task-owned directory'
-for tool in xcodebuild plutil lipo codesign ditto hdiutil shasum mktemp; do
+tools=(xcodebuild plutil lipo codesign ditto hdiutil shasum mktemp)
+[[ "$mode" != developer-id ]] || tools+=(security xcrun spctl)
+for tool in "${tools[@]}"; do
     command -v "$tool" >/dev/null || fail "Missing tool: $tool"
 done
-if [[ "$mode" == developer-id ]]; then
-    for tool in security xcrun spctl; do
-        command -v "$tool" >/dev/null || fail "Missing tool: $tool"
-    done
-fi
 [[ "$(uname -s)" == Darwin ]] || fail 'Packaging requires macOS and full Xcode'
 xcodebuild -version | grep -q '^Xcode ' || fail 'Full Xcode is required'
 
@@ -157,19 +153,19 @@ for arch in arm64 x86_64; do
     fi
 done
 
-notarize() {
-    container=$1
-    receipt=$2
-    xcrun notarytool submit "$container" --keychain-profile "$profile" --wait \
-        --output-format json > "$output/notary-$receipt.json"
-    status=$(plutil -extract status raw -o - "$output/notary-$receipt.json")
+# Usage: notarize_and_staple <submission> <staple-target> <evidence-name>
+notarize_and_staple() {
+    local receipt="$output/notary-$3.json" staple_log="$output/staple-$3.log" status
+    xcrun notarytool submit "$1" --keychain-profile "$profile" --wait \
+        --output-format json > "$receipt"
+    status=$(plutil -extract status raw -o - "$receipt")
     [[ "$status" == Accepted ]] || fail 'Apple notarization did not return Accepted'
+    xcrun stapler staple "$2" > "$staple_log" 2>&1
+    xcrun stapler validate "$2" >> "$staple_log" 2>&1
 }
 if [[ "$mode" == developer-id ]]; then
     ditto -c -k --keepParent "$app" "$scratch/Benzo.zip"
-    notarize "$scratch/Benzo.zip" app
-    xcrun stapler staple "$app" > "$output/staple-app.log" 2>&1
-    xcrun stapler validate "$app" >> "$output/staple-app.log" 2>&1
+    notarize_and_staple "$scratch/Benzo.zip" "$app" app
     codesign --verify --deep --strict --all-architectures "$app" >> "$output/verify-app.log" 2>&1
     spctl --assess --type execute --verbose=4 "$app" > "$output/assess-app.log" 2>&1
 fi
@@ -185,9 +181,7 @@ hdiutil verify "$dmg" >> "$output/dmg.log" 2>&1
 if [[ "$mode" == developer-id ]]; then
     codesign --sign "$identity" --timestamp "$dmg" > "$output/sign-dmg.log" 2>&1
     codesign --verify --strict "$dmg" > "$output/verify-dmg.log" 2>&1
-    notarize "$dmg" dmg
-    xcrun stapler staple "$dmg" > "$output/staple-dmg.log" 2>&1
-    xcrun stapler validate "$dmg" >> "$output/staple-dmg.log" 2>&1
+    notarize_and_staple "$dmg" "$dmg" dmg
     codesign --verify --strict "$dmg" >> "$output/verify-dmg.log" 2>&1
     spctl --assess --type open --context context:primary-signature --verbose=4 "$dmg" > "$output/assess-dmg.log" 2>&1
     trust='Developer ID signed; Apple notarization Accepted; app and DMG staples validated'
