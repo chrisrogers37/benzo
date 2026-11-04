@@ -10,6 +10,7 @@ export const siteCopy = {
     contact: 'mailto:contact@benzo.work',
     setup: `${repository}#readme`,
     appleSleep: 'https://support.apple.com/guide/mac-help/if-your-mac-sleeps-or-wakes-unexpectedly-mchlp2995/mac',
+    privacy: `${repository}/blob/main/PRIVACY.md`,
   },
   metadata: {
     canonical: 'https://benzo.work/',
@@ -63,10 +64,11 @@ export const siteCopy = {
       { question: 'Will macOS let me open it?', answer: 'The current release documentation says the app isn’t notarized by Apple, so macOS may block it from opening. Read the release instructions before continuing.', link: 'View release instructions', destination: 'releases' },
       { question: 'Does quitting restore my settings?', answer: 'Benzo tries to restore your saved settings when you quit, but this can fail. Deleting the app doesn’t undo changes either. Read the recovery and removal guidance before uninstalling, and keep the settings backup if something goes wrong.', link: 'Get help on GitHub', destination: 'help' },
       { question: 'Can I leave my audio interface connected?', answer: 'Check the instructions for your interface and driver. Some manufacturers recommend disconnecting before sleep or shutting down after a session. Finish recordings and exports first; Benzo can’t guarantee that your devices will reconnect correctly.' },
+      { question: 'What data does Benzo collect?', answer: 'This demo uses made-up readings and keeps its state in this page; it cannot read your Mac. The reviewed native source keeps preferences and saved settings locally, with no analytics or diagnostics upload code. Vercel receives website requests, and external links use other services. The privacy notes describe the reviewed source separately from the older download.', link: 'Read the privacy notes', destination: 'privacy' },
     ],
   },
   final: { title: 'Get Benzo for your Mac', description: 'Download the app and review the release notes on GitHub.' },
-  footer: { tagline: 'Built because I wanted my Mac to sleep when I do.', source: 'Source', help: 'Help & feedback', contact: 'Contact' },
+  footer: { tagline: 'Built because I wanted my Mac to sleep when I do.', source: 'Source', help: 'Help & feedback', contact: 'Contact', privacy: 'Privacy' },
   demo: {
     name: 'Interactive Benzo app demonstration', navigation: 'Demo navigation', title: 'Interactive demo',
     firstLaunch: 'First launch', reset: 'Reset demo', restart: 'Restart demo', closed: 'Demo closed.',

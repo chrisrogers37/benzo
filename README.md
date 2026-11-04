@@ -60,6 +60,9 @@ A setting is unavailable when any required key is absent from a reported
 profile. Benzo disables that control and reports the missing profile/key; it
 does not invent profiles or values.
 
+See the [privacy notes](PRIVACY.md) for
+what Benzo stores on your Mac and what the website does.
+
 ### Features
 
 - **Manual settings** — choose available settings before applying; selections freeze for the session
@@ -127,7 +130,7 @@ processes. These checks do not establish physical sleep or USB behavior.
 
 ## Landing page
 
-[benzo-gules.vercel.app](https://benzo-gules.vercel.app) — built with React/Vite, includes an interactive mockup of the app.
+[benzo.work](https://benzo.work/) — built with React/Vite, includes an interactive demo of unreleased app changes.
 
 Use Node 24 LTS (24.15.0 or newer in the 24.x line); `.nvmrc` pins the version used
 in CI. With nvm installed, run `nvm install` and `nvm use` first.
@@ -164,4 +167,11 @@ Older reorientation plans and their run log remain historical safety references.
 
 ## License
 
-MIT
+Benzo is licensed under the [MIT License](LICENSE). Third-party dependencies remain
+under their own licenses.
+
+## Security
+
+To report a vulnerability, follow the [security policy](SECURITY.md). Send private
+reports to contact@benzo.work; do not open a public issue for a suspected
+vulnerability.
