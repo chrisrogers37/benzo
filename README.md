@@ -73,6 +73,28 @@ through [GitHub issues](https://github.com/chrisrogers37/benzo/issues).
 - Intel or Apple Silicon
 - Admin privileges (one-time setup installs a sudoers rule for passwordless `pmset`)
 
+## Checking for updates in this source revision
+
+The normal popover footer has **Check for Updates…**. It makes one bounded,
+anonymous GitHub request on click and compares the app's bundle version with the
+latest published stable release. **View Release** is a separate action that opens
+the official page in your browser. There are no background checks, downloads,
+installation, automatic quit or relaunch. The browser demo simulates the check
+without contacting GitHub or opening another page.
+Leaving the normal panel clears the result. Reopening it never starts a check;
+use **Check for Updates** again for a fresh result.
+
+The check requires a published stable tag and matching uploaded DMG; it does not
+verify the artifact's authenticity, OS/architecture compatibility or installation
+readiness. An unavailable check never means up to date. Local development or
+prerelease versions that cannot be compared offer the Releases page instead.
+
+Checking is safe during active or unresolved work because it never touches
+settings or recovery. **Replacing the app is a separate operation:** resolve
+recovery and verify safe quit first. An Off label is insufficient; preserve
+preferences, saved originals, journals/fences and legacy grant evidence. Uncertain
+legacy recovery needs explicit support. The existing native release hold remains.
+
 ## Build from source
 
 Native builds require macOS and full Xcode; Command Line Tools alone cannot build

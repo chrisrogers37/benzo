@@ -1,5 +1,8 @@
 # Lessons
 
+## Apply explicit testing authorization to its scope
+Distinguish a standing host restriction from a later explicit user authorization. For the November 4 update-checker task, native UI, keyboard/VoiceOver and browser testing on the current Mac is authorized; perform those scoped checks rather than asking again for a dedicated test Mac. Power, grant, login-item and fleet mutations remain out of scope. This exception does not change the general host policy or authorize installation/release testing.
+
 ## pbxproj registration
 New Swift files must be added to 4 sections in `project.pbxproj`: PBXBuildFile, PBXFileReference, PBXGroup, PBXSourcesBuildPhase. Missing any section causes "Cannot find X in scope" build errors.
 

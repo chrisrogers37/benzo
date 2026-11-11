@@ -47,8 +47,11 @@
 .benzo-site .bn-login-toggle > span { width: 12px; height: 12px; position: absolute; left: 1px; top: 1px; border-radius: 50%; background: var(--white); box-shadow: 0 1px 1px var(--native-thumb-shadow); }
 .benzo-site .bn-stage .bn-login-toggle.bn-on { background: var(--native-blue); }
 .benzo-site .bn-login-toggle.bn-on > span { left: 10px; }
-.benzo-site .bn-footer-actions { display: flex; align-items: center; gap: 8px; padding: 8px 20px 10px; }
-.benzo-site .bn-footer-actions > span { margin-right: auto; color: var(--native-version); }
+.benzo-site .bn-footer-actions { display: flex; align-items: center; justify-content: flex-end; gap: 8px; padding: 8px 20px 10px; }
+.benzo-site .bn-update-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 8px 20px 0; }
+.benzo-site .bn-update-result { padding: 8px 20px 0; overflow-wrap: anywhere; }
+.benzo-site .bn-update-result p { margin: 0 0 5px; }
+.benzo-site .bn-update-result button { color: var(--pink); }
 .benzo-site .bn-footer-actions button:hover { color: var(--native-hover-text); }
 .benzo-site .bn-setup { min-height: 320px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 16px; padding: 20px 0; text-align: center; }
 .benzo-site .bn-setup-pill { font-size: 36px; }

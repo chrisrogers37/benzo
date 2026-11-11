@@ -53,6 +53,12 @@
 		E11000000000000000000003 /* PermissionObservationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E20000000000000000000003; };
 		E11000000000000000000004 /* CommandRunnerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E20000000000000000000004; };
 		E11000000000000000000005 /* owned-read-child.sh in Resources */ = {isa = PBXBuildFile; fileRef = E20000000000000000000005; };
+		F10000000000000000000001 /* AppVersion.swift in Sources */ = {isa = PBXBuildFile; fileRef = F20000000000000000000001; };
+		F11000000000000000000001 /* AppVersion.swift in Sources */ = {isa = PBXBuildFile; fileRef = F20000000000000000000001; };
+		F10000000000000000000002 /* ReleaseChecker.swift in Sources */ = {isa = PBXBuildFile; fileRef = F20000000000000000000002; };
+		F11000000000000000000002 /* ReleaseChecker.swift in Sources */ = {isa = PBXBuildFile; fileRef = F20000000000000000000002; };
+		F10000000000000000000003 /* UpdateViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = F20000000000000000000003; };
+		F11000000000000000000003 /* UpdateViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = F20000000000000000000003; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -91,6 +97,9 @@
 		E20000000000000000000003 /* PermissionObservationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "PermissionObservationTests.swift"; sourceTree = "<group>"; };
 		E20000000000000000000004 /* CommandRunnerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "CommandRunnerTests.swift"; sourceTree = "<group>"; };
 		E20000000000000000000005 /* owned-read-child.sh */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = "owned-read-child.sh"; sourceTree = "<group>"; };
+		F20000000000000000000001 /* AppVersion.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppVersion.swift; sourceTree = "<group>"; };
+		F20000000000000000000002 /* ReleaseChecker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReleaseChecker.swift; sourceTree = "<group>"; };
+		F20000000000000000000003 /* UpdateViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UpdateViewModel.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -155,6 +164,7 @@
 		A50000040000000000000004 /* Models */ = {
 			isa = PBXGroup;
 			children = (
+				F20000000000000000000001 /* AppVersion.swift */,
 				A20000030000000000000003 /* SleepSetting.swift */,
 				A20000040000000000000004 /* PMSetState.swift */,
 				A20000050000000000000005 /* OriginalSettingsBackup.swift */,
@@ -168,6 +178,7 @@
 		A50000050000000000000005 /* Services */ = {
 			isa = PBXGroup;
 			children = (
+				F20000000000000000000002 /* ReleaseChecker.swift */,
 				A20000060000000000000006 /* ShellExecutor.swift */,
 				E20000000000000000000001 /* PermissionObservation.swift */,
 				E20000000000000000000002 /* CommandRunner.swift */,
@@ -184,6 +195,7 @@
 		A50000060000000000000006 /* ViewModels */ = {
 			isa = PBXGroup;
 			children = (
+				F20000000000000000000003 /* UpdateViewModel.swift */,
 				A20000090000000000000009 /* BenzoViewModel.swift */,
 			);
 			path = ViewModels;
@@ -335,6 +347,9 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				F10000000000000000000003 /* UpdateViewModel.swift in Sources */,
+				F10000000000000000000002 /* ReleaseChecker.swift in Sources */,
+				F10000000000000000000001 /* AppVersion.swift in Sources */,
 				A10000010000000000000001 /* BenzoApp.swift in Sources */,
 				A10000020000000000000002 /* AppDelegate.swift in Sources */,
 				A10000030000000000000003 /* SleepSetting.swift in Sources */,
@@ -368,6 +383,9 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				F11000000000000000000003 /* UpdateViewModel.swift in Sources */,
+				F11000000000000000000002 /* ReleaseChecker.swift in Sources */,
+				F11000000000000000000001 /* AppVersion.swift in Sources */,
 				D11000000000000000000001 /* SleepSetting.swift in Sources */,
 				D11000000000000000000002 /* PMSetState.swift in Sources */,
 				D11000000000000000000003 /* OriginalSettingsBackup.swift in Sources */,
