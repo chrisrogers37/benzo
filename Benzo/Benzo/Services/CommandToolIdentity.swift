@@ -62,6 +62,10 @@ enum CommandToolIdentity {
         SHA256.hash(data: data).map { String(format: "%02x", $0) }.joined()
     }
 
+    static func validDigest(_ value: String) -> Bool {
+        value.utf8.count == 64 && value.utf8.allSatisfy { (48...57).contains($0) || (97...102).contains($0) }
+    }
+
     /// Read one regular inode without following a last-component symlink. The
     /// bootstrap hashes its private copy again; a source race cannot approve
     /// different installed bytes.

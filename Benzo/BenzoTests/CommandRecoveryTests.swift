@@ -99,6 +99,7 @@ private final class CommandRecoveryTransport: RecoveryCommanding {
     }
     func prepareWrite(cell: ManagedCell, value: Int, expectedValue: Int,
                       operationID: UUID, bootID: String) async throws -> PowerCommandRequest? {
+        try await preflightWrite()
         let state = authority.state
         guard state.pending == nil, state.highWaterMark < UInt64.max, let boot = UUID(uuidString: bootID) else {
             throw RecoveryEvidenceError.invalid("The command receipt slot is occupied")
@@ -144,6 +145,19 @@ final class CommandRecoveryTests: XCTestCase {
         OperationCoordinator(store: store, transport: transport, uid: 501, hostID: commandRecoveryHost,
             bootID: { transport.boot.uuidString }, now: { Date(timeIntervalSince1970: 1000) },
             legacyActive: { false }, legacyRule: { .noLegacyRule })
+    }
+
+    func testUnavailableTypedPreparationNeverPersistsIntentOrDispatches() async {
+        let store = CommandRecoveryLocalStore()
+        let transport = CommandRecoveryTransport(local: store)
+        transport.unavailable = true
+        let subject = coordinator(store, transport)
+        await subject.apply(settings: [.disablePowerNap])
+        XCTAssertTrue(transport.executions.isEmpty)
+        XCTAssertNil(store.fence)
+        XCTAssertNil(transport.authority.state.pending)
+        XCTAssertFalse(subject.executionUncertain)
+        XCTAssertFalse(subject.state.isActive)
     }
 
     private func exerciseRealJournal(lostReply: Bool) async throws {

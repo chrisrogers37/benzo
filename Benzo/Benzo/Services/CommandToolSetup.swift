@@ -11,10 +11,8 @@ struct CommandToolSetup {
         case install = "install-v1", replace = "repair-v1", remove = "remove-v1"
     }
 
-    // Kept as an injectable composition seam; setup intentionally does not use
-    // CommandRunner's bounded child-return semantics for an elevated installer.
 #if !BENZO_STORAGE_TESTS
-    init(runner: CommandRunner = CommandRunner()) {}
+    init() {}
 
     func perform(_ action: Action) async throws {
         let owner = try CommandToolIdentity.currentOwner()
@@ -71,7 +69,7 @@ struct CommandToolSetup {
         guard owner.uid >= 501, owner.uid < UInt32.max,
               sourcePath.hasPrefix("/"), sourcePath.utf8.count <= 4_096,
               !sourcePath.unicodeScalars.contains(where: { CharacterSet.controlCharacters.contains($0) }),
-              validDigest(digest) else {
+              CommandToolIdentity.validDigest(digest) else {
             throw PowerCommandError.invalid("The setup path, account or executable digest is invalid.")
         }
         // Only Apple-provided fixed utilities execute before the staged bytes
@@ -96,10 +94,6 @@ struct CommandToolSetup {
                      String(owner.uid), owner.generatedUID.uuidString]
         return "/usr/bin/env -i PATH=/usr/bin:/bin:/usr/sbin:/sbin /bin/sh -c " +
             words.map(shellWord).joined(separator: " ")
-    }
-
-    static func validDigest(_ value: String) -> Bool {
-        value.utf8.count == 64 && value.utf8.allSatisfy { (48...57).contains($0) || (97...102).contains($0) }
     }
 
     static func shellWord(_ value: String) -> String {

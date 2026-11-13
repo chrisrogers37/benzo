@@ -9,7 +9,7 @@ final class CommandToolClient: HelperSetupClient {
 
     init(runner: CommandRunner) {
         self.runner = runner
-        setup = CommandToolSetup(runner: runner)
+        setup = CommandToolSetup()
     }
 
     func refresh() async -> HelperReadiness {

@@ -16,10 +16,12 @@ enum RecoveryFenceResolution: Equatable {
 
 protocol RecoveryCommanding {
     func capture() async throws -> ProfileSnapshot
-    /// Check access before persisting intent. The write still checks admission again.
+    /// Legacy access check before persisting intent; writes check admission again.
     func preflightWrite() async throws
     func write(cell: ManagedCell, value: Int, expectedValue: Int,
                operationID: UUID, bootID: String) async -> RecoveryWriteOutcome
+    /// Typed preparation includes readiness, boot and pending-receipt checks.
+    /// Return nil only for a transport using the legacy preflight/write contract.
     func prepareWrite(cell: ManagedCell, value: Int, expectedValue: Int,
                       operationID: UUID, bootID: String) async throws -> PowerCommandRequest?
     func writePrepared(_ request: PowerCommandRequest) async -> RecoveryWriteOutcome

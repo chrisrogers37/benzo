@@ -34,7 +34,7 @@ enum CommandInstaller {
             guard schema == 1, self.owner == owner, grantEpoch == epoch,
                   epoch != PowerCommandWire.zeroUUID,
                   (newToolDigest == nil) == (newPolicyDigest == nil),
-                  digests.allSatisfy({ $0.utf8.count == 64 && $0.utf8.allSatisfy({ (48...57).contains($0) || (97...102).contains($0) }) }) else { return false }
+                  digests.allSatisfy(CommandToolIdentity.validDigest) else { return false }
             if let tool {
                 guard [oldToolDigest, newToolDigest].contains(CommandToolIdentity.digest(tool)) else { return false }
             } else if oldToolDigest != nil && newToolDigest != nil { return false }
@@ -49,8 +49,7 @@ enum CommandInstaller {
     static func policy(owner: PowerCommandOwner, digest: String) throws -> Data {
         try owner.validate()
         guard owner.uid >= 501, owner.uid < UInt32.max,
-              digest.utf8.count == 64,
-              digest.utf8.allSatisfy({ (48...57).contains($0) || (97...102).contains($0) }) else {
+              CommandToolIdentity.validDigest(digest) else {
             throw PowerCommandError.invalid("The command policy identity is invalid.")
         }
         let path = CommandToolIdentity.installedPath
@@ -66,8 +65,7 @@ enum CommandInstaller {
               ["install-v1", "repair-v1", "remove-v1"].contains(arguments[0]),
               let uid = UInt32(arguments[1]), String(uid) == arguments[1],
               let uuid = UUID(uuidString: arguments[2]), uuid.uuidString == arguments[2],
-              arguments[3].utf8.count == 64,
-              arguments[3].utf8.allSatisfy({ (48...57).contains($0) || (97...102).contains($0) }) else {
+              CommandToolIdentity.validDigest(arguments[3]) else {
             throw PowerCommandError.invalid("The administrator setup request is invalid.")
         }
         let owner = PowerCommandOwner(uid: uid, generatedUID: uuid)
@@ -150,26 +148,22 @@ enum CommandInstaller {
         let transaction = Transaction(owner: owner, grantEpoch: epoch, oldTool: oldTool,
                                       oldPolicy: oldPolicy, newTool: bytes, newPolicy: candidate)
         try transactions.publish(JSONEncoder().encode(transaction), name: transactionName, mode: 0o600)
-        var changed = false
         do {
             // Binary first means an old hash-pinned rule temporarily denies
             // execution. The root store lock excludes already admitted writes.
-            changed = true
             try tools.publish(bytes, name: toolName, mode: 0o555)
             try policies.publish(candidate, name: policyName, mode: 0o440)
             try checkPolicy() // fragment-only validation is insufficient
             try transactions.remove(transactionName)
         } catch {
-            if changed {
-                // A failed final directory sync may have already unlinked the
-                // marker. Re-establish it before restoring partial generations.
-                try transactions.publish(JSONEncoder().encode(transaction), name: transactionName, mode: 0o600)
-                try rollback(tools: tools, policies: policies, oldTool: oldTool, oldPolicy: oldPolicy)
-                // If rollback restores an already partial older transaction,
-                // keep this marker so another explicit Repair can recognize it.
-                if try artifactsAgree(tool: oldTool, policy: oldPolicy, owner: owner) {
-                    try transactions.remove(transactionName)
-                }
+            // A failed final directory sync may have already unlinked the
+            // marker. Re-establish it before restoring partial generations.
+            try transactions.publish(JSONEncoder().encode(transaction), name: transactionName, mode: 0o600)
+            try rollback(tools: tools, policies: policies, oldTool: oldTool, oldPolicy: oldPolicy)
+            // If rollback restores an already partial older transaction,
+            // keep this marker so another explicit Repair can recognize it.
+            if try artifactsAgree(tool: oldTool, policy: oldPolicy, owner: owner) {
+                try transactions.remove(transactionName)
             }
             throw error
         }

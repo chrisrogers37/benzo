@@ -373,12 +373,14 @@ final class OperationCoordinator {
                   sameBoot(try currentBoot(), plan.bootID) else {
                 throw invalid("Operation identity changed before dispatch.")
             }
-            try await transport.preflightWrite()
             if let request = try await transport.prepareWrite(cell: step.cell, value: step.target,
                 expectedValue: step.precondition, operationID: plan.id, bootID: plan.bootID) {
                 try await executePrepared(request, step: step, index: index, plan: plan, current: current)
                 continue
             }
+            // Typed preparation already checks readiness and pending receipts.
+            // Older injected transports still need their separate preflight.
+            try await transport.preflightWrite()
             current.operation!.steps[index].phase = .intended
             // Covers intent persistence failure and the pre-child-identity gap.
             uncertainBoot = plan.bootID

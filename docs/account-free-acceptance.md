@@ -12,6 +12,10 @@ for each case. Record prompt counts and what each prompt approved; distinguish
 macOS’s initial per-app opening decision from Benzo’s power-access setup grant.
 Preserve recovery evidence and stop privileged changes if a case becomes uncertain.
 
+- [ ] **Existing installation.** If another Benzo is running, use that build to
+  restore its captured settings, verify Settings Are Off, then quit before
+  replacing the app. Keep its recovery records; do not remove evidence to get
+  past a setup or recovery warning.
 - [ ] **Downloaded artifact and opening.** Browser-download the exact DMG with
   quarantine intact; verify `SHA256SUMS`, mount and copy the app to Applications.
   Observe normal Gatekeeper handling. If the owner trusts this unnotarized copy,
