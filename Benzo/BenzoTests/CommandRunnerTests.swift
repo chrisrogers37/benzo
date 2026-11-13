@@ -186,6 +186,19 @@ final class CommandRunnerTests: XCTestCase {
         XCTAssertFalse(result.isSuccess)
     }
 
+    func testBoundedInputIsDeliveredExactlyAndClosed() async throws {
+        let fixture = try request("input")
+        let payload = Data(repeating: 65, count: 4_096)
+        let input = CommandRequest(executable: fixture.executable, arguments: fixture.arguments,
+            timeout: 5, maximumOutputBytes: 4_096, standardInput: payload,
+            environment: ["PATH": "/usr/bin:/bin"])
+        let result = await CommandRunner().run(request: input)
+        XCTAssertTrue(result.isSuccess)
+        XCTAssertTrue(result.directChildStopped)
+        XCTAssertEqual(result.stdout, payload)
+        XCTAssertEqual(result.stderr, Data())
+    }
+
     private func request(_ mode: String, scratch: URL? = nil, timeout: TimeInterval = 5, maximumOutputBytes: Int = 8 * 1_024 * 1_024) throws -> CommandRequest {
         let fixture = try XCTUnwrap(Bundle(for: Self.self).url(forResource: "owned-read-child", withExtension: "sh"))
         return CommandRequest(executable: "/bin/sh", arguments: [fixture.path, mode] + (scratch.map { [$0.path] } ?? []), timeout: timeout, maximumOutputBytes: maximumOutputBytes, finalizationReserve: 0.25)

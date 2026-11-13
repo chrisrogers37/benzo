@@ -11,7 +11,6 @@ struct SetupView: View {
     let onAuthorize: () -> Void
     let onReplace: () -> Void
     let onRemove: () -> Void
-    let onOpenSettings: () -> Void
     let onRefresh: () -> Void
     let onBack: () -> Void
     @State private var confirmingRemoval = false
@@ -48,7 +47,7 @@ struct SetupView: View {
                     .multilineTextAlignment(.center)
             }
 
-            if readiness == .unavailable(.incompatible), !canReplaceHelper, !isBusy {
+            if readiness.supportsRepair, !canReplaceHelper, !isBusy {
                 Text(BenzoViewModel.helperReplacementBlockedReason)
                     .font(.system(size: 12))
                     .foregroundColor(BenzoTheme.text)
@@ -57,11 +56,10 @@ struct SetupView: View {
 
             Group {
                 switch readiness {
-                case .notInstalled: Button("Set Up", action: onRegister)
-                case .requiresApproval: Button("Open System Settings", action: onOpenSettings)
-                case .needsOwnerAuthorization: Button("Authorize This Account", action: onAuthorize)
-                case .unavailable(.incompatible):
-                    Button("Replace Helper", action: onReplace).disabled(!canReplaceHelper)
+                case .notInstalled, .requiresApproval: Button("Set Up Power Access", action: onRegister)
+                case .needsOwnerAuthorization: Button("Set Up Power Access", action: onAuthorize)
+                case .ready, .unavailable(.incompatible), .unavailable(.connection):
+                    Button("Repair / Update Power Access", action: onReplace).disabled(!canReplaceHelper)
                 default: EmptyView()
                 }
             }
@@ -77,15 +75,15 @@ struct SetupView: View {
                         .foregroundColor(BenzoTheme.text)
                         .multilineTextAlignment(.center)
                 }
-                Button("Remove Helper") { confirmingRemoval = true }
+                Button("Remove Power Access") { confirmingRemoval = true }
                     .buttonStyle(.plain)
                     .foregroundColor(BenzoTheme.accentControl)
                     .disabled(!canRemoveHelper || isBusy)
-                    .confirmationDialog("Remove Benzo’s helper?", isPresented: $confirmingRemoval, titleVisibility: .visible) {
-                        Button("Remove Helper", role: .destructive, action: onRemove)
+                    .confirmationDialog("Remove Benzo’s power access?", isPresented: $confirmingRemoval, titleVisibility: .visible) {
+                        Button("Remove Power Access", role: .destructive, action: onRemove)
                         Button("Cancel", role: .cancel) {}
                     } message: {
-                        Text("Benzo will need setup before it can change settings again. Your recovery records and account authorization are retained.")
+                        Text("This removes Benzo’s power tool and permission to run it. Setup will be needed to change settings again. Your account and recovery records are retained.")
                     }
             }
 
@@ -97,9 +95,9 @@ struct SetupView: View {
                 .buttonStyle(.plain)
                 .foregroundColor(BenzoTheme.accentControl)
 
-            if isBusy { ProgressView().controlSize(.small).accessibilityLabel("Checking helper setup") }
+            if isBusy { ProgressView().controlSize(.small).accessibilityLabel("Checking power access") }
 
-            Text("Setup may require more than one administrator approval. You can review settings and recovery information without completing setup.")
+            Text("Setup asks for administrator approval once. Only this Mac account receives access. Benzo runs its power tool only when needed; no background service is installed.")
                 .font(.system(size: 10))
                 .foregroundColor(BenzoTheme.textFaint)
                 .multilineTextAlignment(.center)

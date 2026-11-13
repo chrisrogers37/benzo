@@ -1,11 +1,11 @@
 import Foundation
 
-/// App-only reads remain unprivileged. Every write goes through the authenticated
-/// helper; there is no AppleScript or sudo fallback when setup is unavailable.
+/// Reads remain unprivileged. Writes use the exact request already in the GUI
+/// fence, then the installed command tool without any interactive fallback.
 @MainActor
 struct RecoveryTransport: RecoveryCommanding {
     let runner: CommandRunner
-    let helper: HelperServiceClient
+    let tool: CommandToolClient
 
     func capture() async throws -> ProfileSnapshot {
         let result = await runner.run(request: PMSetService.captureRequest)
@@ -16,26 +16,18 @@ struct RecoveryTransport: RecoveryCommanding {
         return try ProfileSnapshot(parsing: output)
     }
 
-    func preflightWrite() async throws { _ = try await helper.writableStatus() }
+    func preflightWrite() async throws { _ = try await tool.version() }
+    func prepareWrite(cell: ManagedCell, value: Int, expectedValue: Int,
+                      operationID: UUID, bootID: String) async throws -> PowerCommandRequest? {
+        try await tool.prepare(cell: cell, value: value, expectedValue: expectedValue,
+                               operationID: operationID, bootID: bootID)
+    }
+    func writePrepared(_ request: PowerCommandRequest) async -> RecoveryWriteOutcome { await tool.write(request) }
+    func reconcileWrite(_ request: PowerCommandRequest) async -> RecoveryFenceResolution? { await tool.reconcile(request) }
+    func acknowledgeWrite(_ request: PowerCommandRequest) async throws { try await tool.acknowledge(request) }
 
     func write(cell: ManagedCell, value: Int, expectedValue: Int,
                operationID: UUID, bootID: String) async -> RecoveryWriteOutcome {
-        let status: HelperStatus
-        do {
-            guard cell.key.isValid(value), cell.key.isValid(expectedValue) else {
-                return .notExecuted("The requested setting value is unsupported.")
-            }
-            status = try await helper.writableStatus()
-            guard UUID(uuidString: status.bootID) == UUID(uuidString: bootID) else {
-                return .notExecuted("The helper boot identity changed before dispatch.")
-            }
-        } catch {
-            // Only status was requested. No setting command was sent.
-            return .notExecuted(error.localizedDescription)
-        }
-        let request = HelperWriteRequest(requestID: UUID(), operationID: operationID,
-            bootID: bootID, cell: cell, expectedValue: expectedValue, target: value,
-            expectedRevision: status.revision)
-        return await helper.sendWrite(request)
+        .notExecuted("A durable power request is required before dispatch.")
     }
 }

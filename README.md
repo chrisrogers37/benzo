@@ -29,20 +29,29 @@ acceptance or release, and the latest public release remains v0.3.0. See the
 [remediation plan](documentation/planning/tech_debt/benzo-remediation_2026-11-02/00_TECH_DEBT.md)
 and [recovery plan](documentation/planning/tech_debt/benzo-remediation_2026-11-02/02_recovery-engine.md).
 
-Helper Setup is an explicit, account-specific installation flow. The separate
-legacy-rule observation reports only absent, present but unverified, or unknown;
-it never installs or repairs a sudoers rule. Existing downloads still use their
-older setup flow.
+**Power Access** provides one explicit administrator-approved setup for the Mac
+account using Benzo. It installs a finite, one-shot power command and a rule for
+that account; no daemon or background service is installed. Ordinary On, Off and
+quit use the retained grant without another administrator prompt. Programs running
+as that account can invoke the same limited commands; this is account-level
+access, not an app-exclusive privilege. The separate legacy-rule observation never
+installs, repairs or retires the old `/private/etc/sudoers.d/benzo` rule.
 
 ## Install
 
 **Download** the latest `.dmg` from [Releases](https://github.com/chrisrogers37/benzo/releases).
 
-The existing v0.3.0 download predates the helper, recovery and interface changes
-described here. Development artifacts below are for evaluation, not a new public
-release. The upcoming public helper release must be Developer ID-signed,
-notarized and accepted on a test Mac before publication. Do not disable Gatekeeper
-or remove quarantine attributes as an installation step.
+The existing v0.3.0 download predates the current power-access, recovery and
+interface changes. The account-free build below is functional source output and
+has not yet completed native acceptance or publication. No Apple Developer
+membership is needed to build it or use its power controls after setup.
+
+An ad-hoc build is unnotarized. After a trusted browser download, copy the app to
+Applications. If macOS blocks opening it and you choose to trust that exact copy,
+use **System Settings → Privacy & Security → Open Anyway**, then confirm Open.
+This is a per-app decision; keep Gatekeeper enabled and preserve quarantine.
+See [Apple’s opening guidance](https://support.apple.com/en-us/102445). Signing
+and notarization are optional distribution improvements, separate from power setup.
 
 **Homebrew** (personal tap):
 ```
@@ -54,14 +63,13 @@ brew install --cask benzo
 
 Benzo lives in your menubar. It captures the available AC, battery and UPS
 profiles, then applies only selected settings and profile/key values that are
-reported and supported. The next native release uses a signed, notarized helper:
-setup guides the user through macOS approval and authorizes only the local account
-completing setup. Ordinary apply/restore operations then use that lasting grant,
-without an administrator dialog for each setting. Setup may require more than
-one approval, and users can revoke the helper in System Settings. Readback checks
-reported values; hardware sleep behavior is a separate outcome. This source work
-is not yet a published or natively accepted release; the latest public release
-remains v0.3.0.
+reported and supported. **Set Up Power Access** asks once for administrator
+approval and names the local account receiving access. The selected power settings
+affect everyone using this Mac. Normal apply, restore, quit and relaunch reuse the
+grant. **Repair / Update Power Access** is an explicit administrative action when
+the installed tool needs attention; ordinary app updates keep working with a
+compatible installed tool. Readback checks reported values; hardware sleep
+behavior is a separate outcome. The latest public release remains v0.3.0.
 
 A setting is unavailable when any required key is absent from a reported
 profile. Benzo disables that control and reports the missing profile/key; it
@@ -77,7 +85,7 @@ what Benzo stores on your Mac and what the website does.
 - **Conflict recovery** — Keep Current, Restore Recorded Original Anyway, or Defer retains explicit recovery choices
 - **Sleep Now unavailable** — sleep commands and timed sleep remain disabled
 - **Diagnostics** — Option-click the menubar icon for existing sleep sessions, wake reasons, USB devices and settings observations; these do not prove recovery or hardware behavior
-- **Account-specific setup** — the helper checks the enrolled account's UID and persistent local account identity; another account cannot inherit access by reusing a user ID
+- **Account-specific setup** — the command checks the setup account's UID and persistent local account identity; another account cannot inherit access by reusing a user ID
 - **Manual update check** — Check for Updates contacts GitHub only when requested;
   View Release opens the verified release page. There is no automatic downloader
   or installer, and results clear when the popover closes.
@@ -107,36 +115,38 @@ entire directory and ask an administrator to inspect its ownership, permissions,
 and recovery generations together with execution evidence. Do not automatically
 change permissions or remove temporary files to bypass Recovery Required.
 
-The helper separately retains its account grant and bounded execution evidence in
-`/private/var/db/com.benzo.helper`, owned by root with mode 0700 (files 0600).
-It does not read a client-supplied journal path or store administrator credentials.
-Missing/corrupt evidence or an interrupted commit fails closed. Disabling or
-removing the helper does not restore power settings, erase the grant, or transfer
-it to another account. Lost-owner recovery and retirement require explicit
-administrator assistance; deleting evidence to force enrollment is unsupported.
-Open Benzo from Applications before setup. Registration and replacement reject
-read-only volumes such as the distribution DMG; the app never moves itself.
-Before replacing or removing the app, restore or resolve its settings session.
-Helper Setup offers **Remove Helper**, with confirmation, only while settings are
-Off and no unresolved session or execution remains. It pauses helper writes and
-awaits macOS service removal; it does not erase records or the account grant.
-Quit the app before moving its bundle to Trash. Reinstallation retains the
-original account ownership. If permission is revoked or the helper cannot be
-reached, preserve the app and records and seek administrator-assisted recovery;
-do not delete evidence to bypass the gate. Updates and removal retain evidence
-and use the supported service lifecycle. Their signed-artifact
-acceptance remains a release gate in the
-[helper amendment](documentation/planning/tech_debt/benzo-remediation_2026-11-02/08_helper-authorization.md).
+The one-shot command is installed at
+`/Library/PrivilegedHelperTools/com.chrisrogers37.benzo-command`; its exact policy is
+`/private/etc/sudoers.d/benzo-command`. The policy grants only fixed commands with
+the installed binary’s digest to the setup account, not arbitrary shell commands
+or unrestricted `pmset`. The command rechecks the account’s UID and persistent
+GeneratedUID and accepts bounded, typed requests. Root-owned account and execution
+evidence stays in `/private/var/db/com.benzo.command` (0700, files 0600). Missing,
+corrupt or interrupted evidence fails closed; no administrator credentials are stored.
+
+Open the app from Applications, then complete setup. Before repair, removal or app
+replacement, restore or resolve the settings session. **Power Access → Remove
+Power Access** requires confirmation and resolved Off. It removes only the exact
+recognized rule and installed command, retaining account ownership and recovery
+records. Removal is not restoration or account transfer. Reinstallation requires
+explicit setup and retains the original owner. If revocation or a missing tool
+prevents restoration, preserve the app and records for administrator-assisted
+recovery; do not delete evidence to bypass the gate.
+
+Historical daemon builds may leave a service and `/private/var/db/com.benzo.helper`
+state. Restore with the old build and resolve those artifacts explicitly before
+switching to the command architecture. The new app does not adopt or erase old
+daemon authority, legacy flat backups, or old sudoers rules automatically.
+The remaining installation and native checks are in the
+[account-free acceptance checklist](docs/account-free-acceptance.md).
 
 ## Requirements
 
 - macOS Ventura (13.0) or later
 - Intel or Apple Silicon
-- Administrator approval during helper setup; no passwordless sudoers rule
-- Developer ID signing, notarization and macOS approval for the final helper-enabled
-  release. Signing alone does not prove service readiness. Developer membership is a publisher
-  requirement, not something each Benzo user needs. Development builds can
-  compile, run injected tests and display the interface without granting power access.
+- One administrator approval for initial power-access setup, limited to the account using Benzo
+- No Apple Developer account, Developer ID signature, notarization or background-service approval is required for the power controls
+- App opening remains subject to macOS security policy; the account-free artifact is explicitly unnotarized
 
 ## Build from source
 
@@ -157,15 +167,16 @@ command and login adapters. Tests use injected commands, clocks and temporary
 storage. The bounded read runner's fixture exception does not exercise privileged
 execution. Full-Xcode Debug/Release builds and unhosted XCTest are required; a
 Command Line Tools-only Swift check is not an XCTest pass. Native acceptance and
-release remain incomplete. For this task, acceptance on this Mac Mini is limited
-to launching the task build, temporary selected-setting apply/restore with
-administrator prompts, relaunch and quit. It excludes sleep/reboot, permission
-rule or login-item changes, installation/removal and terminating other fleet
-processes. These checks do not establish physical sleep or USB behavior.
+release remain incomplete. Use the [native acceptance checklist](docs/account-free-acceptance.md)
+on an approved test Mac after the code and artifact checks are complete. Never
+run privileged acceptance, sleep/reboot or unrelated fleet operations on the
+always-on host without the owner’s explicit authorization. These checks do not
+establish physical sleep or USB behavior.
 
-## Package a development build
+## Package a functional account-free build
 
-No Apple Developer membership or signing credentials are required for this mode:
+The compatibility flag remains `--mode development`. It produces a functional
+account-free build with no Apple Developer membership or signing credentials:
 
 ```sh
 ./scripts/build-dmg.sh --mode development --output-dir /absolute/new/benzo-development
@@ -174,15 +185,15 @@ No Apple Developer membership or signing credentials are required for this mode:
 Full Xcode is required. The output directory must be new and its parent must
 already exist. The resulting development DMG contains `Benzo Development.app`
 and an Applications shortcut, with checksums and source provenance alongside it.
-It is ad-hoc signed, unnotarized and cannot enable the privileged helper. Its
-filename differs from the public app, but it shares Benzo's bundle identifier and
-recovery storage; do not run two copies together. CI builds and inspects the real
-development DMG without installing or launching it.
+It is ad-hoc signed and unnotarized, with power controls available after explicit
+setup. Its filename differs from the public app, but it shares Benzo’s bundle
+identifier and recovery storage; do not run two copies together. CI builds and
+inspects the real DMG without installing, launching or granting power access.
 
-Developer ID signing and explicit notarization are separate, later commands in
-the [release preparation guide](docs/release-preparation.md). That guide also
-records installation, native acceptance and backup checks before the planned
-factory reset. No packaging command publishes a release.
+The [release preparation guide](docs/release-preparation.md) covers artifact
+checks and optional Developer ID signing/notarization. The
+[native acceptance checklist](docs/account-free-acceptance.md) collects the
+remaining user-involved checks. No packaging command publishes a release.
 
 ## Landing page
 
@@ -206,16 +217,18 @@ native presentation reference. Native UI changes must match this active demo.
 Unbundled `BenzoHybrid`, `BenzoMockup` and their historical tests remain unchanged.
 
 The read runner has bounded time and output, with separate stdout/stderr capture.
-The recovery transport uses unprivileged per-profile reads and authenticated XPC
-for exact-cell writes. The helper invokes fixed `/usr/bin/pmset` argument arrays,
-serializes admission, checks expected values and durable revisions, and preserves
-uncertain execution across helper restarts. There is no AppleScript fallback.
+The recovery transport uses unprivileged per-profile reads and the installed
+one-shot command through noninteractive `sudo` for exact-cell writes. The command
+invokes fixed `/usr/bin/pmset` argument arrays, serializes admission, checks expected
+values and durable revisions, and preserves uncertain execution across invocations.
+AppleScript requests administrator approval only for explicit setup, repair/update
+or removal; ordinary controls never fall back to an authorization prompt.
 Request completion and subsequent readback are separate evidence; neither
 establishes physical sleep behavior.
 
-The `build` workflow runs web tests/build, full-Xcode Debug and core tests, and
+The `build` workflow runs web tests/build, full-Xcode Debug/Release builds and core tests, and
 uploads a seven-day universal `.xcarchive` with distribution signing disabled plus
-a development DMG with packaging evidence. These are
+a functional account-free DMG with packaging evidence. These are
 not Developer ID signing, notarization or native permission acceptance. The
 separate `security` workflow retains npm audit and Gitleaks. The connected Vercel
 Git integration can deploy previews on branch pushes and the site on main;

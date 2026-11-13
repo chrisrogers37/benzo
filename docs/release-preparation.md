@@ -1,17 +1,16 @@
-# Release preparation before paid enrollment
+# Functional account-free packaging
 
-The development package exercises the same application and embedded helper source
-as the future release. It does not grant helper access: Benzo deliberately requires
-a Developer ID identity for both sides of its privileged connection. Automated
-tests inject authorization, settings and storage boundaries instead of relaxing
-that production rule. Developing the code, building the bundle, inspecting the
-DMG and running those tests do not require paid Apple enrollment.
+Benzo’s account-free build includes the same functional power controls as an
+optionally Developer ID-signed build. No Apple Developer membership, notarization,
+custom signing role or background-service approval gates power access. Initial
+**Set Up Power Access** requests one administrator approval for the Mac account
+using Benzo. On, Off, quit and relaunch then reuse that finite grant.
 
-The integration carries the implementation from packaging PR #102 (`6d79e66`),
-manual updater PR #103 (`a6859ac`) and accessibility PR #105 (`a0b2184`) onto the
-account-helper/recovery checkpoint `4f40b3b` in PR #104. Their original branches
-remain intact; passing checks on those separate branches do not validate the
-combined artifact. This guide is the current pre-enrollment delivery boundary.
+The grant belongs to the account, so its other programs can invoke Benzo’s limited
+commands. The installed command validates UID plus GeneratedUID, typed requests,
+expected settings, durable revisions and execution evidence. It runs only when
+requested and exits; no LaunchDaemon is bundled or registered. This architecture
+supersedes the historical signed-daemon plan and its artifacts.
 
 ## Build and inspect without credentials
 
@@ -20,34 +19,63 @@ Release and core-test commands in [README](../README.md#build-from-source), then
 
 ```sh
 # Choose a new absolute directory whose parent already exists.
-./scripts/build-dmg.sh --mode development --output-dir /absolute/new/benzo-development
+./scripts/build-dmg.sh --mode development --output-dir /absolute/new/benzo-account-free
 ```
 
-The DMG contains `Benzo Development.app`, an Applications shortcut and development
-instructions. Its distinct filename avoids replacing an installed `Benzo.app`
-through an ordinary drag and drop. It retains the production bundle identifier
-and data locations; it is not a separate sandbox. Do not run it alongside another
-Benzo instance or use it to recover an active session requiring privileged writes.
-Gatekeeper may block a transferred development build; use a local development
-build on an approved test Mac rather than disabling security protections.
+`development` remains the command-line compatibility name. The DMG contains
+`Benzo Development.app`, an Applications shortcut and instructions identifying a
+functional account-free, ad-hoc-signed, unnotarized build. This distinct filename
+avoids replacing `Benzo.app` through an ordinary drag and drop. Both apps share the
+production bundle identifier and recovery locations; do not run them together.
 
-The package is ad-hoc signed and unnotarized. It cannot set up the helper or change
-power settings. It supports inspection of the interface, diagnostics and manual
-update checker, subject to the host's normal permissions. Building and mounting
-the package does not launch the app, register a service or install it.
+Packaging creates a universal archive, verifies exactly `Benzo` and `BenzoCommand`
+in `Contents/MacOS`, rejects bundled daemons/XPC services and unexpected nested
+code, signs each executable explicitly, checks each architecture and entitlements,
+and verifies the DMG. It does not launch or install the app, install the command,
+grant power access, change settings or publish a release. Output contains source
+provenance, build settings, logs and `SHA256SUMS`. Never use an output directory
+marked `INCOMPLETE` or an inspection marked `MOUNT_VALIDATION_INCOMPLETE`.
 
-CI runs full-Xcode builds, unhosted XCTest, web tests/build, packaging failure
-fixtures and real development-DMG construction/inspection. Security checks cover
-the dependency audit and secret scan. Download the CI artifact before its seven-day
-expiration; check `SHA256SUMS` and its source manifest. A CI artifact is not a
-published release or proof that live administrator authorization works.
-Artifact names include the run attempt so retrying a failed job preserves prior
-evidence without an upload-name collision.
+For a completed artifact, inspect it without launching the app:
 
-## Prepare signing without uploading
+```sh
+bash scripts/tests/validate-development-dmg.sh /absolute/new/benzo-account-free
+```
 
-When the publisher later has Apple Developer membership and a valid Developer ID
-Application certificate/private key, build the signed package explicitly:
+CI runs full-Xcode Debug/Release builds, unhosted XCTest for injected app and
+command boundaries, a universal archive, web tests/build, packaging failure fixtures
+and real DMG construction/read-only inspection. No CI check performs live setup,
+`sudo`, `pmset`, app launch or privileged acceptance. Download artifacts before their
+seven-day expiration and verify checksums/source provenance. Attempt-specific names
+retain evidence from retries. These checks establish code and artifact evidence;
+they do not complete the [native acceptance checklist](account-free-acceptance.md).
+
+## Open a trusted unnotarized build
+
+Download the exact artifact in a browser, retain its quarantine metadata, verify
+its checksum and copy the app to Applications. If macOS blocks it, the owner may
+choose **System Settings → Privacy & Security → Open Anyway**, then confirm Open
+for that copy. This is an explicit per-app exception, not a background-service
+approval. Never strip quarantine or globally disable Gatekeeper. See
+[Apple’s guidance](https://support.apple.com/en-us/102445).
+
+Initial setup installs `/Library/PrivilegedHelperTools/com.chrisrogers37.benzo-command`
+and its exact rule at `/private/etc/sudoers.d/benzo-command`; root-owned account and
+execution records live in `/private/var/db/com.benzo.command`. Ordinary app updates
+retain the grant when the installed protocol is compatible. **Repair / Update Power
+Access** is a separate administrator-approved action after resolving settings.
+**Remove Power Access** revokes the exact rule and removes the command while keeping
+account and recovery records. A failure must preserve evidence and remain actionable.
+
+Historical flat backups, `/private/etc/sudoers.d/benzo`, and old daemon/root state
+need restoration with the prior build or explicit administrator-assisted resolution.
+The new build does not auto-erase or adopt them. Moving an app to Trash never proves
+that settings were restored or a permission rule was retired.
+
+## Optional Developer ID signing
+
+A publisher who later chooses Apple Developer membership may use a valid Developer
+ID Application certificate/private key to improve distribution trust:
 
 ```sh
 ./scripts/build-dmg.sh --mode developer-id \
@@ -55,36 +83,17 @@ Application certificate/private key, build the signed package explicitly:
   --signing-identity CERTIFICATE_SHA1 --team-id TEAM_ID
 ```
 
-Replace the placeholders with the selected identity's 40 hexadecimal characters
-and 10-character team identifier. No certificate, password or private key belongs
-in the repository. The script verifies app/helper identities, signed Info.plist
-role markers, absence of unexpected entitlements, both architectures, hardened
-runtime and secure timestamps. Signing alone does
-not upload the artifact, notarize it or publish a release.
+Replace the placeholders with a 40-character hexadecimal certificate SHA1 and a
+10-character team identifier. Keep certificates, private keys and passwords out
+of the repository and logs. This mode checks the app/command identifiers, both
+architectures, no unexpected entitlements, hardened runtime and secure timestamps.
+It neither uploads nor notarizes nor publishes. Signing does not change the power
+access contract or replace native acceptance.
 
-This intermediate signed package is for inspection, not proof that macOS will
-approve its daemon. Apple's ServiceManagement requirements include notarization
-for apps containing LaunchDaemons; the final permission test uses the notarized
-artifact, with real macOS approval and account authorization.
-
-Application-specific roles use the signed `BenzoHelperRole` Info.plist key;
-the standalone helper embeds its plist in the executable. They are not custom
-entitlements. A native development launch exposed AMFI rejection of the earlier
-invented entitlement keys despite successful on-disk signature verification.
-The certificate, team, identifier and role requirements remain mandatory for
-privileged communication. Apple's [code requirement language](https://developer.apple.com/library/archive/documentation/Security/Conceptual/CodeSigningGuide/RequirementLang/RequirementLang.html)
-supports these signed Info.plist predicates.
-
-An individual membership is sufficient; Benzo's users do not need membership.
-The exact signing/notarization path cannot be accepted using stubbed tools or an
-ad-hoc package. Current requirements: [Developer ID](https://developer.apple.com/developer-id/)
-and [Apple's notarization protections](https://developer.apple.com/documentation/security/notarizing-macos-software-before-distribution).
-
-## Explicit notarization, later
+## Optional notarization
 
 Configure a notarytool Keychain profile interactively on the release machine.
-Keep credentials in Keychain, not command history, environment files or CI logs.
-Only an explicit upload request adds these arguments to the signed build:
+Keep credentials in Keychain. Only an explicit upload request adds:
 
 ```sh
 ./scripts/build-dmg.sh --mode developer-id \
@@ -93,51 +102,21 @@ Only an explicit upload request adds these arguments to the signed build:
   --notarize --notary-profile benzo-notary
 ```
 
-Require Apple's Accepted response, inspect the notary log for warnings, validate
-the stapled app and DMG and run Gatekeeper assessment. Do not distribute partial
-output marked `INCOMPLETE`. See [Apple's command-line workflow](https://developer.apple.com/documentation/security/customizing-the-notarization-workflow).
+Require Apple’s Accepted response, inspect submission logs, validate app and DMG
+staples and assess Gatekeeper. The script retains rejection/warning evidence and
+never publishes. See [Apple’s notarization workflow](https://developer.apple.com/documentation/security/customizing-the-notarization-workflow).
+This remains an optional distribution improvement, not a prerequisite for the
+account-free app’s supported power controls.
 
-## Final signed-artifact acceptance
+## Delivery evidence and backup
 
-These are pending tests, not completed by the development build:
+Complete code, fixture and artifact checks before requesting user involvement in
+the [single native checklist](account-free-acceptance.md). Record the exact tested
+commit, version/build and checksums. Changes to the final artifact require relevant
+rechecks. Publication and cask updates use the actually accepted artifact/checksum
+and remain explicit delivery actions; Check for Updates never downloads or installs.
 
-- Record exact source commit, version/build, app/DMG checksums, macOS and hardware.
-  Install the notarized DMG on an approved test Mac, including a fresh-account
-  case; verify Gatekeeper without removing quarantine.
-- Exercise first launch from the DMG, then from Applications, duplicate copies,
-  an upgrade from the existing release and a different installing account. Follow
-  the app's setup guidance and verify service location before removing/ejecting
-  any old bundle. Registration/replacement reject read-only volumes using the
-  public volume property and ask the user to move the app to Applications. This
-  does not prove all relocation cases. See [Apple's packaging test scenarios](https://developer.apple.com/documentation/xcode/packaging-mac-software-for-distribution).
-- Approve the bundled helper, then separately authorize the setup account. Check
-  denied/cancelled approval, stale or missing helper, and another local account.
-  Confirm a renamed/recreated account cannot inherit the grant through UID reuse.
-- Capture a baseline; apply only supported selected settings, independently read
-  them back, restore and verify the full baseline. Exercise quit restoration,
-  denial/failure, Retry/Stay Open/Quit Anyway, relaunch and lost replies. Never
-  equate configuration readback with physical sleep or USB power behavior.
-- Check revocation, approved reboot persistence and helper replacement/removal.
-  Unresolved sessions must block lifecycle changes; failures must preserve
-  evidence and never trigger an automatic replay or account transfer.
-- Exercise the combined interface using keyboard and spoken VoiceOver, menu-bar
-  entry/return, Reduce Motion, larger supported display/text and constrained
-  placement. Check update result → release page → close/reopen with stale results
-  cleared. Browser parity is separate evidence from native accessibility.
-- From resolved Off, confirm Remove Helper, wait for successful removal, quit,
-  and remove the app. Reinstall and verify ownership/evidence are retained.
-
-Only then allocate the public version/build, create and inspect its final artifact,
-publish accepted release assets and update the cask with the actual DMG checksum.
-If version/build changes after acceptance, recheck the final artifact. There is no
-automatic installer in this release; Check for Updates links to the release page.
-
-## Before the planned factory reset
-
-Verify source commits are on the remote and release assets are downloaded and
-checksummed outside this Mac. Copy this runbook and the chosen local acceptance
-evidence to the owner's backup destination. A Git push does not back up local
-Documents files or a signing private key. Export any signing identity through
-Keychain's protected export process to the owner's secure backup, separately from
-source and evidence. Verify that backup before erasing the Mac. Factory reset,
-credential creation and enrollment remain separate owner actions.
+Before any planned factory reset, back up source, checksummed artifacts and acceptance
+evidence to the owner’s chosen destination. A push does not back up local Documents
+or signing keys. If signing credentials exist, export them securely through Keychain
+and verify that separate backup. A factory reset remains an owner-controlled action.

@@ -63,10 +63,10 @@ Benzo/Benzo/                     — Swift macOS menubar app
 │   └── USBDevice.swift          — USB device name and power draw
 ├── Services/
 │   ├── PMSetService.swift       — fixed pmset capture request and target mapping
-│   ├── RecoveryTransport.swift  — unprivileged reads and authenticated exact-cell helper writes
-│   ├── HelperServiceClient.swift — explicit SMAppService setup, enrollment and replacement
-│   ├── HelperEngine.swift       — enrolled-account admission, revisions and durable execution
-│   ├── HelperIdentity.swift     — exact Developer ID identities and local UID/GeneratedUID
+│   ├── RecoveryTransport.swift  — unprivileged reads and exact-cell one-shot command writes
+│   ├── CommandToolClient.swift  — explicit account setup, readiness, repair and removal
+│   ├── CommandToolSetup.swift   — explicit one-prompt installation of the finite account grant
+│   ├── CommandToolIdentity.swift — installed tool checks and local UID/GeneratedUID
 │   ├── CommandRunner.swift      — bounded process transport and owned-fixture tests
 │   ├── OperationCoordinator.swift — serialized apply, restore, conflict and admission
 │   ├── DurableJournal.swift    — checked account-local recovery evidence and lock
@@ -83,7 +83,7 @@ Benzo/Benzo/                     — Swift macOS menubar app
 │   ├── SleepNowButton.swift     — disabled sleep action with recovery explanation
 │   ├── SettingRowView.swift     — individual setting checkbox row
 │   ├── FooterView.swift         — launch at login, version, restore defaults, quit
-│   ├── SetupView.swift          — explicit helper approval, account enrollment and readiness
+│   ├── SetupView.swift          — explicit power access setup, repair, removal and readiness
 │   └── DiagnosticView.swift     — ⌥-click view: sleep sessions, wake reason, USB, observed settings
 └── Theme/
     └── BenzoTheme.swift         — colors (accent: #d4749c)
@@ -94,7 +94,8 @@ src/landing/NativeAppDemo.jsx      — source-based interactive reproduction; or
 src/landing/BenzoLanding.jsx         — public landing page; single owner of interactive demo state
 src/design/                     — core web tokens, CSS, copy, metadata, icons and app presentation
 src/demo/                       — browser state/hooks and legacy compatibility fixture exports
-Benzo/BenzoHelper/               — root daemon entry point, private authority store and bundled launchd plist
+Benzo/BenzoCommand/              — one-shot root command, finite protocol, installer and private authority store
+Benzo/BenzoHelper/               — historical daemon source; not shipped or used by the command app
 Benzo/BenzoTests/                — unhosted injected tests plus owned read-child/storage fixtures
 scripts/build-dmg.sh             — archive, sign, notarize, and package as DMG
 Casks/benzo.rb                   — Homebrew cask formula
@@ -106,10 +107,8 @@ Casks/benzo.rb                   — Homebrew cask formula
 - **Draft fidelity**: Marketing redesigns must preserve the native UI and interactive controls in `src/landing/NativeAppDemo.jsx`; keep demo navigation/disclosures outside the app panel. Verify against current Swift source, and reserve pixel-parity claims for comparison with an approved native screenshot.
 - **Core web design**: Import redesigned page/demo presentation from `src/design/`. Keep one `useBenzoDemo` state in `BenzoLanding` for panel and page theme; never mirror the master switch in a second state. Marketing copy and native UI copy have separate owners inside the module. See `src/design/README.md`.
 - **Recovery scope**: Manual apply captures immutable originals per reported profile and freezes selections. A setting is unavailable if any required key is absent from a reported profile. Off, System Defaults and quit attempt to restore the exact captured pre-Benzo values; System Defaults is not Apple's factory reset. Sleep Now remains unavailable. Readback establishes reported settings only; it cannot prove physical sleep, hibernation or USB behavior. Conflicts offer Keep Current, Restore Recorded Original Anyway or Defer. Same-boot execution uncertainty blocks further writes even if reads match; a verified later boot permits read-only reconciliation, never replay or automatic restore. Legacy flat originals remain untrusted for profile mapping; legacy recovery and rule retirement require administrator-assisted steps outside the app.
-- **Helper authorization**: The November 13 amendment `08_helper-authorization.md` replaces repeated AppleScript prompts with an app-bundled SMAppService daemon. Only the local account completing setup is enrolled, bound to UID plus GeneratedUID. Both peers require exact Developer ID identities and signed `BenzoHelperRole` Info.plist markers (`client-v1` / `service-v1`); the standalone helper embeds its Info.plist. Do not invent entitlement keys for application-specific roles. The helper accepts no paths or shell command input. Root-owned authority/revisions/fences supplement the GUI recovery journal; lost replies never permit replay. Unsigned CI artifacts cannot use this transport. Explicit replacement requires resolved settings, a helper admission pause, asynchronous unregister completion, and a matching embedded helper code hash. Do not silently transfer ownership or erase evidence.
-- **Removal**: Explicit Remove Helper uses the same resolved-session and helper
-  quiescence boundary as replacement and awaits service unregistration. It keeps
-  the account grant and recovery records; it is not a reset or account transfer.
+- **Power authorization**: The current account-free command architecture supersedes the old daemon amendment `08_helper-authorization.md`. `Contents/MacOS/BenzoCommand` is embedded in the app. Explicit Set Up Power Access installs it at `/Library/PrivilegedHelperTools/com.chrisrogers37.benzo-command` and creates only its exact digest-bound rule at `/private/etc/sudoers.d/benzo-command`. One administrator prompt names the initiating Mac account; the account is bound by UID plus GeneratedUID. Programs in that account can invoke the same finite commands. No daemon, XPC connection, custom signed role, Developer ID, paid Apple account or background-service approval is required. The tool accepts no client-supplied paths, shell, argv or environment. Root-owned authority/revisions/fences in `/private/var/db/com.benzo.command` supplement the GUI recovery journal; lost replies never permit replay. Normal On, Off, quit, startup and readiness checks never request elevation. App updates accept a compatible installed protocol without replacing the tool or comparing it to the new bundled hash. Repair/update is explicit, requires resolved settings and requests administrator approval. Preserve old daemon/flat-backup evidence; never silently migrate ownership or erase records.
+- **Removal**: Explicit Remove Power Access requires resolved Off and no unresolved execution. It revokes only the exact recognized command rule and removes the installed binary, retaining the account grant and recovery records. It is not restoration, reset or account transfer. Failure retains evidence; no automatic repair or elevation follows.
 - **Updates**: Check for Updates performs one bounded, ephemeral GitHub metadata
   request after a user action. Release navigation uses the fixed repository and
   validated numeric version; no automatic download, polling or installation.
@@ -175,16 +174,13 @@ npm run build        # Production build
 - `womp` = Wake-on-LAN (network wake), NOT physical USB device wake. Labeled "Disable Network Wake" in the app.
 - Do not promise USB wake prevention or zero power drain from `hibernatemode 25`; supported hardware/OS behavior must be observed separately.
 - Between `pmset sleepnow` and full hibernation, there's a brief window where the Mac is in normal sleep and USB devices could still wake it.
-- Existing releases installed a legacy rule at `/etc/sudoers.d/benzo`. The current source only observes metadata at the canonical `/private/etc/sudoers.d/benzo` path. Presence never proves authorization or safe scope. Installer, remover, version-based readiness and privileged probe paths are removed; preserve old evidence and grants until reviewed recovery/retirement.
+- Existing releases installed a legacy rule at `/etc/sudoers.d/benzo`. The command app only observes that old rule at `/private/etc/sudoers.d/benzo`; presence never proves authorization or safe scope. Its new installer owns only `/private/etc/sudoers.d/benzo-command`. Preserve legacy rule, old daemon/root state and recovery evidence until prior restoration and explicit retirement; never treat the new grant as a migration.
 
 ### Distribution
 
-- **GitHub Releases** — the upcoming helper release requires Developer ID signing and notarization. Membership is deferred during source development; no ad-hoc fallback can enable the helper. Packaging integration and signed native acceptance remain required before release.
-- **Homebrew** — `brew install --cask benzo` (personal tap; official homebrew-cask tap requires notarized DMG)
-- Do not instruct users to disable Gatekeeper or strip quarantine. Development
-  packages are labeled and cannot enable the helper. Keep pre-enrollment
-  engineering moving; signing, notarization and live signed acceptance are later
-  gates. Follow `docs/release-preparation.md`.
+- **Account-free distribution** — `--mode development` produces a functional ad-hoc-signed, unnotarized app with power controls available after one explicit setup approval. Keep the compatible development artifact filename and label its trust state. Paid membership and notarization are optional distribution improvements, not gates on core functionality. Native acceptance remains distinct from source, CI or packaging success.
+- **Optional signing** — `--mode developer-id` and explicit `--notarize` are retained for a later publisher-controlled distribution step. Do not upload, sign with credentials, publish or update the cask as an implicit part of a local build.
+- **Opening** — users may choose the normal per-app Open Anyway flow for a trusted unnotarized download. Never disable Gatekeeper or strip quarantine. Follow `docs/release-preparation.md` and the single native checklist in `docs/account-free-acceptance.md`.
 - Vercel Git integration can deploy previews on branch pushes and production on main; deployment remains separately approved.
 
 ---

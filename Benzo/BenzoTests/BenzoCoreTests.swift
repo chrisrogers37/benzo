@@ -158,9 +158,10 @@ final class BenzoCoreTests: XCTestCase {
         XCTAssertEqual(harness.store.lockCalls, 0)
     }
 
-    func testSetupRequiresOSApprovalAndAccountAuthorizationBeforeWrites() async {
+    func testOneExplicitSetupGrantsAccessAfterReadinessIsConfirmed() async {
         let harness = FakeDependencies()
         harness.helperSetup.readiness = .notInstalled
+        harness.helperSetup.registrationResult = .ready
         let viewModel = harness.makeViewModel()
         await viewModel.reconcile()
         XCTAssertEqual(viewModel.controlState, .off)
@@ -168,20 +169,17 @@ final class BenzoCoreTests: XCTestCase {
         await viewModel.toggleMaster()
         XCTAssertNil(harness.store.journal)
         await viewModel.registerHelper()
-        XCTAssertEqual(viewModel.helperReadiness, .requiresApproval)
-        viewModel.openHelperApprovalSettings()
-        XCTAssertEqual(viewModel.helperReadiness, .requiresApproval)
-        await viewModel.authorizeCurrentAccount()
-        XCTAssertFalse(harness.helperSetup.calls.contains("authorize"))
-
-        harness.helperSetup.readiness = .needsOwnerAuthorization
-        await viewModel.refreshHelperReadiness()
-        await viewModel.authorizeCurrentAccount()
         XCTAssertEqual(viewModel.helperReadiness, .ready)
         XCTAssertTrue(viewModel.canToggleMaster)
-        XCTAssertEqual(harness.helperSetup.calls, ["refresh", "register", "refresh", "openSettings", "refresh", "authorize", "refresh"])
+        XCTAssertEqual(harness.helperSetup.calls, ["refresh", "register", "refresh"])
         XCTAssertTrue(harness.transport.writes.isEmpty)
         XCTAssertNil(harness.store.journal)
+
+        await viewModel.toggleMaster()
+        await viewModel.toggleMaster()
+        let mayQuit = await viewModel.prepareToQuit()
+        XCTAssertTrue(mayQuit)
+        XCTAssertEqual(harness.helperSetup.calls.filter { $0 != "refresh" }, ["register"])
     }
 
     func testSetupSuccessDoesNotTreatRegistrationAsReadiness() async {
@@ -213,20 +211,22 @@ final class BenzoCoreTests: XCTestCase {
         }
     }
 
-    func testHelperReplacementIsExplicitAndOnlyAvailableWhenOff() async {
-        let harness = FakeDependencies()
-        harness.helperSetup.readiness = .unavailable(.incompatible)
-        let viewModel = harness.makeViewModel(startupPolicy: .automatic)
-        await viewModel.startupTask?.value
-        XCTAssertEqual(viewModel.controlState, .off)
-        XCTAssertTrue(viewModel.canReplaceHelper)
-        XCTAssertEqual(harness.helperSetup.calls, ["refresh"])
-        await viewModel.replaceHelper()
-        XCTAssertEqual(harness.helperSetup.calls, ["refresh", "replace", "refresh"])
-        XCTAssertEqual(viewModel.helperReadiness, .ready)
-        XCTAssertFalse(viewModel.canReplaceHelper)
-        XCTAssertTrue(harness.transport.writes.isEmpty)
-        XCTAssertNil(harness.store.journal)
+    func testPowerAccessRepairIsExplicitAndAvailableWhenOff() async {
+        for readiness in [HelperReadiness.ready, .unavailable(.incompatible), .unavailable(.connection)] {
+            let harness = FakeDependencies()
+            harness.helperSetup.readiness = readiness
+            let viewModel = harness.makeViewModel(startupPolicy: .automatic)
+            await viewModel.startupTask?.value
+            XCTAssertEqual(viewModel.controlState, .off)
+            XCTAssertTrue(viewModel.canReplaceHelper)
+            XCTAssertEqual(harness.helperSetup.calls, ["refresh"])
+            await viewModel.replaceHelper()
+            XCTAssertEqual(harness.helperSetup.calls, ["refresh", "replace", "refresh"])
+            XCTAssertEqual(viewModel.helperReadiness, .ready)
+            XCTAssertTrue(viewModel.canReplaceHelper)
+            XCTAssertTrue(harness.transport.writes.isEmpty)
+            XCTAssertNil(harness.store.journal)
+        }
     }
 
     func testHelperReplacementDoesNotUseReturnedSuccessAsReadiness() async {

@@ -5,11 +5,11 @@ import Foundation
 final class BenzoViewModel: ObservableObject {
     static let sleepUnavailableReason = "Sleep Now is unavailable for this manual apply-and-restore workflow."
     static let selectionEditBlockedReason = "Resolve the current session or recovery before changing settings."
-    static let helperAccessRequiredReason = "Helper access is needed to change settings. Open Helper Setup to review access."
-    static let helperRecoveryReason = "Settings may still be changed. Helper access is needed to restore them. Your recovery record is retained."
-    static let helperReplacementBlockedReason = "Restore or resolve the current settings session before replacing Benzo’s helper. If needed, use the previous Benzo release to restore settings."
-    static let helperRemovalBlockedReason = "Restore or resolve the current settings session before removing Benzo’s helper. Removal keeps account authorization and recovery records."
-    static let helperSetupInProgressReason = "Finish helper setup before changing settings or quitting Benzo."
+    static let helperAccessRequiredReason = "Power access is needed to change settings. Open Power Access to complete setup."
+    static let helperRecoveryReason = "Settings may still be changed. Power access is needed to restore them. Your recovery record is retained."
+    static let helperReplacementBlockedReason = "Restore or resolve the current settings session before repairing or updating power access. If needed, use the previous Benzo release to restore settings."
+    static let helperRemovalBlockedReason = "Restore or resolve the current settings session before removing power access. Your account and recovery records will be retained."
+    static let helperSetupInProgressReason = "Finish power access setup before changing settings or quitting Benzo."
     static let quitInProgressReason = "Benzo is preparing to quit. Wait for restoration to finish."
 
     @Published private(set) var controlState: ControlState = .checking
@@ -76,7 +76,7 @@ final class BenzoViewModel: ObservableObject {
     var canToggleMaster: Bool { hasHelperAccess && ((controlState == .off && activeCount > 0) || isActive) }
     var canRestore: Bool { hasHelperAccess && hasSession && !controlState.isBusy && !executionUncertain && conflicts.isEmpty }
     var canReplaceHelper: Bool {
-        helperReadiness == .unavailable(.incompatible) && canChangeHelperInstallation
+        helperReadiness.supportsRepair && canChangeHelperInstallation
     }
     var canRemoveHelper: Bool {
         (helperReadiness == .ready || helperReadiness == .unavailable(.incompatible)) && canChangeHelperInstallation
@@ -113,7 +113,7 @@ final class BenzoViewModel: ObservableObject {
     }
 
     func registerHelper() async {
-        guard helperReadiness == .notInstalled else { return }
+        guard helperReadiness == .notInstalled || helperReadiness == .requiresApproval else { return }
         await performHelperSetup { try await self.dependencies.helperSetup.register() }
     }
 
@@ -144,8 +144,7 @@ final class BenzoViewModel: ObservableObject {
         defer { isPerformingHelperSetup = false }
         do { _ = try await action() }
         catch { helperSetupError = error.localizedDescription }
-        // Neither registration nor authorization returning successfully is
-        // evidence that the live helper is ready.
+        // Setup returning successfully is not evidence that power access is ready.
         await refreshHelperReadiness()
     }
 

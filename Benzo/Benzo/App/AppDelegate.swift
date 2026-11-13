@@ -40,9 +40,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
             hostID = "unavailable"
             store = UnavailableRecoveryStore(error: error)
         }
-        let helper = HelperServiceClient()
+        let helper = CommandToolClient(runner: CommandRunner())
         let coordinator = OperationCoordinator(
-            store: store, transport: RecoveryTransport(runner: CommandRunner(), helper: helper), uid: getuid(), hostID: hostID,
+            store: store, transport: RecoveryTransport(runner: CommandRunner(), tool: helper), uid: getuid(), hostID: hostID,
             bootID: { try BootIdentityProvider.bootID() }, now: { Date() },
             legacyActive: { preferences.bool(forKey: BenzoPreferenceKey.isActive) }, legacyRule: observePermission
         )

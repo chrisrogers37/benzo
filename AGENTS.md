@@ -36,8 +36,11 @@ The shared `Benzo` scheme builds the application without launching it. The
 shared `BenzoCoreTests` scheme runs an unhosted test bundle. Keep live command
 adapters, login and application composition out of that test target. The injected
 DiagnosticService uses fake read outcomes in tests; it never selects a live runner.
-The bounded `CommandRunner` engine is the sole process-test exception: it may run
-only the owned child fixture, never real pmset, sudo, osascript or host diagnostics.
+Process tests may run only owned child fixtures, shell quoting round-trips and
+`visudo -c -f` against an owned temporary candidate, never real pmset, sudo,
+osascript execution or host diagnostics. `CommandRuntime` enforces this test-only
+allowlist; setup, installer filesystem mutation and live identity adapters are
+excluded from the test build with `BENZO_STORAGE_TESTS`.
 ViewModel tests require explicit fakes and manual startup; no production defaults.
 Helper engine tests inject account, storage, boot and execution boundaries. The
 helper storage tests use `BENZO_STORAGE_TESTS` only in the core-test target to

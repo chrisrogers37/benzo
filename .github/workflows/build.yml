@@ -38,6 +38,8 @@ jobs:
           echo "BENZO_CI_EVIDENCE_ROOT=$(mktemp -d "$RUNNER_TEMP/benzo-ci-evidence.XXXXXX")" >> "$GITHUB_ENV"
       - name: Debug app build (no launch)
         run: xcodebuild -project Benzo/Benzo.xcodeproj -scheme Benzo -configuration Debug -derivedDataPath "$BENZO_TEST_DERIVED" CODE_SIGNING_ALLOWED=NO build
+      - name: Release app build (no launch)
+        run: xcodebuild -project Benzo/Benzo.xcodeproj -scheme Benzo -configuration Release -derivedDataPath "$BENZO_TEST_DERIVED" CODE_SIGNING_ALLOWED=NO build
       - name: Release universal archive (no launch, distribution signing disabled)
         run: xcodebuild -project Benzo/Benzo.xcodeproj -scheme Benzo -configuration Release -derivedDataPath "$BENZO_TEST_DERIVED" -archivePath "$BENZO_CI_EVIDENCE_ROOT/Benzo.xcarchive" 'ARCHS=arm64 x86_64' ONLY_ACTIVE_ARCH=NO CODE_SIGNING_ALLOWED=NO archive
       - name: Unhosted core tests
@@ -61,15 +63,17 @@ jobs:
           [[ "$version" =~ ^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]] || fail 'Version must be an unambiguous three-part numeric version'
           [[ "$build" =~ ^[1-9][0-9]*$ ]] || fail 'Build number must be a positive integer'
           executable="$app/Contents/MacOS/Benzo"
-          [[ -f "$executable" && ! -L "$executable" ]] || fail 'Archived app executable is missing'
-          helper="$app/Contents/MacOS/BenzoHelper"
-          helper_plist="$app/Contents/Library/LaunchDaemons/com.benzo.helper.plist"
-          [[ -f "$helper" && -x "$helper" && ! -L "$helper" ]] || fail 'Embedded helper executable is missing'
-          [[ -f "$helper_plist" && ! -L "$helper_plist" ]] || fail 'Embedded helper plist is missing'
-          [[ "$(plutil -extract Label raw -o - "$helper_plist")" == com.benzo.helper ]] || fail 'Helper service label differs'
-          [[ "$(plutil -extract BundleProgram raw -o - "$helper_plist")" == Contents/MacOS/BenzoHelper ]] || fail 'Helper executable path differs'
-          helper_archs=$(lipo -archs "$helper")
-          [[ "$helper_archs" == 'arm64 x86_64' || "$helper_archs" == 'x86_64 arm64' ]] || fail 'Helper must contain exactly arm64 and x86_64'
+          [[ -f "$executable" && -x "$executable" && ! -L "$executable" ]] || fail 'Archived app executable is missing'
+          command_tool="$app/Contents/MacOS/BenzoCommand"
+          [[ -f "$command_tool" && -x "$command_tool" && ! -L "$command_tool" ]] || fail 'Embedded power command is missing'
+          executables=("$app/Contents/MacOS/"*)
+          [[ ${#executables[@]} == 2 ]] || fail 'Unexpected embedded executable'
+          [[ ! -e "$app/Contents/MacOS/BenzoHelper" && ! -L "$app/Contents/MacOS/BenzoHelper" ]] || fail 'Historical daemon executable must not ship'
+          for forbidden in Contents/Library/LaunchDaemons Contents/Library/LoginItems Contents/XPCServices Contents/PlugIns Contents/Frameworks; do
+            [[ ! -e "$app/$forbidden" && ! -L "$app/$forbidden" ]] || fail 'Unexpected bundled service or nested code'
+          done
+          command_archs=$(lipo -archs "$command_tool")
+          [[ "$command_archs" == 'arm64 x86_64' || "$command_archs" == 'x86_64 arm64' ]] || fail 'Power command must contain exactly arm64 and x86_64'
           archs=$(lipo -archs "$executable")
           [[ "$archs" == 'arm64 x86_64' || "$archs" == 'x86_64 arm64' ]] || fail 'Archived app must contain exactly arm64 and x86_64'
           commit=$(git rev-parse HEAD)
@@ -81,7 +85,7 @@ jobs:
           tar_sha=$(awk '{print $1}' "$out/SHA256SUMS")
           cat > "$out/benzo-ci-manifest.txt" <<MANIFEST
           Benzo CI build evidence
-          This is build evidence only: not distribution signing, not notarization, not a release candidate.
+          This is build evidence only: not distribution signing, not notarization, not native acceptance or a published release.
           Checked-out commit (git rev-parse HEAD): $commit
           GITHUB_SHA: $GITHUB_SHA
           GITHUB_RUN_ID: $GITHUB_RUN_ID
@@ -90,12 +94,12 @@ jobs:
           App version (CFBundleShortVersionString): $version
           Build number (CFBundleVersion): $build
           Architectures (lipo): $archs
-          Embedded helper architectures (lipo): $helper_archs
+          Embedded power command architectures (lipo): $command_archs
           Build: Release archive, ARCHS=arm64 x86_64, ONLY_ACTIVE_ARCH=NO
           Distribution signing: disabled (CODE_SIGNING_ALLOWED=NO); no Developer ID or notarization was performed
           Archive file: $tar_name (tar.gz preserves executable modes)
           Archive SHA256: $tar_sha
-          Native acceptance: outstanding (physical sleep, permission, recovery and quit acceptance not performed)
+          Native acceptance: outstanding (account setup, repeated apply/restore/quit, failure recovery and removal not performed); physical sleep is not claimed
           MANIFEST
           cat "$out/benzo-ci-manifest.txt"
           cat "$out/SHA256SUMS"
@@ -109,7 +113,7 @@ jobs:
             ${{ env.BENZO_CI_EVIDENCE_ROOT }}/upload/SHA256SUMS
           retention-days: 7
           if-no-files-found: error
-      - name: Build development DMG (no credentials, no launch)
+      - name: Build functional account-free DMG (no credentials, no launch)
         shell: bash
         run: |
           set -euo pipefail
@@ -117,9 +121,9 @@ jobs:
           output="$package_root/output"
           echo "BENZO_DEVELOPMENT_OUTPUT=$output" >> "$GITHUB_ENV"
           ./scripts/build-dmg.sh --mode development --output-dir "$output"
-      - name: Inspect packaged development app on a read-only mount
+      - name: Inspect packaged account-free app on a read-only mount
         run: bash scripts/tests/validate-development-dmg.sh "$BENZO_DEVELOPMENT_OUTPUT"
-      - name: Upload development DMG (helper unavailable)
+      - name: Upload functional account-free DMG (native acceptance pending)
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: benzo-development-artifact-attempt-${{ github.run_attempt }}

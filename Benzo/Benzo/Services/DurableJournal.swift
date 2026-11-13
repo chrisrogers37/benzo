@@ -170,20 +170,60 @@ final class DurableJournal: RecoveryStoring {
     }
 
     func commitFence(_ fence: ExecutionFence) throws {
+        try commitFence(fence, verifiedCommandCompletion: false)
+    }
+
+    func commitVerifiedCommandFence(_ fence: ExecutionFence) throws {
+        guard fence.commandRequest != nil, fence.completed, fence.commandAcknowledged != true else {
+            throw invalid("Verified completion requires a pending typed command receipt.")
+        }
+        try commitFence(fence, verifiedCommandCompletion: true)
+    }
+
+    private func commitFence(_ fence: ExecutionFence, verifiedCommandCompletion: Bool) throws {
         try requireLock()
         try rejectTemporaryEvidence()
         try fence.validate(uid: uid, hostID: hostID)
-        guard let journal = try readJournal(journalName), journal.resolvedAt == nil,
+        guard let journal = try readJournal(journalName),
               try readMarker(journalMarker), journal.sessionID == fence.sessionID,
-              journal.operation?.id == fence.operationID, journal.operation?.bootID == fence.bootID,
-              journal.operation?.steps.contains(where: { $0.cell == fence.cell && $0.target == fence.target && $0.phase == .intended }) == true else {
+              journal.cells.contains(where: { $0.cell == fence.cell }) else {
             throw invalid("Execution requires a matching durable journal intent.")
         }
-        if let pendingCompletion = try readPendingCompletion(), pendingCompletion.bootID == fence.bootID {
+        let old = try loadFence()
+        let matchingCompleted = old.map { $0.completed && sameRequest($0, fence) && fence.completed } ?? false
+        if let request = fence.commandRequest {
+            if !matchingCompleted {
+                guard journal.resolvedAt == nil,
+                      let operation = journal.operation, operation.id == fence.operationID,
+                      operation.bootID == fence.bootID,
+                      let step = operation.steps.first(where: { $0.cell == fence.cell }),
+                      step.precondition == request.expectedValue, step.target == fence.target,
+                      fence.completed ? verifiedCommandCompletion : (step.phase == .planned || step.phase == .intended) else {
+                    throw invalid("The typed command is not bound to its durable recovery plan.")
+                }
+            }
+        } else {
+            guard journal.resolvedAt == nil, journal.operation?.id == fence.operationID,
+                  journal.operation?.bootID == fence.bootID,
+                  journal.operation?.steps.contains(where: { $0.cell == fence.cell && $0.target == fence.target && $0.phase == .intended }) == true else {
+                throw invalid("Execution requires a matching durable journal intent.")
+            }
+        }
+        if let pendingCompletion = try readPendingCompletion(), pendingCompletion.bootID == fence.bootID,
+           !(verifiedCommandCompletion && sameRequest(pendingCompletion, fence)) {
             throw invalid("Completion persistence is uncertain in this boot. New execution is blocked.")
         }
-        let old = try loadFence()
         if let old {
+            if sameRequest(old, fence) {
+                guard !old.completed || fence.completed,
+                      old.commandAcknowledged != true || fence.commandAcknowledged == true else {
+                    throw invalid("Durable command completion and acknowledgement cannot regress.")
+                }
+            } else if old.commandRequest != nil {
+                guard old.completed, old.commandAcknowledged == true else {
+                    throw invalid("The previous command receipt must be settled before another request.")
+                }
+            }
             if !old.completed && old.bootID == fence.bootID {
                 guard sameRequest(old, fence), fence.completed || old == fence else {
                     throw invalid("Uncertain execution cannot be superseded by a new request.")
@@ -192,7 +232,7 @@ final class DurableJournal: RecoveryStoring {
             if old == fence {
                 // Retrying admission must repeat durability checks even when a pending rename
                 // from an earlier failed commit is already visible.
-                if !fence.completed { try write(encode(fence), named: fenceName) }
+                if !fence.completed || fence.commandRequest != nil { try write(encode(fence), named: fenceName) }
                 return
             }
             try write(encode(old), named: previousFenceName, renameBoundary: .previousRename)
@@ -201,6 +241,12 @@ final class DurableJournal: RecoveryStoring {
             try write(markerData, named: fenceMarker)
         }
         if fence.completed {
+            if let old, old.completed, sameRequest(old, fence), fence.commandRequest != nil {
+                // ACK is monotonic metadata; retry the durability barrier even
+                // when an earlier failed rename is already visible.
+                try write(encode(fence), named: fenceName)
+                return
+            }
             guard let old, !old.completed, sameRequest(old, fence) else {
                 throw invalid("Completion does not match the pending execution request.")
             }
@@ -233,6 +279,7 @@ final class DurableJournal: RecoveryStoring {
     private func sameRequest(_ lhs: ExecutionFence, _ rhs: ExecutionFence) -> Bool {
         var request = lhs
         request.completed = rhs.completed
+        request.commandAcknowledged = rhs.commandAcknowledged
         return request == rhs
     }
 

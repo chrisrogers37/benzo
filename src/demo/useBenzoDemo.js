@@ -32,7 +32,7 @@ export const initialDemoState = (active = true) => ({
   hasSession: active, capturedAt: active ? exampleCapturedAt : null,
   ownedValues: active ? ownedSelectionValues(selectedDefaults, originals) : {},
   currentValues: active ? selectedValues(selectedDefaults) : { ...originals },
-  login: false, error: null, notice: '', update: { status: 'idle' }, helperReadiness: 'ready', helperSetupError: null, helperSettingsOpened: false, isPerformingHelperSetup: false,
+  login: false, error: null, notice: '', update: { status: 'idle' }, helperReadiness: 'ready', helperSetupError: null, isPerformingHelperSetup: false,
   helperAccountAuthorized: true, helperRemovalConfirmation: false,
   operation: null, quitPending: false, resumePhase: null, conflict: null, conflictDeferred: false, conflictResolution: null, legacyUnknown: false,
   sleepData: { status: 'success', value: { sessions: exampleReadings.sleepSessions, lastWakeReason: exampleReadings.wakeReason } },
@@ -57,21 +57,17 @@ export function benzoDemoReducer(state, action) {
     case 'firstLaunch': return { ...initialDemoState(false), options: false, helperReadiness: 'notInstalled', helperAccountAuthorized: false }
     case 'setup': return { ...state, update: { status: 'idle' }, view: 'setup' }
     case 'refreshHelper': return { ...state, notice: 'Setup status refresh simulated. No permission was requested or changed.' }
-    case 'registerHelper': return state.helperReadiness === 'notInstalled'
-      ? { ...state, helperReadiness: 'requiresApproval', helperSetupError: null, notice: 'Helper registration simulated. macOS approval is still required.' } : state
-    case 'openHelperSettings': return state.helperReadiness === 'requiresApproval'
-      ? { ...state, helperSettingsOpened: true, notice: 'System Settings would open here. This browser demo does not change permissions.' } : state
-    case 'helperApprovalGranted': return state.helperReadiness === 'requiresApproval' && state.helperSettingsOpened
-      ? { ...state, helperReadiness: state.helperAccountAuthorized ? 'ready' : 'needsOwnerAuthorization', helperSettingsOpened: false, notice: state.helperAccountAuthorized ? 'macOS approval simulated. Existing account authorization was retained.' : 'macOS approval simulated. This account still needs authorization.' } : state
-    case 'authorizeCurrentAccount': return state.helperReadiness === 'needsOwnerAuthorization'
-      ? { ...state, helperReadiness: 'ready', helperAccountAuthorized: true, helperSetupError: null, notice: 'Account authorization simulated. No permission was requested or changed.' } : state
-    case 'replaceHelper': return state.helperReadiness === 'incompatible' && state.phase === 'off' && !state.hasSession && state.operation !== 'uncertain' && !state.isPerformingHelperSetup
-      ? { ...state, helperReadiness: 'ready', helperSetupError: null, notice: 'Helper replacement simulated. No helper was installed or changed.' } : state
+    case 'registerHelper': return ['notInstalled', 'requiresApproval'].includes(state.helperReadiness) && !state.isPerformingHelperSetup
+      ? { ...state, helperReadiness: 'ready', helperAccountAuthorized: true, helperSetupError: null, notice: 'One administrator approval simulated for this Mac account. No permission was requested or changed.' } : state
+    case 'authorizeCurrentAccount': return state.helperReadiness === 'needsOwnerAuthorization' && !state.isPerformingHelperSetup
+      ? { ...state, helperReadiness: 'ready', helperAccountAuthorized: true, helperSetupError: null, notice: 'One administrator approval simulated for this Mac account. No permission was requested or changed.' } : state
+    case 'replaceHelper': return ['ready', 'incompatible', 'connectionUnavailable'].includes(state.helperReadiness) && state.phase === 'off' && !state.hasSession && state.operation !== 'uncertain' && !state.isPerformingHelperSetup
+      ? { ...state, helperReadiness: 'ready', helperSetupError: null, notice: 'Power access repair simulated. No power tool or permission was changed.' } : state
     case 'requestRemoveHelper': return ['ready', 'incompatible'].includes(state.helperReadiness) && state.phase === 'off' && !state.hasSession && state.operation !== 'uncertain' && !state.isPerformingHelperSetup
       ? { ...state, helperRemovalConfirmation: true } : state
     case 'cancelRemoveHelper': return { ...state, helperRemovalConfirmation: false }
     case 'removeHelper': return state.helperRemovalConfirmation && ['ready', 'incompatible'].includes(state.helperReadiness) && state.phase === 'off' && !state.hasSession && state.operation !== 'uncertain' && !state.isPerformingHelperSetup
-      ? { ...state, helperReadiness: 'notInstalled', helperRemovalConfirmation: false, helperSetupError: null, notice: 'Helper removal simulated. Recovery records and account authorization were retained. No helper was changed.' } : state
+      ? { ...state, helperReadiness: 'notInstalled', helperRemovalConfirmation: false, helperSetupError: null, notice: 'Power access removal simulated. Account and recovery records were retained. No power tool or permission was changed.' } : state
     case 'helperReadinessChanged': return Object.hasOwn(appPresentation.setup.states, action.readiness)
       ? { ...state, helperReadiness: action.readiness } : state
     case 'helperSetupFailed': return { ...state, helperSetupError: action.message }

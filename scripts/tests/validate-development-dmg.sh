@@ -1,5 +1,5 @@
 #!/bin/bash
-# Inspect only a task-owned development artifact; never open/install its app.
+# Inspect only a task-owned account-free artifact; never open/install its app.
 set -euo pipefail
 umask 077
 [[ $# == 1 && "$1" == /* && -d "$1" && ! -L "$1" ]] || { echo 'Pass the absolute packaging output directory' >&2; exit 1; }
@@ -51,31 +51,29 @@ require(len(mounted) == 1 and isinstance(mounted[0], str) and pathlib.Path(mount
 require(pathlib.Path(mounted[0]).resolve(strict=True) == mount.resolve(strict=True), 'Unexpected mount result')
 require(mount.stat().st_mode & 0o777 == 0o755, 'Mounted root must be readable by other accounts')
 require((mount / 'Applications').is_symlink() and os.readlink(mount / 'Applications') == '/Applications', 'Applications link differs')
-require('DEVELOPMENT ONLY' in (mount / 'README.txt').read_text(), 'Development disclosure is missing')
+require('FUNCTIONAL ACCOUNT-FREE BUILD' in (mount / 'README.txt').read_text(), 'Account-free build disclosure is missing')
 app = mount / 'Benzo Development.app'
 require(app.is_dir() and not app.is_symlink(), 'Development app is missing')
-for relative in ['Contents', 'Contents/MacOS', 'Contents/Library', 'Contents/Library/LaunchDaemons']:
+for relative in ['Contents', 'Contents/MacOS']:
     require((app / relative).is_dir() and not (app / relative).is_symlink(), 'Bundle directory differs')
-require({p.name for p in (app / 'Contents/MacOS').iterdir()} == {'Benzo', 'BenzoHelper'}, 'Executable structure differs')
-require({p.name for p in (app / 'Contents/Library/LaunchDaemons').iterdir()} == {'com.benzo.helper.plist'}, 'Daemon structure differs')
-for relative in ['Contents/Info.plist', 'Contents/MacOS/Benzo', 'Contents/MacOS/BenzoHelper', 'Contents/Library/LaunchDaemons/com.benzo.helper.plist']:
+require({p.name for p in (app / 'Contents/MacOS').iterdir()} == {'Benzo', 'BenzoCommand'}, 'Executable structure differs')
+for relative in ['Contents/Frameworks', 'Contents/PlugIns', 'Contents/XPCServices', 'Contents/Library/LoginItems', 'Contents/Library/LaunchDaemons']:
+    require(not os.path.lexists(app / relative), 'Unexpected bundled service or nested code: ' + relative)
+for relative in ['Contents/Info.plist', 'Contents/MacOS/Benzo', 'Contents/MacOS/BenzoCommand']:
     require((app / relative).is_file() and not (app / relative).is_symlink(), 'Missing/linked bundle file: ' + relative)
-for name in ['Benzo', 'BenzoHelper']:
+for name in ['Benzo', 'BenzoCommand']:
     require((app / 'Contents/MacOS' / name).stat().st_mode & 0o777 == 0o755, 'Executable modes differ')
 with (app / 'Contents/Info.plist').open('rb') as f: info = plistlib.load(f)
 for key, value in {'CFBundleIdentifier': 'com.benzo.app', 'CFBundleExecutable': 'Benzo',
                    'CFBundleShortVersionString': sys.argv[3], 'CFBundleVersion': sys.argv[4],
-                   'CFBundleDisplayName': 'Benzo Development', 'BenzoHelperRole': 'client-v1'}.items():
+                   'CFBundleDisplayName': 'Benzo Development'}.items():
     require(info.get(key) == value, 'Packaged metadata differs: ' + key)
-with (app / 'Contents/Library/LaunchDaemons/com.benzo.helper.plist').open('rb') as f: launchd = plistlib.load(f)
-require(launchd == {'Label': 'com.benzo.helper', 'BundleProgram': 'Contents/MacOS/BenzoHelper',
-                   'MachServices': {'com.benzo.helper': True}, 'UserName': 'root', 'ProcessType': 'Interactive'},
-        'Packaged helper service contract differs')
+
 PY
 app="$mount/Benzo Development.app"
-for component in app helper; do
-    target="$app"; executable="$app/Contents/MacOS/Benzo"; identifier=com.benzo.app; role=client-v1
-    if [[ "$component" == helper ]]; then target="$app/Contents/MacOS/BenzoHelper"; executable="$target"; identifier=com.benzo.helper; role=service-v1; fi
+for component in app command; do
+    target="$app"; executable="$app/Contents/MacOS/Benzo"; identifier=com.benzo.app
+    if [[ "$component" == command ]]; then target="$app/Contents/MacOS/BenzoCommand"; executable="$target"; identifier=com.chrisrogers37.benzo-command; fi
     archs=$(lipo -archs "$executable")
     [[ "$archs" == 'arm64 x86_64' || "$archs" == 'x86_64 arm64' ]] || exit 1
     codesign --verify --strict --all-architectures "$target"
@@ -90,12 +88,12 @@ data = pathlib.Path(sys.argv[1]).read_bytes()
 entitlements = plistlib.loads(data) if data else {}
 if entitlements != {}: raise SystemExit('Packaged executable has unexpected entitlements')
 PY
-        codesign --verify --strict --arch "$arch" -R "=identifier \"$identifier\" and info[CFBundleIdentifier] = \"$identifier\" and info[BenzoHelperRole] = \"$role\"" "$target"
+        codesign --verify --strict --arch "$arch" -R "=identifier \"$identifier\"" "$target"
     done
 done
 codesign --verify --deep --strict --all-architectures "$app"
 hdiutil detach "$mount"
 attached=false
-printf 'Development DMG inspected read-only; app/helper identities, roles, metadata and architectures verified. No app was launched.\n' > "$output/mounted-validation.txt"
+printf 'Account-free DMG inspected read-only; app/command signatures, metadata, architectures and absence of bundled services verified. No app was launched.\n' > "$output/mounted-validation.txt"
 rm "$output/MOUNT_VALIDATION_INCOMPLETE"
 cat "$output/mounted-validation.txt"

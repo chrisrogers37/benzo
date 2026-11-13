@@ -11,9 +11,9 @@ Usage: build-dmg.sh --mode development|developer-id --output-dir <new-absolute-d
                     [--notarize --notary-profile <existing-keychain-profile>]
 
 Requires macOS and full Xcode. Development uses ad-hoc signatures, no credentials
-or network, and cannot use Benzo's privileged helper. Developer ID signs with a
+or network, and supports power access after explicit setup. Developer ID signs with a
 secure timestamp; it does not upload unless --notarize is explicitly supplied.
-No release is published, app launched, helper registered, or host setting changed.
+No release is published, app launched, power tool installed, or host setting changed.
 USAGE
 }
 fail() { printf 'Error: %s\n' "$*" >&2; exit 1; }
@@ -121,7 +121,7 @@ printf 'Archiving Benzo %s (%s), mode %s\n' "$version" "$effective_build" "$mode
 xcodebuild "${build_args[@]}" -archivePath "$archive" archive > "$output/archive.log" 2>&1
 ditto "$archive/Products/Applications/Benzo.app" "$app"
 
-# Validate code/launchd topology before signing. New nested code needs an explicit
+# Validate the app and one-shot command topology before signing. New nested code needs an explicit
 # signing decision; --deep is used for verification only.
 python3 - "$app" "$version" "$effective_build" "$mode" <<'PY'
 import os, pathlib, plistlib, sys
@@ -129,36 +129,29 @@ app = pathlib.Path(sys.argv[1])
 def require(condition, message):
     if not condition: raise SystemExit(message)
 require(app.is_dir() and not app.is_symlink(), 'Archived app is missing or a symlink')
-for relative in ['Contents', 'Contents/MacOS', 'Contents/Library', 'Contents/Library/LaunchDaemons']:
+for relative in ['Contents', 'Contents/MacOS']:
     path = app / relative
     require(path.is_dir() and not path.is_symlink(), 'Invalid bundle directory: ' + relative)
-for relative in ['Contents/Info.plist', 'Contents/MacOS/Benzo', 'Contents/MacOS/BenzoHelper',
-                 'Contents/Library/LaunchDaemons/com.benzo.helper.plist']:
+for relative in ['Contents/Info.plist', 'Contents/MacOS/Benzo', 'Contents/MacOS/BenzoCommand']:
     path = app / relative
     require(path.is_file() and not path.is_symlink(), 'Missing or linked bundle file: ' + relative)
-for name in ['Benzo', 'BenzoHelper']:
+for name in ['Benzo', 'BenzoCommand']:
     require(os.access(app / 'Contents/MacOS' / name, os.X_OK), 'Not executable: ' + name)
-require({p.name for p in (app / 'Contents/MacOS').iterdir()} == {'Benzo', 'BenzoHelper'}, 'Unexpected embedded executable')
-require({p.name for p in (app / 'Contents/Library/LaunchDaemons').iterdir()} == {'com.benzo.helper.plist'}, 'Unexpected launch daemon')
-for relative in ['Contents/Frameworks', 'Contents/PlugIns', 'Contents/XPCServices', 'Contents/Library/LoginItems']:
+require({p.name for p in (app / 'Contents/MacOS').iterdir()} == {'Benzo', 'BenzoCommand'}, 'Unexpected embedded executable')
+for relative in ['Contents/Frameworks', 'Contents/PlugIns', 'Contents/XPCServices', 'Contents/Library/LoginItems', 'Contents/Library/LaunchDaemons']:
     require(not os.path.lexists(app / relative), 'Unreviewed nested code: ' + relative)
 info_path = app / 'Contents/Info.plist'
 with info_path.open('rb') as f: info = plistlib.load(f)
 for key, expected in {'CFBundleIdentifier': 'com.benzo.app', 'CFBundleExecutable': 'Benzo',
-                      'CFBundleShortVersionString': sys.argv[2], 'CFBundleVersion': sys.argv[3],
-                      'BenzoHelperRole': 'client-v1'}.items():
+                      'CFBundleShortVersionString': sys.argv[2], 'CFBundleVersion': sys.argv[3]}.items():
     require(info.get(key) == expected, 'App metadata mismatch: ' + key)
-with (app / 'Contents/Library/LaunchDaemons/com.benzo.helper.plist').open('rb') as f: launchd = plistlib.load(f)
-require(launchd == {'Label': 'com.benzo.helper', 'BundleProgram': 'Contents/MacOS/BenzoHelper',
-                   'MachServices': {'com.benzo.helper': True}, 'UserName': 'root', 'ProcessType': 'Interactive'},
-        'Helper launchd contract differs from the reviewed service')
 if sys.argv[4] == 'development':
     info['CFBundleDisplayName'] = 'Benzo Development'
     info['CFBundleName'] = 'Benzo Development'
     with info_path.open('wb') as f: plistlib.dump(info, f)
 PY
-helper="$app/Contents/MacOS/BenzoHelper"
-for executable in "$app/Contents/MacOS/Benzo" "$helper"; do
+command_tool="$app/Contents/MacOS/BenzoCommand"
+for executable in "$app/Contents/MacOS/Benzo" "$command_tool"; do
     archs=$(lipo -archs "$executable")
     [[ "$archs" == 'arm64 x86_64' || "$archs" == 'x86_64 arm64' ]] || fail 'Both executables must contain exactly arm64 and x86_64'
 done
@@ -174,13 +167,13 @@ PY
 sign_args=(--force --options runtime)
 if [[ "$mode" == developer-id ]]; then sign_args+=(--sign "$identity" --timestamp)
 else sign_args+=(--sign - --timestamp=none); fi
-# Roles are signed Info.plist metadata, not invented entitlement claims.
-# Explicit inside-out signing preserves each role without adding privileges.
-(umask 022; codesign "${sign_args[@]}" --identifier com.benzo.helper "$helper") > "$output/sign-helper.log" 2>&1
+# Sign each executable explicitly, inside out, without additional entitlements.
+# Functional power access does not require a Developer ID or an app role marker.
+(umask 022; codesign "${sign_args[@]}" --identifier com.chrisrogers37.benzo-command "$command_tool") > "$output/sign-command.log" 2>&1
 (umask 022; codesign "${sign_args[@]}" --identifier com.benzo.app "$app") > "$output/sign-app.log" 2>&1
-for component in app helper; do
-    target="$app"; role=client-v1; identifier=com.benzo.app
-    if [[ "$component" == helper ]]; then target="$helper"; role=service-v1; identifier=com.benzo.helper; fi
+for component in app command; do
+    target="$app"; identifier=com.benzo.app
+    if [[ "$component" == command ]]; then target="$command_tool"; identifier=com.chrisrogers37.benzo-command; fi
     codesign --verify --strict --all-architectures "$target" > "$output/verify-$component.log" 2>&1
     for arch in arm64 x86_64; do
         signature="$output/signature-$component-$arch.txt"
@@ -188,9 +181,7 @@ for component in app helper; do
         grep -qx "Identifier=$identifier" "$signature" || fail 'Signing identifier mismatch'
         codesign -d --entitlements - --xml --arch "$arch" "$target" > "$output/entitlements-$component-$arch.plist" 2>> "$output/verify-$component.log"
         check_entitlements "$output/entitlements-$component-$arch.plist"
-        # Security.framework parses and attests the app's signed Info.plist or
-        # the helper's embedded __TEXT,__info_plist separately for each slice.
-        requirement="=identifier \"$identifier\" and info[CFBundleIdentifier] = \"$identifier\" and info[BenzoHelperRole] = \"$role\""
+        requirement="=identifier \"$identifier\""
         if [[ "$mode" == developer-id ]]; then
             grep -q '^Authority=Developer ID Application:' "$signature" || fail 'Developer ID signature is missing'
             grep -qx "TeamIdentifier=$team" "$signature" || fail 'Signing team mismatch'
@@ -236,7 +227,7 @@ volume=Benzo; app_name=Benzo.app
 trust='Developer ID signed; not notarized; no Gatekeeper acceptance claimed'
 if [[ "$mode" == development ]]; then
     volume='Benzo Development'; app_name='Benzo Development.app'; suffix=-development
-    trust='DEVELOPMENT ONLY: ad-hoc signed; unnotarized; privileged helper unavailable; not a release candidate'
+    trust='FUNCTIONAL ACCOUNT-FREE BUILD: ad-hoc signed; unnotarized; power access available after explicit administrator setup; native acceptance pending'
 elif [[ "$notarize" == true ]]; then
     suffix=
     trust='Developer ID signed; Apple notarization Accepted for the app; DMG validation follows'
@@ -246,11 +237,24 @@ dmg="$scratch/$dmg_name"
 mkdir -m 755 "$scratch/dmg-root"
 ditto "$app" "$scratch/dmg-root/$app_name"
 ln -s /Applications "$scratch/dmg-root/Applications"
+launch_guidance='macOS may block the first launch of this unnotarized build. If you trust this
+copy, use the per-app Open Anyway option in System Settings > Privacy & Security,
+then confirm Open. Never disable Gatekeeper or remove quarantine attributes.'
+if [[ "$notarize" == true ]]; then
+    launch_guidance='This build is Developer ID signed and notarized. Keep the normal macOS
+security checks enabled when opening it.'
+fi
 (umask 022; cat > "$scratch/dmg-root/README.txt" <<README
 $volume $version ($effective_build)
 
-Drag $app_name to Applications to copy it. This disk image does not install,
-launch, register a helper, or change any power setting automatically.
+Drag $app_name to Applications to copy it. This disk image does not launch the
+app, install a power tool, or change any power setting automatically.
+
+$launch_guidance
+After opening from Applications, choose Set Up Power Access for one explicit
+administrator approval for the account using Benzo. On, Off, and quit then use
+that limited grant without another administrator prompt. Repair/update or removal
+of power access remains an explicit administrator action.
 
 $trust
 README
@@ -267,7 +271,7 @@ if [[ "$mode" == developer-id ]]; then
         trust='Developer ID signed; Apple notarization Accepted; app and DMG staples validated'
     fi
 fi
-printf 'Mode: %s\nSource commit: %s\nSource tree: %s\nVersion: %s\nBuild: %s\nApp and helper architectures: arm64 x86_64\nTrust: %s\nNative acceptance: not performed by packaging\n' \
+printf 'Mode: %s\nSource commit: %s\nSource tree: %s\nVersion: %s\nBuild: %s\nApp and command architectures: arm64 x86_64\nTrust: %s\nNative acceptance: not performed by packaging\n' \
     "$mode" "$source_commit" "$source_state" "$version" "$effective_build" "$trust" > "$output/artifact.txt"
 mv "$dmg" "$output/$dmg_name"
 (cd "$output" && shasum -a 256 "$dmg_name" artifact.txt > SHA256SUMS && shasum -a 256 -c SHA256SUMS)

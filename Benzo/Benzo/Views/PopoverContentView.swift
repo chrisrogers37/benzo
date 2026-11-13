@@ -26,7 +26,6 @@ struct PopoverContentView: View {
                     onAuthorize: { Task { await viewModel.authorizeCurrentAccount() } },
                     onReplace: { Task { await viewModel.replaceHelper() } },
                     onRemove: { Task { await viewModel.removeHelper() } },
-                    onOpenSettings: viewModel.openHelperApprovalSettings,
                     onRefresh: { Task { await viewModel.refreshHelperReadiness() } },
                     onBack: {
                         returnToControl = .helperSetup
@@ -65,7 +64,7 @@ struct PopoverContentView: View {
                 .padding(.horizontal, 20)
             }
 
-            Button("Helper Setup") {
+            Button("Power Access") {
                 viewModel.showHelperSetup = true
                 Task { await viewModel.refreshHelperReadiness() }
             }

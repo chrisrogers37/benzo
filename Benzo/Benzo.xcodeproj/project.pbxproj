@@ -89,8 +89,8 @@
 		9F0000000000000000000028 /* SleepSetting.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000030000000000000003; };
 		9F0000000000000000000029 /* CommandRunner.swift in Sources */ = {isa = PBXBuildFile; fileRef = E20000000000000000000002; };
 		9F000000000000000000002A /* BootIdentityProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = F20000000000000000000006; };
-		9F000000000000000000002D /* BenzoHelper in Embed Helper Tools */ = {isa = PBXBuildFile; fileRef = 9F0000000000000000000012; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
-		9F000000000000000000002E /* com.benzo.helper.plist in Copy LaunchDaemons */ = {isa = PBXBuildFile; fileRef = 9F000000000000000000000B; };
+		9F000000000000000000002D /* BenzoCommand in Embed Command Tool */ = {isa = PBXBuildFile; fileRef = 9F0000000000000000000012; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
+
 		9E0000000000000000000002 /* HelperStateStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9E0000000000000000000001; };
 		9E0000000000000000000003 /* HelperStateStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9F000000000000000000000A; };
 		9D0000000000000000000011 /* AppVersion.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9D0000000000000000000001; };
@@ -103,15 +103,38 @@
 		9C0000000000000000000012 /* HelperCodeRequirement.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9C0000000000000000000001; };
 		9C0000000000000000000013 /* HelperCodeRequirement.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9C0000000000000000000001; };
 		9C0000000000000000000014 /* HelperCodeRequirementTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9C0000000000000000000002; };
+		441B536390B1070121D15EF0 /* CommandProtocol.swift in Sources */ = {isa = PBXBuildFile; fileRef = 062B7228380985ED6ECC1249; };
+		3E88797DD7DEE1F06B71287C /* CommandProtocol.swift in Sources */ = {isa = PBXBuildFile; fileRef = 062B7228380985ED6ECC1249; };
+		95BA96DB9CC8A70268C960FC /* CommandProtocol.swift in Sources */ = {isa = PBXBuildFile; fileRef = 062B7228380985ED6ECC1249; };
+		460280084AD4B796AAF1812C /* CommandEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4B20C6289D24AF0ABE95D450; };
+		309CE634A09409214124BB57 /* CommandEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4B20C6289D24AF0ABE95D450; };
+		98389A21EB9E114B4EB9727F /* CommandStateStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7FB6C9D0C7A5F92162E68699; };
+		2D504BF059F0E5EDC2A4564D /* CommandStateStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7FB6C9D0C7A5F92162E68699; };
+		D6F0B018D97FF6F42BBB6829 /* CommandRuntime.swift in Sources */ = {isa = PBXBuildFile; fileRef = A92A0EA97088CBFDA8F19698; };
+		F84EBD26BB1B0FACF1732AC6 /* CommandRuntime.swift in Sources */ = {isa = PBXBuildFile; fileRef = A92A0EA97088CBFDA8F19698; };
+		0FB07CB724F95FC93E08165E /* CommandInstaller.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8800B40E8A8981A4D69BBF6C; };
+		E33D4A80AC50CDA3664DA733 /* CommandInstaller.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8800B40E8A8981A4D69BBF6C; };
+		3BF58B893D67A32CDAFB8A93 /* CommandMain.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA55953FF05C7AA1F4C59771; };
+		8417D9D86272B717FB53F549 /* CommandToolIdentity.swift in Sources */ = {isa = PBXBuildFile; fileRef = E34A080D8A4A96D54E2C1169; };
+		2E4D049C9647F39CFE050BF5 /* CommandToolIdentity.swift in Sources */ = {isa = PBXBuildFile; fileRef = E34A080D8A4A96D54E2C1169; };
+		5FFE96288A62FB770301E1A5 /* CommandToolIdentity.swift in Sources */ = {isa = PBXBuildFile; fileRef = E34A080D8A4A96D54E2C1169; };
+		865DB7C52EABF2FD9E80616A /* CommandToolSetup.swift in Sources */ = {isa = PBXBuildFile; fileRef = BC508A06D4A8154A4A5C6FE2; };
+		59310A9BADD011950A4A3CBA /* CommandToolSetup.swift in Sources */ = {isa = PBXBuildFile; fileRef = BC508A06D4A8154A4A5C6FE2; };
+		B1E20AFBB7FF015A6F4928A0 /* CommandToolClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0A96A2AFA30F6ADB6139F66F; };
+		2AAB12BC08E8388A0BAA6F4B /* CommandToolEngineTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6C55F139477334C3ABFA15FD; };
+		A3CCFACB232B627585FB7B20 /* CommandToolStateStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4D4F69BB198CC844D9A3B85B; };
+		2C5AA2795B2D74BBF7A7C485 /* CommandToolSetupTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 667DBC5CA39ADDB360FB7C24; };
+		0BC5F95D114EEF03A1CD96ED /* CommandRecoveryTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0E649BC33481868D96A2C53; };
+		818A077C0798B51447ACB992 /* BootIdentityProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = F20000000000000000000006; };
 /* End PBXBuildFile section */
 
 /* Begin PBXCopyFilesBuildPhase section */
-		9F000000000000000000002B /* Embed Helper Tools */ = {isa = PBXCopyFilesBuildPhase; buildActionMask = 2147483647; dstPath = ""; dstSubfolderSpec = 6; files = (9F000000000000000000002D, ); name = "Embed Helper Tools"; runOnlyForDeploymentPostprocessing = 0; };
-		9F000000000000000000002C /* Copy LaunchDaemons */ = {isa = PBXCopyFilesBuildPhase; buildActionMask = 2147483647; dstPath = Contents/Library/LaunchDaemons; dstSubfolderSpec = 1; files = (9F000000000000000000002E, ); name = "Copy LaunchDaemons"; runOnlyForDeploymentPostprocessing = 0; };
+		9F000000000000000000002B /* Embed Command Tool */ = {isa = PBXCopyFilesBuildPhase; buildActionMask = 2147483647; dstPath = ""; dstSubfolderSpec = 6; files = (9F000000000000000000002D, ); name = "Embed Command Tool"; runOnlyForDeploymentPostprocessing = 0; };
+
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXContainerItemProxy section */
-		9F000000000000000000002F /* PBXContainerItemProxy */ = {isa = PBXContainerItemProxy; containerPortal = A90000000000000000000001; proxyType = 1; remoteGlobalIDString = 9F0000000000000000000011; remoteInfo = BenzoHelper; };
+		9F000000000000000000002F /* PBXContainerItemProxy */ = {isa = PBXContainerItemProxy; containerPortal = A90000000000000000000001; proxyType = 1; remoteGlobalIDString = 9F0000000000000000000011; remoteInfo = BenzoCommand; };
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXTargetDependency section */
@@ -173,7 +196,7 @@
 		9F000000000000000000000A /* HelperStateStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HelperStateStore.swift; sourceTree = "<group>"; };
 		9F000000000000000000000B /* com.benzo.helper.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = com.benzo.helper.plist; sourceTree = "<group>"; };
 		9F000000000000000000000D /* HelperEngineTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HelperEngineTests.swift; sourceTree = "<group>"; };
-		9F0000000000000000000012 /* BenzoHelper */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = BenzoHelper; sourceTree = BUILT_PRODUCTS_DIR; };
+		9F0000000000000000000012 /* BenzoCommand */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = BenzoCommand; sourceTree = BUILT_PRODUCTS_DIR; };
 		9E0000000000000000000001 /* HelperStateStoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HelperStateStoreTests.swift; sourceTree = "<group>"; };
 		9D0000000000000000000001 /* AppVersion.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppVersion.swift; sourceTree = "<group>"; };
 		9D0000000000000000000002 /* ReleaseChecker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReleaseChecker.swift; sourceTree = "<group>"; };
@@ -181,6 +204,19 @@
 		9C0000000000000000000001 /* HelperCodeRequirement.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HelperCodeRequirement.swift; sourceTree = "<group>"; };
 		9C0000000000000000000002 /* HelperCodeRequirementTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HelperCodeRequirementTests.swift; sourceTree = "<group>"; };
 		9C0000000000000000000003 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		062B7228380985ED6ECC1249 /* CommandProtocol.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CommandProtocol.swift; sourceTree = "<group>"; };
+		4B20C6289D24AF0ABE95D450 /* CommandEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CommandEngine.swift; sourceTree = "<group>"; };
+		7FB6C9D0C7A5F92162E68699 /* CommandStateStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CommandStateStore.swift; sourceTree = "<group>"; };
+		A92A0EA97088CBFDA8F19698 /* CommandRuntime.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CommandRuntime.swift; sourceTree = "<group>"; };
+		8800B40E8A8981A4D69BBF6C /* CommandInstaller.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CommandInstaller.swift; sourceTree = "<group>"; };
+		CA55953FF05C7AA1F4C59771 /* CommandMain.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CommandMain.swift; sourceTree = "<group>"; };
+		E34A080D8A4A96D54E2C1169 /* CommandToolIdentity.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CommandToolIdentity.swift; sourceTree = "<group>"; };
+		BC508A06D4A8154A4A5C6FE2 /* CommandToolSetup.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CommandToolSetup.swift; sourceTree = "<group>"; };
+		0A96A2AFA30F6ADB6139F66F /* CommandToolClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CommandToolClient.swift; sourceTree = "<group>"; };
+		6C55F139477334C3ABFA15FD /* CommandToolEngineTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CommandToolEngineTests.swift; sourceTree = "<group>"; };
+		4D4F69BB198CC844D9A3B85B /* CommandToolStateStoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CommandToolStateStoreTests.swift; sourceTree = "<group>"; };
+		667DBC5CA39ADDB360FB7C24 /* CommandToolSetupTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CommandToolSetupTests.swift; sourceTree = "<group>"; };
+		B0E649BC33481868D96A2C53 /* CommandRecoveryTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CommandRecoveryTests.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -204,6 +240,7 @@
 		A50000000000000000000000 = {
 			isa = PBXGroup;
 			children = (
+				F67A6702D196AD5D16647B21 /* BenzoCommand */,
 				9F0000000000000000000001 /* BenzoHelper */,
 				A50000010000000000000001 /* Benzo */,
 				A50000020000000000000002 /* Products */,
@@ -229,7 +266,7 @@
 		A50000020000000000000002 /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				9F0000000000000000000012 /* BenzoHelper */,
+				9F0000000000000000000012 /* BenzoCommand */,
 				A30000000000000000000001 /* Benzo.app */,
 				D30000000000000000000001 /* BenzoCoreTests.xctest */,
 			);
@@ -266,6 +303,9 @@
 		A50000050000000000000005 /* Services */ = {
 			isa = PBXGroup;
 			children = (
+				E34A080D8A4A96D54E2C1169 /* CommandToolIdentity.swift */,
+				BC508A06D4A8154A4A5C6FE2 /* CommandToolSetup.swift */,
+				0A96A2AFA30F6ADB6139F66F /* CommandToolClient.swift */,
 				9D0000000000000000000002 /* ReleaseChecker.swift */,
 				9F0000000000000000000008 /* HelperServiceClient.swift */,
 				9F0000000000000000000007 /* HelperEnrollmentAuthorization.swift */,
@@ -332,6 +372,10 @@
 		D50000000000000000000001 /* BenzoTests */ = {
 			isa = PBXGroup;
 			children = (
+				6C55F139477334C3ABFA15FD /* CommandToolEngineTests.swift */,
+				4D4F69BB198CC844D9A3B85B /* CommandToolStateStoreTests.swift */,
+				667DBC5CA39ADDB360FB7C24 /* CommandToolSetupTests.swift */,
+				B0E649BC33481868D96A2C53 /* CommandRecoveryTests.swift */,
 				9C0000000000000000000002 /* HelperCodeRequirementTests.swift */,
 				9E0000000000000000000001 /* HelperStateStoreTests.swift */,
 				9F000000000000000000000D /* HelperEngineTests.swift */,
@@ -360,6 +404,14 @@
 				9F000000000000000000000A /* HelperStateStore.swift */,
 				9F0000000000000000000009 /* HelperMain.swift */,
 			); path = BenzoHelper; sourceTree = "<group>"; };
+		F67A6702D196AD5D16647B21 /* BenzoCommand */ = {isa = PBXGroup; children = (
+				062B7228380985ED6ECC1249 /* CommandProtocol.swift */,
+				4B20C6289D24AF0ABE95D450 /* CommandEngine.swift */,
+				7FB6C9D0C7A5F92162E68699 /* CommandStateStore.swift */,
+				A92A0EA97088CBFDA8F19698 /* CommandRuntime.swift */,
+				8800B40E8A8981A4D69BBF6C /* CommandInstaller.swift */,
+				CA55953FF05C7AA1F4C59771 /* CommandMain.swift */,
+			); path = BenzoCommand; sourceTree = "<group>"; };
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
@@ -367,8 +419,8 @@
 			isa = PBXNativeTarget;
 			buildConfigurationList = A80000000000000000000001 /* Build configuration list for PBXNativeTarget "Benzo" */;
 			buildPhases = (
-				9F000000000000000000002B /* Embed Helper Tools */,
-				9F000000000000000000002C /* Copy LaunchDaemons */,
+				9F000000000000000000002B /* Embed Command Tool */,
+
 				A70000000000000000000001 /* Sources */,
 				A40000000000000000000001 /* Frameworks */,
 				A70000010000000000000002 /* Resources */,
@@ -398,7 +450,7 @@
 			productReference = D30000000000000000000001 /* BenzoCoreTests.xctest */;
 			productType = "com.apple.product-type.bundle.unit-test";
 		};
-		9F0000000000000000000011 /* BenzoHelper */ = {isa = PBXNativeTarget; buildConfigurationList = 9F0000000000000000000013; buildPhases = (9F000000000000000000000F, 9F0000000000000000000010, ); buildRules = (); dependencies = (); name = BenzoHelper; productName = BenzoHelper; productReference = 9F0000000000000000000012; productType = "com.apple.product-type.tool"; };
+		9F0000000000000000000011 /* BenzoCommand */ = {isa = PBXNativeTarget; buildConfigurationList = 9F0000000000000000000013; buildPhases = (9F000000000000000000000F, 9F0000000000000000000010, ); buildRules = (); dependencies = (); name = BenzoCommand; productName = BenzoCommand; productReference = 9F0000000000000000000012; productType = "com.apple.product-type.tool"; };
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -430,7 +482,7 @@
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
-				9F0000000000000000000011 /* BenzoHelper */,
+				9F0000000000000000000011 /* BenzoCommand */,
 				A60000000000000000000001 /* Benzo */,
 				D60000000000000000000001 /* BenzoCoreTests */,
 			);
@@ -461,16 +513,18 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				441B536390B1070121D15EF0 /* CommandProtocol.swift in Sources */,
+				8417D9D86272B717FB53F549 /* CommandToolIdentity.swift in Sources */,
+				865DB7C52EABF2FD9E80616A /* CommandToolSetup.swift in Sources */,
+				B1E20AFBB7FF015A6F4928A0 /* CommandToolClient.swift in Sources */,
 				9D0000000000000000000011 /* AppVersion.swift in Sources */,
 				9D0000000000000000000012 /* ReleaseChecker.swift in Sources */,
 				9D0000000000000000000013 /* UpdateViewModel.swift in Sources */,
-				9F0000000000000000000019 /* HelperServiceClient.swift in Sources */,
-				9F0000000000000000000018 /* HelperEnrollmentAuthorization.swift in Sources */,
-				9C0000000000000000000011 /* HelperCodeRequirement.swift in Sources */,
-				9F0000000000000000000017 /* HelperIdentity.swift in Sources */,
-				9F0000000000000000000016 /* HelperXPCProtocol.swift in Sources */,
+
+
+
 				9F0000000000000000000015 /* HelperReadiness.swift in Sources */,
-				9F0000000000000000000014 /* HelperProtocol.swift in Sources */,
+
 				F10000000000000000000001 /* RecoveryJournal.swift in Sources */,
 				F10000000000000000000002 /* ControlState.swift in Sources */,
 				F10000000000000000000003 /* OperationCoordinator.swift in Sources */,
@@ -510,6 +564,18 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				3E88797DD7DEE1F06B71287C /* CommandProtocol.swift in Sources */,
+				460280084AD4B796AAF1812C /* CommandEngine.swift in Sources */,
+				98389A21EB9E114B4EB9727F /* CommandStateStore.swift in Sources */,
+				D6F0B018D97FF6F42BBB6829 /* CommandRuntime.swift in Sources */,
+				0FB07CB724F95FC93E08165E /* CommandInstaller.swift in Sources */,
+				2E4D049C9647F39CFE050BF5 /* CommandToolIdentity.swift in Sources */,
+				59310A9BADD011950A4A3CBA /* CommandToolSetup.swift in Sources */,
+				2AAB12BC08E8388A0BAA6F4B /* CommandToolEngineTests.swift in Sources */,
+				A3CCFACB232B627585FB7B20 /* CommandToolStateStoreTests.swift in Sources */,
+				2C5AA2795B2D74BBF7A7C485 /* CommandToolSetupTests.swift in Sources */,
+				0BC5F95D114EEF03A1CD96ED /* CommandRecoveryTests.swift in Sources */,
+				818A077C0798B51447ACB992 /* BootIdentityProvider.swift in Sources */,
 				9D0000000000000000000021 /* AppVersion.swift in Sources */,
 				9D0000000000000000000022 /* ReleaseChecker.swift in Sources */,
 				9D0000000000000000000023 /* UpdateViewModel.swift in Sources */,
@@ -550,20 +616,17 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 		9F000000000000000000000F /* Sources */ = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (
+				95BA96DB9CC8A70268C960FC /* CommandProtocol.swift in Sources */,
+				309CE634A09409214124BB57 /* CommandEngine.swift in Sources */,
+				2D504BF059F0E5EDC2A4564D /* CommandStateStore.swift in Sources */,
+				F84EBD26BB1B0FACF1732AC6 /* CommandRuntime.swift in Sources */,
+				E33D4A80AC50CDA3664DA733 /* CommandInstaller.swift in Sources */,
+				3BF58B893D67A32CDAFB8A93 /* CommandMain.swift in Sources */,
+				5FFE96288A62FB770301E1A5 /* CommandToolIdentity.swift in Sources */,
 				9F000000000000000000002A /* BootIdentityProvider.swift in Sources */,
-				9F0000000000000000000029 /* CommandRunner.swift in Sources */,
 				9F0000000000000000000028 /* SleepSetting.swift in Sources */,
 				9F0000000000000000000027 /* RecoveryJournal.swift in Sources */,
 				9F0000000000000000000026 /* PMSetState.swift in Sources */,
-				9F0000000000000000000025 /* PMSetService.swift in Sources */,
-				9F0000000000000000000024 /* HelperStateStore.swift in Sources */,
-				9F0000000000000000000023 /* HelperMain.swift in Sources */,
-				9F0000000000000000000022 /* HelperEnrollmentAuthorization.swift in Sources */,
-				9C0000000000000000000012 /* HelperCodeRequirement.swift in Sources */,
-				9F0000000000000000000021 /* HelperIdentity.swift in Sources */,
-				9F0000000000000000000020 /* HelperXPCProtocol.swift in Sources */,
-				9F000000000000000000001F /* HelperEngine.swift in Sources */,
-				9F000000000000000000001E /* HelperProtocol.swift in Sources */,
 			); runOnlyForDeploymentPostprocessing = 0; };
 /* End PBXSourcesBuildPhase section */
 
@@ -720,13 +783,12 @@
                 CODE_SIGN_STYLE = Automatic;
                 ENABLE_HARDENED_RUNTIME = YES;
                 ENABLE_DEBUG_DYLIB = NO;
-                CREATE_INFOPLIST_SECTION_IN_BINARY = YES;
+                CREATE_INFOPLIST_SECTION_IN_BINARY = NO;
                 GENERATE_INFOPLIST_FILE = NO;
-                INFOPLIST_FILE = BenzoHelper/Info.plist;
-                OTHER_CODE_SIGN_FLAGS = "$(inherited) --identifier com.benzo.helper";
+                OTHER_CODE_SIGN_FLAGS = "$(inherited) --identifier com.chrisrogers37.benzo-command";
                 MACOSX_DEPLOYMENT_TARGET = 13.0;
-                PRODUCT_BUNDLE_IDENTIFIER = com.benzo.helper;
-                PRODUCT_NAME = BenzoHelper;
+                PRODUCT_BUNDLE_IDENTIFIER = com.chrisrogers37.benzo-command;
+                PRODUCT_NAME = BenzoCommand;
                 SKIP_INSTALL = YES;
                 SUPPORTED_PLATFORMS = macosx;
                 SWIFT_VERSION = 5.0;
@@ -739,13 +801,12 @@
                 CODE_SIGN_STYLE = Automatic;
                 ENABLE_HARDENED_RUNTIME = YES;
                 ENABLE_DEBUG_DYLIB = NO;
-                CREATE_INFOPLIST_SECTION_IN_BINARY = YES;
+                CREATE_INFOPLIST_SECTION_IN_BINARY = NO;
                 GENERATE_INFOPLIST_FILE = NO;
-                INFOPLIST_FILE = BenzoHelper/Info.plist;
-                OTHER_CODE_SIGN_FLAGS = "$(inherited) --identifier com.benzo.helper";
+                OTHER_CODE_SIGN_FLAGS = "$(inherited) --identifier com.chrisrogers37.benzo-command";
                 MACOSX_DEPLOYMENT_TARGET = 13.0;
-                PRODUCT_BUNDLE_IDENTIFIER = com.benzo.helper;
-                PRODUCT_NAME = BenzoHelper;
+                PRODUCT_BUNDLE_IDENTIFIER = com.chrisrogers37.benzo-command;
+                PRODUCT_NAME = BenzoCommand;
                 SKIP_INSTALL = YES;
                 SUPPORTED_PLATFORMS = macosx;
                 SWIFT_VERSION = 5.0;
@@ -782,7 +843,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Debug;
 		};
-		9F0000000000000000000013 /* BenzoHelper configuration */ = {isa = XCConfigurationList; buildConfigurations = (9F0000000000000000000031, 9F0000000000000000000032, ); defaultConfigurationIsVisible = 0; defaultConfigurationName = Release; };
+		9F0000000000000000000013 /* BenzoCommand configuration */ = {isa = XCConfigurationList; buildConfigurations = (9F0000000000000000000031, 9F0000000000000000000032, ); defaultConfigurationIsVisible = 0; defaultConfigurationName = Release; };
 /* End XCConfigurationList section */
 	};
 	rootObject = A90000000000000000000001 /* Project object */;

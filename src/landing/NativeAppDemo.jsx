@@ -29,7 +29,7 @@ function Diagnostics({ onBack, backRef, sleepData, usbDevices, observedSettings 
 
 function Setup({ readiness, error, recoveryMessage, canReplaceHelper, canRemoveHelper, removalConfirmation, setupBusy, actionRef, onBack, dispatch }) {
   const status = app.setup.states[readiness] ?? app.setup.states.connectionUnavailable
-  const primaryDisabled = setupBusy || (readiness === 'incompatible' && !canReplaceHelper)
+  const primaryDisabled = setupBusy || (status.event === 'replaceHelper' && !canReplaceHelper)
   const removalTitleId = useId()
   const removalReasonId = useId()
   const cancelRef = useRef(null)
@@ -49,8 +49,8 @@ function Setup({ readiness, error, recoveryMessage, canReplaceHelper, canRemoveH
     <span className="bn-setup-pill" aria-hidden="true">💊</span><h3>{status.title}</h3><p>{status.message}</p>
     {recoveryMessage && <p>{recoveryMessage}</p>}
     {error && <p className="bn-error" role="alert">{error}</p>}
-    {readiness === 'incompatible' && !canReplaceHelper && !setupBusy && <p>{app.setup.replacementBlocked}</p>}
-    {status.action && <button ref={!primaryDisabled ? actionRef : undefined} disabled={primaryDisabled} onClick={() => dispatch({ type: status.event })}>{status.action}</button>}
+    {status.event === 'replaceHelper' && !canReplaceHelper && !setupBusy && <p>{app.setup.replacementBlocked}</p>}
+    {status.action && <button ref={!primaryDisabled && readiness !== 'ready' ? actionRef : undefined} disabled={primaryDisabled} onClick={() => dispatch({ type: status.event })}>{status.action}</button>}
     {['ready', 'incompatible'].includes(readiness) && <>
       {!canRemoveHelper && !setupBusy && <p>{app.setup.removalBlocked}</p>}
       <button ref={removeRef} disabled={!canRemoveHelper} onClick={() => dispatch({ type: 'requestRemoveHelper' })}>{app.setup.remove}</button>
@@ -91,7 +91,7 @@ export default function NativeAppDemo({ state, dispatch }) {
   const helperStatus = app.setup.states[state.helperReadiness] ?? app.setup.states.connectionUnavailable
   const canToggleMaster = helperReady && (active || (phase === 'off' && settingOptions.some(option => option.available && settings[option.key])))
   const canRestore = helperReady && Boolean(state.hasSession) && !busy && state.operation !== 'uncertain' && !state.conflict
-  const canReplaceHelper = state.helperReadiness === 'incompatible' && phase === 'off' && !state.hasSession && state.operation !== 'uncertain' && !state.isPerformingHelperSetup
+  const canReplaceHelper = ['ready', 'incompatible', 'connectionUnavailable'].includes(state.helperReadiness) && phase === 'off' && !state.hasSession && state.operation !== 'uncertain' && !state.isPerformingHelperSetup
   const canRemoveHelper = ['ready', 'incompatible'].includes(state.helperReadiness) && phase === 'off' && !state.hasSession && state.operation !== 'uncertain' && !state.isPerformingHelperSetup
   const conflictSetting = state.conflict && settingOptions.find(option => option.commands.some(([key]) => key === state.conflict.key))
   const [aboutOpen, setAboutOpen] = useState(false)
@@ -187,7 +187,6 @@ export default function NativeAppDemo({ state, dispatch }) {
     <div className="bn-demo-caption">
       <p>{copy.hint}</p>
       <div className="bn-demo-actions">
-        {state.helperReadiness === 'requiresApproval' && state.helperSettingsOpened && <button onClick={() => dispatch({ type: 'helperApprovalGranted' })}>Simulate macOS Approval</button>}
         <button ref={externalDiagnosticsRef} onClick={() => openDiagnostics('external')}>{copy.diagnostics}<AppSymbol name="chevron" size={10} /></button>
         <button aria-expanded={aboutOpen} aria-controls={aboutId} onClick={() => setAboutOpen(open => !open)}>{copy.disclosure}<span className={aboutOpen ? 'bn-expanded' : ''}><AppSymbol name="chevron" size={10} /></span></button>
       </div>

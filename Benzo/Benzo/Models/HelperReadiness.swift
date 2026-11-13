@@ -7,8 +7,8 @@ enum HelperUnavailableReason: Equatable, Sendable {
     case executionUncertain
 }
 
-/// Registration alone is not readiness: the live client must also authenticate
-/// the helper, check compatibility, and confirm ownership for the connected UID.
+/// Setup alone is not readiness: the live client must check the installed tool,
+/// protocol compatibility, and access for the account using Benzo.
 enum HelperReadiness: Equatable, Sendable {
     case checking
     case notInstalled
@@ -20,32 +20,33 @@ enum HelperReadiness: Equatable, Sendable {
 
     var title: String {
         switch self {
-        case .checking: return "Checking Benzo Setup"
-        case .notInstalled: return "Set Up Benzo"
-        case .requiresApproval: return "Approve Benzo in System Settings"
-        case .needsOwnerAuthorization: return "Authorize This Account"
+        case .checking: return "Checking Power Access"
+        case .notInstalled, .requiresApproval, .needsOwnerAuthorization: return "Set Up Power Access"
         case .ready: return "Benzo Is Ready"
         case .differentAccount: return "Benzo Is Set Up for Another Account"
-        case .unavailable(.connection): return "Benzo’s Helper Is Unavailable"
-        case .unavailable(.incompatible): return "Benzo Needs a Matching Helper"
+        case .unavailable(.connection): return "Power Access Is Unavailable"
+        case .unavailable(.incompatible): return "Update Power Access"
         case .unavailable(.signingUnavailable): return "Setup Is Unavailable in This Build"
-        case .unavailable(.executionUncertain): return "Helper Recovery Required"
+        case .unavailable(.executionUncertain): return "Power Settings Need Recovery"
         }
     }
 
     var message: String {
         switch self {
-        case .checking: return "Checking the helper and this account’s access."
-        case .notInstalled: return "Set up Benzo’s helper to apply and restore power settings. Only this Mac account will be authorized."
-        case .requiresApproval: return "Allow Benzo’s background helper in Login Items, then return here to finish setup."
-        case .needsOwnerAuthorization: return "Authorize this Mac account to control Benzo. macOS may ask for an administrator password."
-        case .ready: return "This account can apply and restore settings."
+        case .checking: return "Checking this account’s access to power settings."
+        case .notInstalled, .requiresApproval, .needsOwnerAuthorization:
+            return "One administrator approval lets this Mac account apply and restore Benzo’s supported power settings. These settings affect everyone using this Mac."
+        case .ready: return "This account can apply and restore settings. Turning Benzo on, off, or quitting needs no further administrator approval."
         case .differentAccount: return "Use the Mac account that completed setup. This account cannot change settings through Benzo."
-        case .unavailable(.connection): return "Benzo couldn’t reach its helper. Check setup and try again."
-        case .unavailable(.incompatible): return "Benzo’s bundled helper differs from the running helper. Replace it after resolving settings."
-        case .unavailable(.signingUnavailable): return "Helper setup requires a Developer ID-signed Benzo build. Development packages cannot change power settings."
-        case .unavailable(.executionUncertain): return "A previous settings request has unresolved execution evidence. Keep the recovery record; checking again does not authorize another write."
+        case .unavailable(.connection): return "Benzo couldn’t verify power access. Check again, or repair access after restoring any active settings."
+        case .unavailable(.incompatible): return "The installed power tool needs an update. Restore any active settings before updating power access."
+        case .unavailable(.signingUnavailable): return "This copy of Benzo is missing a usable power tool. Install a complete Benzo app, then try setup again."
+        case .unavailable(.executionUncertain): return "An earlier settings change has not finished safely. Your recovery record is preserved. Check recovery before making further changes."
         }
+    }
+
+    var supportsRepair: Bool {
+        self == .ready || self == .unavailable(.incompatible) || self == .unavailable(.connection)
     }
 }
 

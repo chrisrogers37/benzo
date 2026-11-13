@@ -33,6 +33,10 @@ final class OperationCoordinator {
     /// An in-process persistence failure cannot be laundered by rereading a file
     /// that happened to reach rename before its final durability check failed.
     private var uncertainBoot: String?
+    private var uncertainCommandToken: PowerCommandToken?
+    /// A lost ACK leaves execution settled locally, but the root receipt slot
+    /// must be released before another write or compensation can be admitted.
+    private var acknowledgementPending = false
 
     init(store: any RecoveryStoring, transport: any RecoveryCommanding, uid: UInt32,
          hostID: String, bootID: @escaping () throws -> String, now: @escaping () -> Date,
@@ -155,7 +159,7 @@ final class OperationCoordinator {
     }
 
     func mayEditSelections() -> Bool {
-        guard !admitted, !quitRequested, state == .off, !executionUncertain else { return false }
+        guard !admitted, !quitRequested, state == .off, !executionUncertain, !acknowledgementPending else { return false }
         guard begin() else { return false }
         defer { end() }
         do {
@@ -223,7 +227,7 @@ final class OperationCoordinator {
         if let uncertainBoot, sameBoot(uncertainBoot, boot) { return false }
         if let fence {
             try fence.validate(uid: uid, hostID: hostID)
-            if !fence.completed && sameBoot(fence.bootID, boot) { return false }
+            if !fence.completed && (fence.commandRequest != nil || sameBoot(fence.bootID, boot)) { return false }
         }
         if let operation = loaded?.operation {
             for step in operation.steps where step.phase == .intended || step.phase == .uncertain {
@@ -247,9 +251,15 @@ final class OperationCoordinator {
         journal = loaded
         try checkLegacy(loaded)
         let boot = try currentBoot()
-        let fence = try store.loadFence()
-        executionUncertain = try !isQuiescent(loaded, fence: fence, boot: boot)
-        if !executionUncertain { uncertainBoot = nil }
+        var fence = try store.loadFence()
+        if let commandFence = fence, commandFence.commandRequest != nil {
+            if !commandFence.completed { executionUncertain = true }
+            fence = try await reconcileCommandFence(commandFence, boot: boot)
+        }
+        // Receipt recovery may have replaced the planned/intended local step.
+        let reconciled = journal
+        executionUncertain = try !isQuiescent(reconciled, fence: fence, boot: boot)
+        if !executionUncertain { uncertainBoot = nil; uncertainCommandToken = nil }
         let capture = try await transport.capture()
         updateAvailability(capture)
         conflicts = []
@@ -257,7 +267,7 @@ final class OperationCoordinator {
             publish(.recoveryRequired("Execution is uncertain on this boot. Retry can observe settings, but cannot write, release ownership or prove restoration. Keep the evidence; a verified later boot permits read-only reconciliation."))
             return
         }
-        guard var current = loaded else { publish(.off); return }
+        guard var current = reconciled else { publish(.off); return }
         if current.resolvedAt != nil {
             if receiptPending {
                 // Receipt retry verifies every final released observation, including
@@ -286,7 +296,7 @@ final class OperationCoordinator {
                     current: observed, lastVerified: current.cells[index].lastVerified))
             }
         }
-        if current != loaded { try commit(current) }
+        if current != reconciled { try commit(current) }
         if !current.cells.contains(where: \.owned) {
             try finishResolved()
         } else if !conflicts.isEmpty {
@@ -364,6 +374,11 @@ final class OperationCoordinator {
                 throw invalid("Operation identity changed before dispatch.")
             }
             try await transport.preflightWrite()
+            if let request = try await transport.prepareWrite(cell: step.cell, value: step.target,
+                expectedValue: step.precondition, operationID: plan.id, bootID: plan.bootID) {
+                try await executePrepared(request, step: step, index: index, plan: plan, current: current)
+                continue
+            }
             current.operation!.steps[index].phase = .intended
             // Covers intent persistence failure and the pre-child-identity gap.
             uncertainBoot = plan.bootID
@@ -423,8 +438,200 @@ final class OperationCoordinator {
         }
     }
 
+    private func executePrepared(_ request: PowerCommandRequest, step: RecoveryStep, index: Int,
+                                 plan: RecoveryOperation, current: RecoveryJournal) async throws {
+        try request.validate()
+        guard request.operationID == plan.id, request.cell == step.cell,
+              request.expectedValue == step.precondition, request.target == step.target,
+              request.bootID == UUID(uuidString: plan.bootID),
+              sameBoot(try currentBoot(), plan.bootID) else {
+            throw invalid("The prepared power request does not match the frozen recovery step.")
+        }
+        let fence = ExecutionFence(uid: uid, hostID: hostID, bootID: plan.bootID,
+            incarnationID: incarnationID, sessionID: current.sessionID, operationID: plan.id,
+            cell: step.cell, target: step.target, completed: false, commandRequest: request)
+        uncertainBoot = plan.bootID
+        uncertainCommandToken = request.token
+        executionUncertain = true
+        // The already-persisted plan binds this complete token even if the GUI
+        // dies before its intended-step update or before invoking the tool.
+        try store.commitFence(fence)
+        var intended = current
+        intended.operation!.steps[index].phase = .intended
+        try commit(intended)
+        let outcome = await transport.writePrepared(request)
+        switch outcome {
+        case .uncertain(let reason):
+            if var uncertain = journal, uncertain.operation?.id == plan.id {
+                uncertain.operation!.steps[index].phase = .uncertain
+                try? commit(uncertain)
+            }
+            throw invalid(reason)
+        case .notExecuted(let reason):
+            _ = try await persistCommandTerminal(outcome, fence: fence, index: index)
+            throw invalid(reason)
+        case .completed(let status):
+            let value = try await persistCommandTerminal(outcome, fence: fence, index: index)
+            guard status == 0, value == step.target else {
+                throw invalid("The setting request failed or its readback did not match. Recovery evidence was retained.")
+            }
+        }
+    }
+
+    /// Inspect the full saved tuple before quiescence. Status/seal is read-only
+    /// with respect to settings, and an absent receipt never establishes no-spawn.
+    private func reconcileCommandFence(_ original: ExecutionFence, boot: String) async throws -> ExecutionFence {
+        try original.validate(uid: uid, hostID: hostID)
+        guard let request = original.commandRequest else { return original }
+        guard let current = journal, current.sessionID == original.sessionID else {
+            // A completed fence may remain after a new session's plan was saved
+            // but before its first fence. It cannot supply proof for that session.
+            guard original.completed else { throw invalid("The saved power request has no matching recovery session.") }
+            return original
+        }
+        guard current.cells.contains(where: { $0.cell == original.cell }) else {
+            throw invalid("The saved power request is outside the captured recovery cells.")
+        }
+        let index = try boundStepIndex(original, in: current)
+        let localTerminal = index.map {
+            current.operation!.steps[$0].phase == .completed || current.operation!.steps[$0].phase == .notExecuted
+        } ?? original.completed
+        let failedLocalCommit = uncertainCommandToken == request.token
+        if original.completed, localTerminal, !failedLocalCommit {
+            // Includes an already-resolved journal or an operation cleared by
+            // prior read-only reconciliation. ACK never renews completion proof.
+            return try await acknowledgeCommand(original)
+        }
+
+        guard let resolution = await transport.reconcileWrite(request) else {
+            uncertainBoot = boot
+            uncertainCommandToken = request.token
+            executionUncertain = true
+            return original
+        }
+        switch resolution {
+        case .terminal(let outcome):
+            if case .uncertain = outcome {
+                uncertainBoot = boot; uncertainCommandToken = request.token; executionUncertain = true
+                return original
+            }
+            if let index {
+                _ = try await persistCommandTerminal(outcome, fence: original, index: index)
+            } else {
+                // Only a completed fence can reach a cleared operation. A
+                // successful fresh durability barrier settles an in-process
+                // failed commit; never fabricate a replacement journal step.
+                guard original.completed else { throw invalid("Terminal proof has no matching local operation.") }
+                try commit(current)
+                try store.commitVerifiedCommandFence(original)
+                clearCommandUncertainty(request)
+                _ = try await acknowledgeCommand(original)
+            }
+        case .stoppedOnLaterBoot:
+            guard request.bootID != UUID(uuidString: boot) else {
+                throw invalid("The power request has not stopped on a verified later boot.")
+            }
+            uncertainBoot = boot
+            uncertainCommandToken = request.token
+            executionUncertain = true
+            var stopped = original
+            stopped.completed = true
+            // Complete the fence first here: clearing the operation first would
+            // leave an incomplete token with no binding after a GUI crash.
+            try store.commitVerifiedCommandFence(stopped)
+            var reconciled = current
+            if reconciled.operation?.id == original.operationID { reconciled.operation = nil }
+            try commit(reconciled)
+            clearCommandUncertainty(request)
+            _ = try await acknowledgeCommand(stopped)
+        }
+        var completed = original
+        completed.completed = true
+        completed.commandAcknowledged = true
+        return completed
+    }
+
+    private func boundStepIndex(_ fence: ExecutionFence, in current: RecoveryJournal) throws -> Int? {
+        guard let request = fence.commandRequest else { throw invalid("The saved power request is missing.") }
+        guard let operation = current.operation, operation.id == fence.operationID else {
+            guard fence.completed else { throw invalid("The saved power request has no matching recovery operation.") }
+            return nil
+        }
+        guard sameBoot(operation.bootID, fence.bootID),
+              let index = operation.steps.firstIndex(where: { $0.cell == fence.cell }),
+              operation.steps[index].precondition == request.expectedValue,
+              operation.steps[index].target == request.target else {
+            throw invalid("The saved power request does not match its recovery step and precondition.")
+        }
+        return index
+    }
+
+    /// A retained root receipt is acknowledged only after both local records
+    /// have crossed successful durability barriers, including readback evidence.
+    private func persistCommandTerminal(_ outcome: RecoveryWriteOutcome, fence: ExecutionFence,
+                                        index: Int) async throws -> Int? {
+        guard let request = fence.commandRequest, var current = journal,
+              current.sessionID == fence.sessionID,
+              try boundStepIndex(fence, in: current) == index else {
+            throw invalid("Terminal command proof has no matching local recovery step.")
+        }
+        uncertainBoot = try currentBoot()
+        uncertainCommandToken = request.token
+        executionUncertain = true
+        var value: Int?
+        switch outcome {
+        case .completed(let status):
+            guard (0...255).contains(status) else { throw invalid("Invalid terminal command status.") }
+            let capture = try await transport.capture()
+            guard sameBoot(try currentBoot(), uncertainBoot!),
+                  let cellIndex = current.cells.firstIndex(where: { $0.cell == request.cell }) else {
+                throw invalid("Recovery identity changed during command readback.")
+            }
+            value = capture.value(for: request.cell)
+            current.operation!.steps[index].phase = .completed
+            current.operation!.steps[index].status = status
+            current.operation!.steps[index].readback = value
+            current.cells[cellIndex].observed = value
+            if value == request.target { current.cells[cellIndex].lastVerified = value }
+        case .notExecuted:
+            current.operation!.steps[index].phase = .notExecuted
+            current.operation!.steps[index].status = nil
+            current.operation!.steps[index].readback = nil
+        case .uncertain:
+            throw invalid("Uncertain execution cannot become a terminal local receipt.")
+        }
+        try commit(current)
+        var completed = fence
+        completed.completed = true
+        try store.commitVerifiedCommandFence(completed)
+        clearCommandUncertainty(request)
+        _ = try await acknowledgeCommand(completed)
+        return value
+    }
+
+    private func clearCommandUncertainty(_ request: PowerCommandRequest) {
+        guard uncertainCommandToken == nil || uncertainCommandToken == request.token else { return }
+        uncertainBoot = nil
+        uncertainCommandToken = nil
+        executionUncertain = false
+    }
+
+    private func acknowledgeCommand(_ fence: ExecutionFence) async throws -> ExecutionFence {
+        guard let request = fence.commandRequest, fence.completed else {
+            throw invalid("Only a durably completed command fence may be acknowledged.")
+        }
+        if fence.commandAcknowledged == true, !acknowledgementPending { return fence }
+        acknowledgementPending = true
+        try await transport.acknowledgeWrite(request)
+        var acknowledged = fence
+        acknowledged.commandAcknowledged = true
+        try store.commitFence(acknowledged)
+        acknowledgementPending = false
+        return acknowledged
+    }
+
     private func recoverFailedOperation(_ failed: RecoveryOperation, cause: Error) async {
-        guard !executionUncertain else { fail(cause); return }
+        guard !executionUncertain, !acknowledgementPending else { fail(cause); return }
         do {
             let capture = try await transport.capture()
             guard let current = journal else { throw cause }

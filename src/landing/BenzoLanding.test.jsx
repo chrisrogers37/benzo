@@ -8,11 +8,8 @@ afterEach(cleanup)
 const click = name => fireEvent.click(screen.getByRole('button', { name, exact: true }))
 const switchMaster = () => fireEvent.click(screen.getByRole('switch', { name: /^(Apply selected settings|Restore captured settings)$/ }))
 function completeSetup() {
-  click('Helper Setup')
-  click('Set Up')
-  click('Open System Settings')
-  click('Simulate macOS Approval')
-  click('Authorize This Account')
+  click('Power Access')
+  click('Set Up Power Access')
   click('Done')
 }
 
