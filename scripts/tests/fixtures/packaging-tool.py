@@ -124,7 +124,12 @@ elif tool == 'codesign':
             entitlements = signature['entitlements']
             if scenario == 'wrong-helper-role' and component == 'helper': entitlements = {'com.benzo.helper-client': True}
             if scenario == 'extra-entitlement': entitlements['com.apple.security.get-task-allow'] = True
-            sys.stdout.buffer.write(plistlib.dumps(entitlements))
+            if '--xml' in args:
+                sys.stdout.buffer.write(plistlib.dumps(entitlements))
+            else:
+                # Current codesign defaults to a human-readable abstraction,
+                # which must not pass the production plist parser.
+                print('[Dict]\n    [Key] ' + next(iter(entitlements)) + '\n    [Value]\n        [Bool] true')
         else:
             identifier = signature['identifier']
             if scenario == 'wrong-helper-id' and component == 'helper': identifier = 'BenzoHelper'

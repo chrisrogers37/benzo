@@ -77,7 +77,7 @@ for component in app helper; do
         codesign -dv --verbose=4 --arch "$arch" "$target" > "$task/signature.txt" 2>&1
         grep -qx "Identifier=$identifier" "$task/signature.txt"
         grep -qx 'Signature=adhoc' "$task/signature.txt"
-        codesign -d --entitlements - --arch "$arch" "$target" > "$task/entitlements.plist" 2> "$task/entitlements.log"
+        codesign -d --entitlements - --xml --arch "$arch" "$target" > "$task/entitlements.plist" 2> "$task/entitlements.log"
         python3 - "$task/entitlements.plist" "$role" <<'PY'
 import plistlib, sys
 with open(sys.argv[1], 'rb') as f: entitlements = plistlib.load(f)

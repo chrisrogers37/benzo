@@ -186,7 +186,7 @@ for component in app helper; do
         signature="$output/signature-$component-$arch.txt"
         codesign -dv --verbose=4 --arch "$arch" "$target" > "$signature" 2>&1
         grep -qx "Identifier=$identifier" "$signature" || fail 'Signing identifier mismatch'
-        codesign -d --entitlements - --arch "$arch" "$target" > "$output/entitlements-$component-$arch.plist" 2>> "$output/verify-$component.log"
+        codesign -d --entitlements - --xml --arch "$arch" "$target" > "$output/entitlements-$component-$arch.plist" 2>> "$output/verify-$component.log"
         check_entitlements "$output/entitlements-$component-$arch.plist" "$role"
         if [[ "$mode" == developer-id ]]; then
             grep -q '^Authority=Developer ID Application:' "$signature" || fail 'Developer ID signature is missing'
