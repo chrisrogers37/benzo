@@ -35,7 +35,7 @@ struct PopoverContentView: View {
                 )
             }
         } else if viewModel.showDiagnostics {
-            DiagnosticView(viewModel: viewModel, onBack: {
+            DiagnosticView(viewModel: viewModel, maximumContentHeight: maximumContentHeight, onBack: {
                 returnToControl = .diagnostics
                 viewModel.showDiagnostics = false
             })

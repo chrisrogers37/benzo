@@ -8,7 +8,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
     private let viewModel = AppDelegate.makeViewModel()
     private let updateViewModel = AppDelegate.makeUpdateViewModel()
     private var eventMonitor: Any?
-    private var sizeObserver: NSObjectProtocol?
     private var terminationPending = false
 
     private static func makeUpdateViewModel() -> UpdateViewModel {
@@ -81,22 +80,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
             maximumContentHeight: { [weak self] in self?.maximumPopoverContentHeight ?? 600 })
             .onExitCommand { [weak self] in self?.closePopover() }
         let hostingController = NSHostingController(rootView: contentView)
-        hostingController.view.setFrameSize(hostingController.sizeThatFits(in: NSSize(width: 320, height: 10000)))
+        // Let AppKit size and position its popover from SwiftUI's ideal size.
+        // Observing frame changes and writing the popover window frame creates
+        // a feedback loop with the hosting view's own layout constraints.
+        hostingController.sizingOptions = [.preferredContentSize]
 
         popover = NSPopover()
         popover.behavior = .applicationDefined
         popover.delegate = self
         popover.contentViewController = hostingController
-
-        // Watch for content size changes and pin top edge
-        sizeObserver = NotificationCenter.default.addObserver(
-            forName: NSView.frameDidChangeNotification,
-            object: hostingController.view,
-            queue: .main
-        ) { [weak self] _ in
-            Task { @MainActor in self?.adjustPopoverFrame() }
-        }
-        hostingController.view.postsFrameChangedNotifications = true
+        popover.contentSize = hostingController.preferredContentSize
 
         viewModel.onStateChange = { [weak self] state in
             self?.updateIcon(state: state)
@@ -154,21 +147,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
     private var maximumPopoverContentHeight: CGFloat {
         let visible = statusItem?.button?.window?.screen?.visibleFrame ?? NSScreen.main?.visibleFrame
         return max(120, (visible?.height ?? 640) - 40)
-    }
-
-    private func adjustPopoverFrame() {
-        guard let contentController = popover.contentViewController,
-              let window = contentController.view.window else { return }
-        let oldFrame = window.frame
-        let newContentSize = contentController.view.fittingSize
-        let newHeight = min(newContentSize.height, maximumPopoverContentHeight) + 20 // popover chrome/arrow
-
-        if abs(oldFrame.height - newHeight) > 1 {
-            let bottom = window.screen?.visibleFrame.minY ?? oldFrame.minY
-            let newOrigin = NSPoint(x: oldFrame.origin.x, y: max(bottom, oldFrame.maxY - newHeight))
-            let newFrame = NSRect(origin: newOrigin, size: NSSize(width: oldFrame.width, height: newHeight))
-            window.setFrame(newFrame, display: true, animate: false)
-        }
     }
 
     private func updateIcon(state: ControlState) {

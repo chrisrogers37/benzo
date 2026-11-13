@@ -14,8 +14,14 @@ it does not open another dependent phase or modify the original worktrees.
   executable architectures, embedded daemon/plist, signatures and bundle metadata.
 - [x] Prepare separate Developer ID signing and explicit notarization commands;
   no credential required or Apple upload during development packaging.
-- [ ] Run local web/packaging checks, independent review, full-Xcode CI and real
-  development-DMG verification. Record exact source and artifact hashes.
+- [x] Run local web/packaging checks, independent review, full-Xcode CI and real
+  development-DMG verification. Integration checkpoint `9d963d6` passed build
+  run `43490604850` and security run `43490604908`; final artifact receipts belong
+  in PR #104 and the local pre-enrollment handoff.
+- [x] Remove the popover resize feedback loop observed in the old running app.
+  A displayed, isolated SwiftUI/AppKit probe verified 180 → 360 → 420 (cap) → 140
+  point sizing with settled frame-change counts. All app sources typecheck; the
+  final layout commit must pass CI and artifact inspection before handoff.
 - [x] Document install/setup/update/removal behavior, deferred signed acceptance,
   and a portable continuation before the eventual separately authorized reset.
 
@@ -25,11 +31,13 @@ pre-enrollment work. The final signed artifact still needs native acceptance.
 
 Review corrected a quit-admission race, guarded registration from read-only
 distribution volumes, and made failed Git provenance inspection stop packaging.
-Local evidence: 62 stubbed packaging checks, app source typechecking, and an
-earlier 117-test web/build/audit pass. Final scroll/action-label changes and quit
-regressions require the new combined CI run. Source typechecking and injected
-fixtures are not XCTest or native acceptance. The native fixture review also
-caught and corrected recursive `@Published` preference rollback before push.
+Integration CI: 153 native tests, 120 web tests, Debug/universal Release builds,
+67 packaging fixtures and actual development-DMG construction/read-only inspection
+passed. Real Apple tools exposed two packaging assumptions: codesign needs
+explicit XML output, and hdiutil reports canonical mount paths. Both are corrected
+with regression coverage. Independent review also caught and corrected recursive
+`@Published` preference rollback before push. Native UI/VoiceOver acceptance and
+the eventual signed helper acceptance remain distinct from these checks.
 
 ## Lasting helper permission — November 13, 2026
 
@@ -42,8 +50,9 @@ caught and corrected recursive `@Published` preference rollback before push.
 - [x] Implement and review authenticated helper enrollment, bounded operations,
   root-owned admission evidence, setup UX and active web parity.
 - [x] Helper checkpoint 4f40b3b passed native/web tests, app/helper builds and security CI.
-- [ ] Integrate packaging, update checker and native accessibility now; validate
-  the signed artifact on approved hardware after credentials become available.
+- [x] Integrate packaging, update checker and native accessibility in PR #104.
+- [ ] Validate the signed artifact on approved hardware after credentials become
+  available; retain the pending native UI/VoiceOver walkthrough as a separate gate.
 - [ ] Verify remote source, accepted release assets and portable handoff before
   the user's later, separately performed factory reset.
 

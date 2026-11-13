@@ -7,6 +7,14 @@ Developer ID build even for live testing. Keep source integration, fake-based
 tests, UI work and development packaging moving without credentials. Never call
 those checks signed permission acceptance, or weaken the helper to bypass it.
 
+## Let the popover own its window geometry
+The old native app consumed a CPU core in a frame-change observer that queried
+SwiftUI fitting size and then resized the popover's window. Use the public hosting
+controller preferred-content sizing behavior with bounded SwiftUI content;
+never feed window frame notifications back into window resizing. A displayed,
+synthetic popover verified growth, height capping and shrinking without that loop.
+An offscreen controller alone did not prove presentation behavior.
+
 ## pbxproj registration
 New Swift files must be added to 4 sections in `project.pbxproj`: PBXBuildFile, PBXFileReference, PBXGroup, PBXSourcesBuildPhase. Missing any section causes "Cannot find X in scope" build errors.
 

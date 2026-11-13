@@ -3,14 +3,22 @@ import AppKit
 
 struct DiagnosticView: View {
     @ObservedObject var viewModel: BenzoViewModel
+    let maximumContentHeight: () -> CGFloat
     let onBack: () -> Void
     @FocusState private var backFocused: Bool
     @AccessibilityFocusState private var backAccessibilityFocused: Bool
     @State private var scrollMarker = NSView(frame: .zero)
+    @State private var heightLimit: CGFloat = 600
+    @State private var headerHeight: CGFloat = 0
 
     var body: some View {
         VStack(spacing: 0) {
             header
+                .background {
+                    GeometryReader { geometry in
+                        Color.clear.preference(key: DiagnosticHeaderHeightKey.self, value: geometry.size.height)
+                    }
+                }
             ScrollView {
                 VStack(spacing: 0) {
                     sleepSessionsPanel
@@ -24,7 +32,7 @@ struct DiagnosticView: View {
                         .accessibilityHidden(true)
                 }
             }
-            .frame(maxHeight: 400)
+            .frame(maxHeight: min(400, max(0, heightLimit - headerHeight)))
             .focusable()
             .accessibilityLabel("Diagnostic results")
             .onMoveCommand { direction in
@@ -50,7 +58,12 @@ struct DiagnosticView: View {
         .frame(width: 320)
         .fixedSize(horizontal: false, vertical: true)
         .background(BenzoTheme.surface)
+        .onPreferenceChange(DiagnosticHeaderHeightKey.self) { headerHeight = $0 }
+        .onReceive(NotificationCenter.default.publisher(for: NSApplication.didChangeScreenParametersNotification)) { _ in
+            heightLimit = maximumContentHeight()
+        }
         .onAppear {
+            heightLimit = maximumContentHeight()
             viewModel.loadDiagnostics()
             backFocused = true
             backAccessibilityFocused = true
@@ -335,6 +348,11 @@ struct DiagnosticView: View {
         if reason.contains("Notification") { return "bell" }
         return "questionmark.circle"
     }
+}
+
+private struct DiagnosticHeaderHeightKey: PreferenceKey {
+    static let defaultValue: CGFloat = 0
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) { value = max(value, nextValue()) }
 }
 
 // Resolve the existing scroll view from its content rather than replacing its layout.
