@@ -41,6 +41,8 @@ fixtures and real development-DMG construction/inspection. Security checks cover
 the dependency audit and secret scan. Download the CI artifact before its seven-day
 expiration; check `SHA256SUMS` and its source manifest. A CI artifact is not a
 published release or proof that live administrator authorization works.
+Artifact names include the run attempt so retrying a failed job preserves prior
+evidence without an upload-name collision.
 
 ## Prepare signing without uploading
 

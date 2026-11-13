@@ -102,7 +102,7 @@ jobs:
       - name: Upload CI build evidence
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
-          name: benzo-ci-build-evidence
+          name: benzo-ci-build-evidence-attempt-${{ github.run_attempt }}
           path: |
             ${{ env.BENZO_CI_EVIDENCE_ROOT }}/upload/benzo-ci-xcarchive.tar.gz
             ${{ env.BENZO_CI_EVIDENCE_ROOT }}/upload/benzo-ci-manifest.txt
@@ -122,7 +122,7 @@ jobs:
       - name: Upload development DMG (helper unavailable)
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
-          name: benzo-development-artifact
+          name: benzo-development-artifact-attempt-${{ github.run_attempt }}
           path: |
             ${{ env.BENZO_DEVELOPMENT_OUTPUT }}/Benzo-*-development.dmg
             ${{ env.BENZO_DEVELOPMENT_OUTPUT }}/SHA256SUMS
@@ -134,7 +134,7 @@ jobs:
         if: always() && env.BENZO_DEVELOPMENT_OUTPUT != ''
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
-          name: benzo-development-packaging-diagnostics
+          name: benzo-development-packaging-diagnostics-attempt-${{ github.run_attempt }}
           path: |
             ${{ env.BENZO_DEVELOPMENT_OUTPUT }}/*.log
             ${{ env.BENZO_DEVELOPMENT_OUTPUT }}/*.json
