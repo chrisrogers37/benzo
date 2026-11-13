@@ -39,6 +39,10 @@ DiagnosticService uses fake read outcomes in tests; it never selects a live runn
 The bounded `CommandRunner` engine is the sole process-test exception: it may run
 only the owned child fixture, never real pmset, sudo, osascript or host diagnostics.
 ViewModel tests require explicit fakes and manual startup; no production defaults.
+Helper engine tests inject account, storage, boot and execution boundaries. The
+helper storage tests use `BENZO_STORAGE_TESTS` only in the core-test target to
+open their own temporary directory as the current user; they never instantiate
+the fixed root production store, authorize an account or register a service.
 
 Use the Debug/Release/core-test commands in README with a fresh task-owned
 `BENZO_TEST_DERIVED`. These builds and unhosted tests need no app launch or

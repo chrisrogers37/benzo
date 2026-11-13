@@ -28,7 +28,7 @@ struct RecoveryCell: Codable, Equatable {
     }
 }
 
-enum RecoveryStepPhase: String, Codable { case planned, intended, completed, uncertain }
+enum RecoveryStepPhase: String, Codable { case planned, intended, completed, notExecuted, uncertain }
 
 struct RecoveryStep: Codable, Equatable {
     let cell: ManagedCell
@@ -156,7 +156,7 @@ struct RecoveryJournal: Codable, Equatable {
                       operation.preState.contains(where: { $0.cell == step.cell && $0.value == step.precondition }) else {
                     throw RecoveryEvidenceError.invalid("Recovery operation has invalid or missing preconditions.")
                 }
-                if step.phase == .planned && (step.status != nil || step.readback != nil) {
+                if (step.phase == .planned || step.phase == .notExecuted) && (step.status != nil || step.readback != nil) {
                     throw RecoveryEvidenceError.invalid("An unattempted recovery step has a fabricated outcome.")
                 }
                 if step.phase == .completed && step.status == nil {

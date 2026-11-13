@@ -6,11 +6,19 @@ struct PopoverContentView: View {
     @State private var deferredConflicts: Set<ManagedCell> = []
 
     var body: some View {
-        if viewModel.showPermissionStatus {
+        if viewModel.showHelperSetup {
             SetupView(
-                observation: viewModel.permissionObservation,
-                onRefresh: viewModel.refreshPermissionObservation,
-                onBack: { viewModel.showPermissionStatus = false }
+                readiness: viewModel.helperReadiness,
+                isBusy: viewModel.isRefreshingHelper || viewModel.isPerformingHelperSetup,
+                canReplaceHelper: viewModel.canReplaceHelper,
+                error: viewModel.helperSetupError,
+                recoveryMessage: viewModel.hasSession ? (viewModel.hasHelperAccess ? viewModel.controlState.message : BenzoViewModel.helperRecoveryReason) : nil,
+                onRegister: { Task { await viewModel.registerHelper() } },
+                onAuthorize: { Task { await viewModel.authorizeCurrentAccount() } },
+                onReplace: { Task { await viewModel.replaceHelper() } },
+                onOpenSettings: viewModel.openHelperApprovalSettings,
+                onRefresh: { Task { await viewModel.refreshHelperReadiness() } },
+                onBack: { viewModel.showHelperSetup = false }
             )
         } else if viewModel.showDiagnostics {
             DiagnosticView(viewModel: viewModel, onBack: {
@@ -30,6 +38,23 @@ struct PopoverContentView: View {
             )
 
             recoveryView
+
+            if !viewModel.hasHelperAccess {
+                VStack(alignment: .leading, spacing: 5) {
+                    Text(viewModel.helperReadiness.title).fontWeight(.semibold)
+                    Text(viewModel.hasSession ? BenzoViewModel.helperRecoveryReason : viewModel.helperReadiness.message)
+                }
+                .font(.system(size: 12))
+                .foregroundColor(BenzoTheme.text)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.horizontal, 20)
+            }
+
+            Button("Helper Setup") {
+                viewModel.showHelperSetup = true
+                Task { await viewModel.refreshHelperReadiness() }
+            }
+            .padding(.vertical, 8)
 
             SleepNowButton(onSleep: viewModel.sleepNow)
                 .padding(.horizontal, 20)
@@ -131,7 +156,7 @@ struct PopoverContentView: View {
                             Button("Restore Recorded Original Anyway") {
                                 Task { await viewModel.resolveConflict(conflict, choice: .restoreOriginal) }
                             }
-                            .disabled(viewModel.executionUncertain || conflict.current == nil)
+                            .disabled(!viewModel.hasHelperAccess || viewModel.executionUncertain || conflict.current == nil)
                             Button("Defer") { deferredConflicts.insert(conflict.cell) }
                         }
                     }

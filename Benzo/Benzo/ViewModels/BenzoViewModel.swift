@@ -5,6 +5,10 @@ import Foundation
 final class BenzoViewModel: ObservableObject {
     static let sleepUnavailableReason = "Sleep Now is unavailable for this manual apply-and-restore workflow."
     static let selectionEditBlockedReason = "Resolve the current session or recovery before changing settings."
+    static let helperAccessRequiredReason = "Helper access is needed to change settings. Open Helper Setup to review access."
+    static let helperRecoveryReason = "Settings may still be changed. Helper access is needed to restore them. Your recovery record is retained."
+    static let helperReplacementBlockedReason = "Restore or resolve the current settings session before replacing Benzo’s helper. If needed, use the previous Benzo release to restore settings."
+    static let helperSetupInProgressReason = "Finish helper setup before changing settings or quitting Benzo."
 
     @Published private(set) var controlState: ControlState = .checking
     @Published private(set) var conflicts: [RecoveryConflict] = []
@@ -20,8 +24,11 @@ final class BenzoViewModel: ObservableObject {
             updateLaunchAtLogin()
         }
     }
-    @Published private(set) var permissionObservation: PermissionObservation = .unknown("Not checked")
-    @Published var showPermissionStatus = true
+    @Published private(set) var helperReadiness: HelperReadiness = .checking
+    @Published private(set) var isRefreshingHelper = false
+    @Published private(set) var isPerformingHelperSetup = false
+    @Published private(set) var helperSetupError: String?
+    @Published var showHelperSetup = false
     @Published var errorMessage: String?
 
     @Published var showDiagnostics = false
@@ -29,6 +36,7 @@ final class BenzoViewModel: ObservableObject {
     @Published private(set) var usbDevices: DiagnosticState<[USBDevice]> = .idle
     @Published private(set) var observedSettings: DiagnosticState<[ObservedSetting]> = .idle
     private var diagnosticGeneration = 0
+    private var refreshHelperAgain = false
     private var isInitialized = false
     private let dependencies: BenzoDependencies
     private(set) var startupTask: Task<Void, Never>?
@@ -45,7 +53,6 @@ final class BenzoViewModel: ObservableObject {
         dependencies.coordinator.onChange = { [weak self] in self?.publishControlState() }
         publishControlState()
         if startupPolicy == .automatic {
-            refreshPermissionObservation()
             startupTask = Task { [weak self] in await self?.reconcile() }
         }
     }
@@ -54,8 +61,13 @@ final class BenzoViewModel: ObservableObject {
     var isLoadingDiagnostics: Bool { sleepData.isLoading || usbDevices.isLoading || observedSettings.isLoading }
     var isSelectionEditBlocked: Bool { controlState != .off }
     var activeCount: Int { frozenSettings?.count ?? selectedSettings.count }
-    var canToggleMaster: Bool { (controlState == .off && activeCount > 0) || isActive }
-    var canRestore: Bool { hasSession && !controlState.isBusy && !executionUncertain && conflicts.isEmpty }
+    var hasHelperAccess: Bool { helperReadiness == .ready && !isPerformingHelperSetup }
+    var canToggleMaster: Bool { hasHelperAccess && ((controlState == .off && activeCount > 0) || isActive) }
+    var canRestore: Bool { hasHelperAccess && hasSession && !controlState.isBusy && !executionUncertain && conflicts.isEmpty }
+    var canReplaceHelper: Bool {
+        helperReadiness == .unavailable(.incompatible) && controlState == .off && !hasSession &&
+            !executionUncertain && !isPerformingHelperSetup && !isRefreshingHelper
+    }
 
     // Eligibility is observed before a session is admitted. Stored choices are not proof of support.
     private var selectedSettings: [SleepSetting] {
@@ -67,14 +79,77 @@ final class BenzoViewModel: ObservableObject {
         return settingStates[setting] == true && unavailableSettings[setting] == nil
     }
 
-    func refreshPermissionObservation() { permissionObservation = dependencies.observePermission() }
+    func refreshHelperReadiness() async {
+        if isRefreshingHelper {
+            refreshHelperAgain = true
+            return
+        }
+        isRefreshingHelper = true
+        defer { isRefreshingHelper = false }
+        // Keep the previous observation visible while refreshing. The write
+        // transport independently checks authority at admission. If an operation
+        // settles during the read, check again after the older response arrives.
+        repeat {
+            refreshHelperAgain = false
+            helperReadiness = await dependencies.helperSetup.refresh()
+        } while refreshHelperAgain
+    }
 
-    func reconcile() async { await dependencies.coordinator.reconcile() }
+    func registerHelper() async {
+        guard helperReadiness == .notInstalled else { return }
+        await performHelperSetup { try await self.dependencies.helperSetup.register() }
+    }
+
+    func authorizeCurrentAccount() async {
+        guard helperReadiness == .needsOwnerAuthorization else { return }
+        await performHelperSetup { try await self.dependencies.helperSetup.authorizeCurrentAccount() }
+    }
+
+    func replaceHelper() async {
+        guard canReplaceHelper else { return }
+        await performHelperSetup { try await self.dependencies.helperSetup.replace() }
+    }
+
+    func openHelperApprovalSettings() {
+        guard helperReadiness == .requiresApproval, !isPerformingHelperSetup else { return }
+        dependencies.helperSetup.openApprovalSettings()
+    }
+
+    private func performHelperSetup(_ action: () async throws -> HelperReadiness) async {
+        guard !isPerformingHelperSetup, !isRefreshingHelper else { return }
+        isPerformingHelperSetup = true
+        helperSetupError = nil
+        defer { isPerformingHelperSetup = false }
+        do { _ = try await action() }
+        catch { helperSetupError = error.localizedDescription }
+        // Neither registration nor authorization returning successfully is
+        // evidence that the live helper is ready.
+        await refreshHelperReadiness()
+    }
+
+    func reconcile() async {
+        await dependencies.coordinator.reconcile()
+        await refreshHelperReadiness()
+    }
+
+    private func requireHelperAccess() -> Bool {
+        guard !isPerformingHelperSetup else {
+            errorMessage = Self.helperSetupInProgressReason
+            return false
+        }
+        guard hasHelperAccess else {
+            errorMessage = hasSession ? Self.helperRecoveryReason : Self.helperAccessRequiredReason
+            return false
+        }
+        return true
+    }
 
     func toggleMaster() async {
         errorMessage = nil
+        guard requireHelperAccess() else { return }
         if isActive { await dependencies.coordinator.restore() }
         else if controlState == .off { await dependencies.coordinator.apply(settings: selectedSettings) }
+        await refreshHelperReadiness()
     }
 
     func toggleSetting(_ setting: SleepSetting) {
@@ -94,14 +169,28 @@ final class BenzoViewModel: ObservableObject {
 
     func revertToDefaults() async {
         errorMessage = nil
+        guard !hasSession || requireHelperAccess() else { return }
         await dependencies.coordinator.restore()
+        await refreshHelperReadiness()
     }
 
     func resolveConflict(_ conflict: RecoveryConflict, choice: ConflictChoice) async {
+        if choice == .restoreOriginal, !requireHelperAccess() { return }
         await dependencies.coordinator.resolveConflict(conflict.cell, choice: choice)
+        await refreshHelperReadiness()
     }
 
-    func prepareToQuit() async -> Bool { await dependencies.coordinator.prepareToQuit() }
+    func prepareToQuit() async -> Bool {
+        guard !isPerformingHelperSetup else {
+            errorMessage = Self.helperSetupInProgressReason
+            return false
+        }
+        // An operation already in flight remains owned by the coordinator.
+        if !controlState.isBusy && hasSession && !requireHelperAccess() { return false }
+        let mayQuit = await dependencies.coordinator.prepareToQuit()
+        await refreshHelperReadiness()
+        return mayQuit
+    }
 
     // AppKit owns the terminateLater / Retry / Stay Open / Quit Anyway decision.
     func quit() { dependencies.terminate() }

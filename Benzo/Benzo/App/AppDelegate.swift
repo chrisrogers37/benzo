@@ -34,8 +34,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
             hostID = "unavailable"
             store = UnavailableRecoveryStore(error: error)
         }
+        let helper = HelperServiceClient()
         let coordinator = OperationCoordinator(
-            store: store, transport: RecoveryTransport(runner: CommandRunner()), uid: getuid(), hostID: hostID,
+            store: store, transport: RecoveryTransport(runner: CommandRunner(), helper: helper), uid: getuid(), hostID: hostID,
             bootID: { try BootIdentityProvider.bootID() }, now: { Date() },
             legacyActive: { preferences.bool(forKey: BenzoPreferenceKey.isActive) }, legacyRule: observePermission
         )
@@ -43,6 +44,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
             coordinator: coordinator,
             preferences: preferences,
             loginItem: LiveLoginItemClient(),
+            helperSetup: helper,
             observePermission: observePermission,
             fetchSleepData: { await diagnostics.fetchSleepData() },
             fetchUSBDevices: { await diagnostics.fetchUSBDevices() },
@@ -52,6 +54,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
             terminate: { NSApplication.shared.terminate(nil) }
         )
         return BenzoViewModel(dependencies: dependencies, startupPolicy: .automatic)
+    }
+
+    func applicationDidBecomeActive(_ notification: Notification) {
+        Task { await viewModel.refreshHelperReadiness() }
     }
 
     func applicationDidFinishLaunching(_ notification: Notification) {

@@ -1,4 +1,4 @@
-import { Fragment, useId, useState } from 'react'
+import { useId, useState } from 'react'
 import { appPresentation as app, settingOptions, siteCopy, AppSymbol, MenuPill } from '../design'
 
 const copy = siteCopy.demo
@@ -27,8 +27,18 @@ function Diagnostics({ onBack, sleepData, usbDevices, observedSettings }) {
   </>
 }
 
-function Setup({ observation, onRefresh, onBack }) {
-  return <div className="bn-setup"><span className="bn-setup-pill" aria-hidden="true">💊</span><h3>{app.setup.title}</h3><p>{app.setup.observations[observation] ?? app.setup.observations.unknown}</p><button onClick={onRefresh}>{app.setup.action}</button><button onClick={onBack}>{app.setup.back}</button><p className="bn-setup-note">{app.setup.note.map((line, index) => <Fragment key={line}>{index > 0 && <br />}{line}</Fragment>)}</p></div>
+function Setup({ readiness, error, recoveryMessage, canReplaceHelper, setupBusy, dispatch }) {
+  const status = app.setup.states[readiness] ?? app.setup.states.connectionUnavailable
+  return <div className="bn-setup">
+    <span className="bn-setup-pill" aria-hidden="true">💊</span><h3>{status.title}</h3><p>{status.message}</p>
+    {recoveryMessage && <p>{recoveryMessage}</p>}
+    {error && <p className="bn-error" role="alert">{error}</p>}
+    {readiness === 'incompatible' && !canReplaceHelper && !setupBusy && <p>{app.setup.replacementBlocked}</p>}
+    {status.action && <button disabled={setupBusy || (readiness === 'incompatible' && !canReplaceHelper)} onClick={() => dispatch({ type: status.event })}>{status.action}</button>}
+    <button disabled={setupBusy} onClick={() => dispatch({ type: 'refreshHelper' })}>{app.setup.refresh}</button>
+    <button onClick={() => dispatch({ type: 'back' })}>{readiness === 'ready' ? app.setup.done : app.setup.back}</button>
+    <p className="bn-setup-note">{app.setup.note}</p>
+  </div>
 }
 
 export default function NativeAppDemo({ state, dispatch }) {
@@ -39,8 +49,11 @@ export default function NativeAppDemo({ state, dispatch }) {
     : app.recovery.messages[phase] ?? app.recovery.messages.recoveryRequired
   const active = phase === 'activeVerified'
   const busy = ['checking', 'applying', 'restoring'].includes(phase)
-  const canToggleMaster = active || (phase === 'off' && settingOptions.some(option => option.available && settings[option.key]))
-  const canRestore = Boolean(state.hasSession) && !busy && state.operation !== 'uncertain' && !state.conflict
+  const helperReady = state.helperReadiness === 'ready' && !state.isPerformingHelperSetup
+  const helperStatus = app.setup.states[state.helperReadiness] ?? app.setup.states.connectionUnavailable
+  const canToggleMaster = helperReady && (active || (phase === 'off' && settingOptions.some(option => option.available && settings[option.key])))
+  const canRestore = helperReady && Boolean(state.hasSession) && !busy && state.operation !== 'uncertain' && !state.conflict
+  const canReplaceHelper = state.helperReadiness === 'incompatible' && phase === 'off' && !state.hasSession && state.operation !== 'uncertain' && !state.isPerformingHelperSetup
   const conflictSetting = state.conflict && settingOptions.find(option => option.commands.some(([key]) => key === state.conflict.key))
   const [aboutOpen, setAboutOpen] = useState(false)
   const aboutId = useId()
@@ -54,15 +67,17 @@ export default function NativeAppDemo({ state, dispatch }) {
     <div className="bn-stage">
       <div className="bn-menubar"><span>{app.menu.finder}</span><div>{running && <button className="bn-menu-button" aria-label={app.menu.name} aria-description={`Benzo: ${statusTitle}. ${statusMessage}`} aria-expanded={open} title={`${statusTitle}. ${statusMessage}`} onClick={e => dispatch({ type: 'pill', alt: e.altKey })}><MenuPill active={active} status={phase} /></button>}<span>{app.menu.wifi}</span><span>{app.menu.time}</span></div></div>
       {running && open && <div className="bn-popover" aria-label={view === 'setup' ? app.setup.name : view === 'diagnostics' ? app.diagnostics.name : app.mainName}>
-        {view === 'setup' ? <Setup observation={state.permissionObservation} onRefresh={() => dispatch({ type: 'refreshPermission' })} onBack={() => dispatch({ type: 'back' })} /> : view === 'diagnostics' ? <Diagnostics sleepData={state.sleepData} usbDevices={state.usbDevices} observedSettings={state.observedSettings} onBack={() => dispatch({ type: 'back' })} /> : <>
+        {view === 'setup' ? <Setup readiness={state.helperReadiness} error={state.helperSetupError} recoveryMessage={state.hasSession ? (helperReady ? statusMessage : app.setup.recoveryBlocked) : null} canReplaceHelper={canReplaceHelper} setupBusy={state.isPerformingHelperSetup} dispatch={dispatch} /> : view === 'diagnostics' ? <Diagnostics sleepData={state.sleepData} usbDevices={state.usbDevices} observedSettings={state.observedSettings} onBack={() => dispatch({ type: 'back' })} /> : <>
           <div className="bn-master"><div><strong>{statusTitle}</strong><p>{statusMessage}</p></div><button className={`bn-toggle${active ? ' bn-on' : ''}`} role="switch" aria-label={app.master.name} aria-checked={active} disabled={!canToggleMaster} onClick={() => dispatch({ type: 'active' })}><span /></button></div>
+          {!helperReady && <div className="bn-panel"><strong>{helperStatus.title}</strong><p className="bn-control-reason">{state.hasSession ? app.setup.recoveryBlocked : helperStatus.message}</p></div>}
+          <button onClick={() => dispatch({ type: 'setup' })}>{app.setup.entry}</button>
           <div className="bn-sleep-wrap"><div className="bn-sleep-capsule">
             <button className="bn-sleep-now" disabled aria-describedby={sleepUnavailableId}><AppSymbol name="moon" size={11} />{app.sleep.action}</button>
           </div><p className="bn-control-reason" id={sleepUnavailableId}>{app.sleep.unavailable}</p></div>
           <div className="bn-options"><button aria-expanded={options} onClick={() => dispatch({ type: 'options' })}><span>{app.options}</span><span className={options ? 'bn-expanded' : ''}><AppSymbol name="chevron" size={9} /></span></button></div>
           {options && <div className="bn-settings">{selectionBlocked && <p className="bn-control-reason" id={selectionBlockedId}>{app.selectionBlocked}</p>}{settingOptions.map(({ key, label, desc, available, unavailableReason }) => <button className="bn-setting" role="checkbox" aria-checked={settings[key]} aria-label={label} disabled={selectionBlocked || !available} aria-describedby={!available ? `${key}-unavailable` : selectionBlocked ? selectionBlockedId : undefined} key={key} onClick={() => dispatch({ type: 'setting', key })}><span><strong>{label}</strong><small>{desc}</small>{!available && <small id={`${key}-unavailable`} className="bn-control-reason">{unavailableReason}</small>}</span><span className={`bn-checkbox${settings[key] ? ' bn-checked' : ''}`}>{settings[key] && <AppSymbol name="check" size={8} />}</span></button>)}</div>}
           {state.error && <p className="bn-error" role="alert">{state.error}</p>}
-          {phase === 'recoveryRequired' && <>
+          {(phase === 'recoveryRequired' || (state.quitPending && !busy)) && <>
             {state.capturedAt && <p className="bn-control-reason">{app.recovery.evidence.captured} {state.capturedAt}</p>}
             {state.conflict && (state.conflictDeferred
               ? <div className="bn-recovery-conflict"><span>Conflict deferred; recovery evidence is retained.</span><button onClick={() => dispatch({ type: 'reviewConflict' })}>Review</button></div>
@@ -70,9 +85,9 @@ export default function NativeAppDemo({ state, dispatch }) {
                 <strong>{conflictSetting?.label ?? state.conflict.key} · {app.recovery.evidence.simulatedProfile}</strong>
                 <p>{app.recovery.evidence.original} {state.originals[state.conflict.key] ?? app.diagnostics.missing}. {app.recovery.evidence.current} {state.conflict.currentValue ?? app.diagnostics.missing}.</p>
                 <p>{app.recovery.evidence.lastVerified} {state.conflict.lastVerified ?? app.recovery.evidence.none}. {app.recovery.evidence.race}</p>
-                <div className="bn-recovery-actions"><button disabled={state.conflict.currentValue === null || state.operation === 'uncertain'} onClick={() => dispatch({ type: 'keepCurrent' })}>Keep Current</button><button disabled={state.conflict.currentValue === null || state.operation === 'uncertain'} onClick={() => dispatch({ type: 'restoreRecordedOriginal' })}>Restore Recorded Original Anyway</button><button onClick={() => dispatch({ type: 'deferConflict' })}>Defer</button></div>
+                <div className="bn-recovery-actions"><button disabled={state.conflict.currentValue === null || state.operation === 'uncertain'} onClick={() => dispatch({ type: 'keepCurrent' })}>Keep Current</button><button disabled={!helperReady || state.conflict.currentValue === null || state.operation === 'uncertain'} onClick={() => dispatch({ type: 'restoreRecordedOriginal' })}>Restore Recorded Original Anyway</button><button onClick={() => dispatch({ type: 'deferConflict' })}>Defer</button></div>
               </div>)}
-            <div className="bn-recovery-actions">{state.quitPending && <button onClick={() => dispatch({ type: 'retry' })}>Retry</button>}{!state.quitPending && <button onClick={() => dispatch({ type: 'refreshRecovery' })}>Refresh Recovery Status</button>}{state.quitPending && <><button onClick={() => dispatch({ type: 'stayOpen' })}>Stay Open</button><button onClick={() => dispatch({ type: 'quitAnyway' })}>Quit Anyway</button></>}</div>
+            <div className="bn-recovery-actions">{state.quitPending && <button disabled={!helperReady} onClick={() => dispatch({ type: 'retry' })}>Retry</button>}{!state.quitPending && <button onClick={() => dispatch({ type: 'refreshRecovery' })}>Refresh Recovery Status</button>}{state.quitPending && <><button onClick={() => dispatch({ type: 'stayOpen' })}>Stay Open</button><button onClick={() => dispatch({ type: 'quitAnyway' })}>Quit Anyway</button></>}</div>
           </>}
           {state.legacyUnknown && <p className="bn-control-reason">{app.recovery.legacyHelp}</p>}
           <div className="bn-footer"><div className="bn-login"><span>{app.footer.login}</span><button className={`bn-login-toggle${login ? ' bn-on' : ''}`} role="switch" aria-label={app.footer.login} aria-checked={login} onClick={() => dispatch({ type: 'login' })}><span /></button></div><div className="bn-footer-actions"><span>{app.version}</span><span className="bn-control-reason">{app.footer.restoreHelp}</span><button disabled={!canRestore} onClick={() => dispatch({ type: 'restore' })}>{app.footer.restore}</button><button onClick={() => dispatch({ type: 'quit' })}>{app.footer.quit}</button></div></div>
@@ -83,6 +98,7 @@ export default function NativeAppDemo({ state, dispatch }) {
     <div className="bn-demo-caption">
       <p>{copy.hint}</p>
       <div className="bn-demo-actions">
+        {state.helperReadiness === 'requiresApproval' && state.helperSettingsOpened && <button onClick={() => dispatch({ type: 'helperApprovalGranted' })}>Simulate macOS Approval</button>}
         <button onClick={() => dispatch({ type: 'diagnostics' })}>{copy.diagnostics}<AppSymbol name="chevron" size={10} /></button>
         <button aria-expanded={aboutOpen} aria-controls={aboutId} onClick={() => setAboutOpen(open => !open)}>{copy.disclosure}<span className={aboutOpen ? 'bn-expanded' : ''}><AppSymbol name="chevron" size={10} /></span></button>
       </div>

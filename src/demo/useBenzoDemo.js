@@ -26,13 +26,13 @@ const ownedSelectionValues = (settings, captured) => Object.fromEntries(
 )
 
 export const initialDemoState = (active = true) => ({
-  running: true, open: true, view: 'main', permissionDestination: 'main',
+  running: true, open: true, view: 'main',
   phase: active ? 'activeVerified' : 'off', options: true,
   settings: { ...selectedDefaults }, originals,
   hasSession: active, capturedAt: active ? exampleCapturedAt : null,
   ownedValues: active ? ownedSelectionValues(selectedDefaults, originals) : {},
   currentValues: active ? selectedValues(selectedDefaults) : { ...originals },
-  login: false, error: null, notice: '', permissionObservation: 'noLegacyRule',
+  login: false, error: null, notice: '', helperReadiness: 'ready', helperSetupError: null, helperSettingsOpened: false, isPerformingHelperSetup: false,
   operation: null, quitPending: false, resumePhase: null, conflict: null, conflictDeferred: false, conflictResolution: null, legacyUnknown: false,
   sleepData: { status: 'success', value: { sessions: exampleReadings.sleepSessions, lastWakeReason: exampleReadings.wakeReason } },
   usbDevices: { status: 'success', value: exampleReadings.usbDevices },
@@ -44,15 +44,35 @@ function publish(state, phase, notice = '') {
 }
 
 export function benzoDemoReducer(state, action) {
+  if (['active', 'restore', 'retry', 'restoreRecordedOriginal', 'quit'].includes(action.type) && state.isPerformingHelperSetup) {
+    return { ...state, error: appPresentation.setup.inProgress }
+  }
+  if (['active', 'restore', 'retry', 'restoreRecordedOriginal'].includes(action.type) && state.helperReadiness !== 'ready') {
+    return { ...state, error: state.hasSession ? appPresentation.setup.recoveryBlocked : appPresentation.setup.writeBlocked }
+  }
   switch (action.type) {
     case 'reset': return initialDemoState(true)
-    case 'firstLaunch': return { ...initialDemoState(false), options: false, view: 'setup', permissionObservation: 'noLegacyRule' }
-    case 'refreshPermission': return { ...state, notice: siteCopy.demo.notices.permission }
+    case 'firstLaunch': return { ...initialDemoState(false), options: false, helperReadiness: 'notInstalled' }
+    case 'setup': return { ...state, view: 'setup' }
+    case 'refreshHelper': return { ...state, notice: 'Setup status refresh simulated. No permission was requested or changed.' }
+    case 'registerHelper': return state.helperReadiness === 'notInstalled'
+      ? { ...state, helperReadiness: 'requiresApproval', helperSetupError: null, notice: 'Helper registration simulated. macOS approval is still required.' } : state
+    case 'openHelperSettings': return state.helperReadiness === 'requiresApproval'
+      ? { ...state, helperSettingsOpened: true, notice: 'System Settings would open here. This browser demo does not change permissions.' } : state
+    case 'helperApprovalGranted': return state.helperReadiness === 'requiresApproval' && state.helperSettingsOpened
+      ? { ...state, helperReadiness: 'needsOwnerAuthorization', helperSettingsOpened: false, notice: 'macOS approval simulated. This account still needs authorization.' } : state
+    case 'authorizeCurrentAccount': return state.helperReadiness === 'needsOwnerAuthorization'
+      ? { ...state, helperReadiness: 'ready', helperSetupError: null, notice: 'Account authorization simulated. No permission was requested or changed.' } : state
+    case 'replaceHelper': return state.helperReadiness === 'incompatible' && state.phase === 'off' && !state.hasSession && state.operation !== 'uncertain' && !state.isPerformingHelperSetup
+      ? { ...state, helperReadiness: 'ready', helperSetupError: null, notice: 'Helper replacement simulated. No helper was installed or changed.' } : state
+    case 'helperReadinessChanged': return Object.hasOwn(appPresentation.setup.states, action.readiness)
+      ? { ...state, helperReadiness: action.readiness } : state
+    case 'helperSetupFailed': return { ...state, helperSetupError: action.message }
     case 'pill': return state.open
       ? { ...state, open: false }
-      : { ...state, open: true, view: state.view === 'setup' ? 'setup' : action.alt ? 'diagnostics' : 'main', permissionDestination: action.alt ? 'diagnostics' : 'main' }
-    case 'diagnostics': return { ...state, running: true, open: true, view: state.view === 'setup' ? 'setup' : 'diagnostics', permissionDestination: 'diagnostics', notice: '' }
-    case 'back': return { ...state, view: state.view === 'setup' ? state.permissionDestination : 'main' }
+      : { ...state, open: true, view: action.alt ? 'diagnostics' : 'main' }
+    case 'diagnostics': return { ...state, running: true, open: true, view: 'diagnostics', notice: '' }
+    case 'back': return { ...state, view: 'main' }
     case 'options': return { ...state, options: !state.options }
     case 'setting':
       if (state.phase !== 'off' || state.legacyUnknown) return { ...state, error: appPresentation.selectionBlocked }
@@ -72,7 +92,9 @@ export function benzoDemoReducer(state, action) {
       const nextPhase = state.resumePhase ?? (Object.keys(state.ownedValues).length ? 'activeVerified' : 'off')
       if (!state.quitPending) return { ...state, phase: nextPhase, resumePhase: null, conflictDeferred: false, notice: appPresentation.recovery.titles[nextPhase] }
       if (nextPhase === 'recoveryRequired' || state.conflict || state.legacyUnknown) return { ...state, phase: 'recoveryRequired', resumePhase: null, error: appPresentation.recovery.quitPrompt }
-      if (nextPhase === 'activeVerified' || Object.keys(state.ownedValues).length) return { ...state, phase: 'restoring', operation: 'restore', resumePhase: null, error: null, notice: appPresentation.recovery.titles.restoring }
+      if (nextPhase === 'activeVerified' || Object.keys(state.ownedValues).length) return state.helperReadiness === 'ready'
+        ? { ...state, phase: 'restoring', operation: 'restore', resumePhase: null, error: null, notice: appPresentation.recovery.titles.restoring }
+        : { ...state, phase: nextPhase, operation: null, resumePhase: null, error: appPresentation.setup.recoveryBlocked, notice: '' }
       return { ...state, phase: 'off', running: false, open: false, quitPending: false, resumePhase: null, notice: siteCopy.demo.notices.quit }
     }
     case 'applySucceeded':
@@ -85,6 +107,7 @@ export function benzoDemoReducer(state, action) {
             ? { ...applied, phase: 'off', capturedAt: null, running: false, open: false, quitPending: false, operation: null, notice: siteCopy.demo.notices.quit }
             : { ...applied, phase: 'off', capturedAt: null, quitPending: false, operation: null, notice: siteCopy.demo.notices.noChanges }
         }
+        if (state.quitPending && state.helperReadiness !== 'ready') return { ...applied, phase: 'activeVerified', operation: null, error: appPresentation.setup.recoveryBlocked, notice: '' }
         return state.quitPending
           ? { ...applied, phase: 'restoring', operation: 'restore', error: null, notice: appPresentation.recovery.titles.restoring }
           : publish(applied, 'activeVerified', siteCopy.demo.notices.applied)
@@ -104,6 +127,7 @@ export function benzoDemoReducer(state, action) {
           return { ...resolved, phase: 'recoveryRequired', operation: null, error: appPresentation.recovery.remainingOwned, notice: '' }
         }
         if (restoreConflictOnly && Object.keys(ownedValues).length && state.quitPending) {
+          if (state.helperReadiness !== 'ready') return { ...resolved, phase: 'recoveryRequired', operation: null, error: appPresentation.setup.recoveryBlocked, notice: '' }
           return { ...resolved, phase: 'restoring', operation: 'restoreRemaining', error: null, notice: appPresentation.recovery.titles.restoring }
         }
       return state.quitPending
@@ -121,6 +145,7 @@ export function benzoDemoReducer(state, action) {
     case 'stayOpen': return { ...state, quitPending: false, running: true, error: null }
     case 'quit':
       if (state.phase === 'off') return { ...state, running: false, open: false, notice: siteCopy.demo.notices.quit }
+      if (state.hasSession && state.helperReadiness !== 'ready' && !['checking', 'applying', 'restoring'].includes(state.phase)) return { ...state, quitPending: true, error: appPresentation.setup.recoveryBlocked, notice: '' }
       if (state.phase === 'activeVerified') return { ...state, phase: 'restoring', operation: 'restore', quitPending: true, error: null, notice: appPresentation.recovery.titles.restoring }
       if (['checking', 'applying', 'restoring'].includes(state.phase)) return { ...state, quitPending: true, error: null }
       return { ...state, phase: 'recoveryRequired', quitPending: true, error: appPresentation.recovery.quitPrompt, notice: '' }

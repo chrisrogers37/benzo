@@ -110,6 +110,8 @@ final class BenzoCoreTests: XCTestCase {
         XCTAssertEqual(viewModel.controlState, .checking)
         XCTAssertFalse(viewModel.isActive)
         XCTAssertEqual(harness.permissionObservations, 0)
+        XCTAssertFalse(viewModel.showHelperSetup)
+        XCTAssertTrue(harness.helperSetup.calls.isEmpty)
         XCTAssertEqual(harness.store.lockCalls, 0)
         XCTAssertEqual(harness.transport.captureCalls, 0)
         XCTAssertTrue(harness.transport.writes.isEmpty)
@@ -124,32 +126,274 @@ final class BenzoCoreTests: XCTestCase {
         await viewModel.startupTask?.value
         guard case .recoveryRequired = viewModel.controlState else { return XCTFail("A saved Boolean is legacy evidence, never proof of active or Off") }
         XCTAssertFalse(viewModel.isActive)
-        XCTAssertEqual(harness.permissionObservations, 1)
+        XCTAssertEqual(harness.permissionObservations, 0)
+        XCTAssertEqual(harness.helperSetup.calls, ["refresh"])
+        XCTAssertFalse(viewModel.showHelperSetup)
         XCTAssertTrue(harness.transport.writes.isEmpty)
         XCTAssertTrue(harness.preferences.writes.isEmpty)
         XCTAssertTrue(harness.login.calls.isEmpty)
     }
 
-    func testPermissionRefreshOnlyUpdatesObservationAndNavigation() {
+    func testHelperRefreshOnlyUpdatesReadinessAndPreservesRecoveryAndNavigation() async {
         let harness = FakeDependencies()
         let viewModel = harness.makeViewModel()
         let states = viewModel.settingStates
         viewModel.errorMessage = "Preserve unrelated error"
         var stateChanges = 0
         viewModel.onStateChange = { _ in stateChanges += 1 }
-        for observation in [PermissionObservation.noLegacyRule, .legacyRulePresent, .unknown("unreadable")] {
-            harness.permissionObservation = observation
-            viewModel.refreshPermissionObservation()
-            XCTAssertEqual(viewModel.permissionObservation, observation)
+        for readiness in [HelperReadiness.notInstalled, .requiresApproval, .differentAccount] {
+            harness.helperSetup.readiness = readiness
+            await viewModel.refreshHelperReadiness()
+            XCTAssertEqual(viewModel.helperReadiness, readiness)
         }
-        viewModel.showPermissionStatus = false
+        viewModel.showHelperSetup = true
+        viewModel.showHelperSetup = false
         XCTAssertEqual(viewModel.settingStates, states)
         XCTAssertEqual(viewModel.errorMessage, "Preserve unrelated error")
         XCTAssertEqual(stateChanges, 0)
-        XCTAssertEqual(harness.permissionObservations, 3)
+        XCTAssertEqual(harness.permissionObservations, 0)
+        XCTAssertEqual(harness.helperSetup.calls, ["refresh", "refresh", "refresh"])
         XCTAssertTrue(harness.preferences.writes.isEmpty)
         XCTAssertTrue(harness.transport.writes.isEmpty)
         XCTAssertEqual(harness.store.lockCalls, 0)
+    }
+
+    func testSetupRequiresOSApprovalAndAccountAuthorizationBeforeWrites() async {
+        let harness = FakeDependencies()
+        harness.helperSetup.readiness = .notInstalled
+        let viewModel = harness.makeViewModel()
+        await viewModel.reconcile()
+        XCTAssertEqual(viewModel.controlState, .off)
+        XCTAssertFalse(viewModel.canToggleMaster)
+        await viewModel.toggleMaster()
+        XCTAssertNil(harness.store.journal)
+        await viewModel.registerHelper()
+        XCTAssertEqual(viewModel.helperReadiness, .requiresApproval)
+        viewModel.openHelperApprovalSettings()
+        XCTAssertEqual(viewModel.helperReadiness, .requiresApproval)
+        await viewModel.authorizeCurrentAccount()
+        XCTAssertFalse(harness.helperSetup.calls.contains("authorize"))
+
+        harness.helperSetup.readiness = .needsOwnerAuthorization
+        await viewModel.refreshHelperReadiness()
+        await viewModel.authorizeCurrentAccount()
+        XCTAssertEqual(viewModel.helperReadiness, .ready)
+        XCTAssertTrue(viewModel.canToggleMaster)
+        XCTAssertEqual(harness.helperSetup.calls, ["refresh", "register", "refresh", "openSettings", "refresh", "authorize", "refresh"])
+        XCTAssertTrue(harness.transport.writes.isEmpty)
+        XCTAssertNil(harness.store.journal)
+    }
+
+    func testSetupSuccessDoesNotTreatRegistrationAsReadiness() async {
+        let harness = FakeDependencies()
+        harness.helperSetup.readiness = .notInstalled
+        let viewModel = harness.makeViewModel()
+        await viewModel.reconcile()
+        harness.helperSetup.registrationResult = .ready
+        harness.helperSetup.refreshHandler = { .requiresApproval }
+        await viewModel.registerHelper()
+        XCTAssertEqual(viewModel.helperReadiness, .requiresApproval)
+        XCTAssertFalse(viewModel.canToggleMaster)
+        XCTAssertTrue(harness.transport.writes.isEmpty)
+    }
+
+    func testSetupCancellationAndDenialRemainDistinctAfterRefresh() async {
+        for message in ["Authorization was cancelled.", "Authorization was denied."] {
+            let harness = FakeDependencies()
+            harness.helperSetup.readiness = .needsOwnerAuthorization
+            harness.helperSetup.error = NSError(domain: "SetupTest", code: 1, userInfo: [NSLocalizedDescriptionKey: message])
+            let viewModel = harness.makeViewModel()
+            await viewModel.reconcile()
+            await viewModel.authorizeCurrentAccount()
+            XCTAssertEqual(viewModel.helperSetupError, message)
+            XCTAssertEqual(viewModel.helperReadiness, .needsOwnerAuthorization)
+            XCTAssertEqual(harness.helperSetup.calls, ["refresh", "authorize", "refresh"])
+            XCTAssertFalse(viewModel.isPerformingHelperSetup)
+            XCTAssertTrue(harness.transport.writes.isEmpty)
+        }
+    }
+
+    func testHelperReplacementIsExplicitAndOnlyAvailableWhenOff() async {
+        let harness = FakeDependencies()
+        harness.helperSetup.readiness = .unavailable(.incompatible)
+        let viewModel = harness.makeViewModel(startupPolicy: .automatic)
+        await viewModel.startupTask?.value
+        XCTAssertEqual(viewModel.controlState, .off)
+        XCTAssertTrue(viewModel.canReplaceHelper)
+        XCTAssertEqual(harness.helperSetup.calls, ["refresh"])
+        await viewModel.replaceHelper()
+        XCTAssertEqual(harness.helperSetup.calls, ["refresh", "replace", "refresh"])
+        XCTAssertEqual(viewModel.helperReadiness, .ready)
+        XCTAssertFalse(viewModel.canReplaceHelper)
+        XCTAssertTrue(harness.transport.writes.isEmpty)
+        XCTAssertNil(harness.store.journal)
+    }
+
+    func testHelperReplacementDoesNotUseReturnedSuccessAsReadiness() async {
+        let harness = FakeDependencies()
+        harness.helperSetup.readiness = .unavailable(.incompatible)
+        let viewModel = harness.makeViewModel()
+        await viewModel.reconcile()
+        harness.helperSetup.refreshHandler = { .requiresApproval }
+        await viewModel.replaceHelper()
+        XCTAssertEqual(viewModel.helperReadiness, .requiresApproval)
+        XCTAssertFalse(viewModel.hasHelperAccess)
+        XCTAssertTrue(harness.transport.writes.isEmpty)
+    }
+
+    func testHelperReplacementIsBlockedDuringActiveSessionAndRecovery() async {
+        let harness = FakeDependencies()
+        let viewModel = harness.makeViewModel()
+        await viewModel.reconcile()
+        await viewModel.toggleMaster()
+        harness.helperSetup.readiness = .unavailable(.incompatible)
+        await viewModel.refreshHelperReadiness()
+        XCTAssertFalse(viewModel.canReplaceHelper)
+        let journal = harness.store.journal
+        let fence = harness.store.fence
+        await viewModel.replaceHelper()
+        XCTAssertFalse(harness.helperSetup.calls.contains("replace"))
+        XCTAssertEqual(harness.store.journal, journal)
+        XCTAssertEqual(harness.store.fence, fence)
+
+        harness.transport.values["hibernatemode"] = 0
+        await viewModel.reconcile()
+        guard case .recoveryRequired = viewModel.controlState else { return XCTFail("Expected recovery") }
+        XCTAssertFalse(viewModel.canReplaceHelper)
+        let recoveryJournal = harness.store.journal
+        await viewModel.replaceHelper()
+        XCTAssertFalse(harness.helperSetup.calls.contains("replace"))
+        XCTAssertEqual(harness.store.journal, recoveryJournal)
+    }
+
+    func testHelperReplacementIsBlockedInLegacyRecoveryWithoutCurrentSession() async {
+        let harness = FakeDependencies()
+        harness.store.legacy = Data("preserve legacy evidence".utf8)
+        harness.helperSetup.readiness = .unavailable(.incompatible)
+        let viewModel = harness.makeViewModel()
+        await viewModel.reconcile()
+        XCTAssertFalse(viewModel.hasSession)
+        XCTAssertFalse(viewModel.canReplaceHelper)
+        await viewModel.replaceHelper()
+        XCTAssertFalse(harness.helperSetup.calls.contains("replace"))
+        XCTAssertEqual(harness.store.legacy, Data("preserve legacy evidence".utf8))
+    }
+
+    func testHelperReplacementCannotBeStartedTwiceWhileSetupIsPending() async {
+        let harness = FakeDependencies()
+        harness.helperSetup.readiness = .unavailable(.incompatible)
+        let viewModel = harness.makeViewModel()
+        await viewModel.reconcile()
+        var resume: CheckedContinuation<HelperReadiness, Never>?
+        harness.helperSetup.replacementHandler = { await withCheckedContinuation { resume = $0 } }
+        let replacement = Task { await viewModel.replaceHelper() }
+        while resume == nil { await Task.yield() }
+        XCTAssertTrue(viewModel.isPerformingHelperSetup)
+        XCTAssertFalse(viewModel.canReplaceHelper)
+        harness.helperSetup.readiness = .ready
+        await viewModel.refreshHelperReadiness()
+        XCTAssertEqual(viewModel.helperReadiness, .ready)
+        XCTAssertFalse(viewModel.hasHelperAccess)
+        XCTAssertFalse(viewModel.canToggleMaster)
+        await viewModel.toggleMaster()
+        let mayQuit = await viewModel.prepareToQuit()
+        XCTAssertFalse(mayQuit)
+        XCTAssertEqual(viewModel.errorMessage, BenzoViewModel.helperSetupInProgressReason)
+        await viewModel.replaceHelper()
+        XCTAssertEqual(harness.helperSetup.calls.filter { $0 == "replace" }.count, 1)
+        resume?.resume(returning: .ready)
+        await replacement.value
+        XCTAssertFalse(viewModel.isPerformingHelperSetup)
+        XCTAssertEqual(viewModel.helperReadiness, .ready)
+        XCTAssertTrue(harness.transport.writes.isEmpty)
+    }
+
+    func testRefreshingReadyHelperKeepsLastObservationUntilNewStatusArrives() async {
+        let harness = FakeDependencies()
+        let viewModel = harness.makeViewModel()
+        await viewModel.reconcile()
+        var resume: CheckedContinuation<HelperReadiness, Never>?
+        harness.helperSetup.refreshHandler = { await withCheckedContinuation { resume = $0 } }
+        let refresh = Task { await viewModel.refreshHelperReadiness() }
+        while resume == nil { await Task.yield() }
+        XCTAssertTrue(viewModel.isRefreshingHelper)
+        XCTAssertTrue(viewModel.hasHelperAccess)
+        XCTAssertTrue(viewModel.canToggleMaster)
+        resume?.resume(returning: .unavailable(.connection))
+        await refresh.value
+        XCTAssertFalse(viewModel.isRefreshingHelper)
+        XCTAssertFalse(viewModel.hasHelperAccess)
+    }
+
+    func testUnavailableHelperPreservesActiveRecoveryAndBlocksRestoreAndQuit() async {
+        for readiness in [HelperReadiness.notInstalled, .requiresApproval, .needsOwnerAuthorization, .differentAccount,
+                          .unavailable(.connection), .unavailable(.incompatible), .unavailable(.signingUnavailable), .unavailable(.executionUncertain)] {
+            let harness = FakeDependencies()
+            let viewModel = harness.makeViewModel()
+            await viewModel.reconcile()
+            await viewModel.toggleMaster()
+            let journal = harness.store.journal
+            let fence = harness.store.fence
+            let writes = harness.transport.writes
+            let commits = harness.store.journalCommits
+            harness.helperSetup.readiness = readiness
+            await viewModel.refreshHelperReadiness()
+            XCTAssertTrue(viewModel.isActive)
+            XCTAssertTrue(viewModel.hasSession)
+            XCTAssertFalse(viewModel.canRestore)
+            XCTAssertFalse(viewModel.canToggleMaster)
+            await viewModel.toggleMaster()
+            await viewModel.revertToDefaults()
+            let mayQuit = await viewModel.prepareToQuit()
+            XCTAssertFalse(mayQuit)
+            XCTAssertEqual(viewModel.errorMessage, BenzoViewModel.helperRecoveryReason)
+            XCTAssertEqual(harness.store.journal, journal)
+            XCTAssertEqual(harness.store.fence, fence)
+            XCTAssertEqual(harness.store.journalCommits, commits)
+            XCTAssertEqual(harness.transport.writes, writes)
+            viewModel.showHelperSetup = true
+            viewModel.showHelperSetup = false
+            XCTAssertTrue(viewModel.hasSession)
+        }
+    }
+
+    func testOperationFinishingDuringHelperRefreshQueuesASettledStatusRead() async {
+        let harness = FakeDependencies()
+        let viewModel = harness.makeViewModel()
+        await viewModel.reconcile()
+        var resume: CheckedContinuation<HelperReadiness, Never>?
+        var reads = 0
+        harness.helperSetup.refreshHandler = {
+            reads += 1
+            if reads == 1 { return await withCheckedContinuation { resume = $0 } }
+            return .ready
+        }
+        let refresh = Task { await viewModel.refreshHelperReadiness() }
+        while resume == nil { await Task.yield() }
+        await viewModel.toggleMaster()
+        XCTAssertTrue(viewModel.isActive)
+        resume?.resume(returning: .unavailable(.executionUncertain))
+        await refresh.value
+        XCTAssertEqual(reads, 2)
+        XCTAssertEqual(viewModel.helperReadiness, .ready)
+        XCTAssertTrue(viewModel.canRestore)
+    }
+
+    func testMissingHelperBlocksConflictRestoreWithoutClearingEvidence() async {
+        let harness = FakeDependencies()
+        let viewModel = harness.makeViewModel()
+        await viewModel.reconcile()
+        await viewModel.toggleMaster()
+        harness.transport.values["hibernatemode"] = 0
+        harness.helperSetup.readiness = .differentAccount
+        await viewModel.reconcile()
+        guard let conflict = viewModel.conflicts.first else { return XCTFail("Expected conflict") }
+        let journal = harness.store.journal
+        let writes = harness.transport.writes
+        await viewModel.resolveConflict(conflict, choice: .restoreOriginal)
+        XCTAssertEqual(viewModel.conflicts, [conflict])
+        XCTAssertEqual(harness.store.journal, journal)
+        XCTAssertEqual(harness.transport.writes, writes)
     }
 
     func testSleepNowRemainsDisabledWithoutCaptureWriteOrContinuation() {

@@ -66,7 +66,47 @@
 		F10000000000000000000007 /* RecoveryTransport.swift in Sources */ = {isa = PBXBuildFile; fileRef = F20000000000000000000007; };
 		F11000000000000000000008 /* RecoveryEngineTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F20000000000000000000008; };
 		F11000000000000000000009 /* RecoveryStorageTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F20000000000000000000009; };
+		9F0000000000000000000014 /* HelperProtocol.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9F0000000000000000000002; };
+		9F0000000000000000000015 /* HelperReadiness.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9F0000000000000000000003; };
+		9F0000000000000000000016 /* HelperXPCProtocol.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9F0000000000000000000005; };
+		9F0000000000000000000017 /* HelperIdentity.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9F0000000000000000000006; };
+		9F0000000000000000000018 /* HelperEnrollmentAuthorization.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9F0000000000000000000007; };
+		9F0000000000000000000019 /* HelperServiceClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9F0000000000000000000008; };
+		9F000000000000000000001A /* HelperProtocol.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9F0000000000000000000002; };
+		9F000000000000000000001B /* HelperReadiness.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9F0000000000000000000003; };
+		9F000000000000000000001C /* HelperEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9F0000000000000000000004; };
+		9F000000000000000000001D /* HelperEngineTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9F000000000000000000000D; };
+		9F000000000000000000001E /* HelperProtocol.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9F0000000000000000000002; };
+		9F000000000000000000001F /* HelperEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9F0000000000000000000004; };
+		9F0000000000000000000020 /* HelperXPCProtocol.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9F0000000000000000000005; };
+		9F0000000000000000000021 /* HelperIdentity.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9F0000000000000000000006; };
+		9F0000000000000000000022 /* HelperEnrollmentAuthorization.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9F0000000000000000000007; };
+		9F0000000000000000000023 /* HelperMain.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9F0000000000000000000009; };
+		9F0000000000000000000024 /* HelperStateStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9F000000000000000000000A; };
+		9F0000000000000000000025 /* PMSetService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000070000000000000007; };
+		9F0000000000000000000026 /* PMSetState.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000040000000000000004; };
+		9F0000000000000000000027 /* RecoveryJournal.swift in Sources */ = {isa = PBXBuildFile; fileRef = F20000000000000000000001; };
+		9F0000000000000000000028 /* SleepSetting.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000030000000000000003; };
+		9F0000000000000000000029 /* CommandRunner.swift in Sources */ = {isa = PBXBuildFile; fileRef = E20000000000000000000002; };
+		9F000000000000000000002A /* BootIdentityProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = F20000000000000000000006; };
+		9F000000000000000000002D /* BenzoHelper in Embed Helper Tools */ = {isa = PBXBuildFile; fileRef = 9F0000000000000000000012; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
+		9F000000000000000000002E /* com.benzo.helper.plist in Copy LaunchDaemons */ = {isa = PBXBuildFile; fileRef = 9F000000000000000000000B; };
+		9E0000000000000000000002 /* HelperStateStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9E0000000000000000000001; };
+		9E0000000000000000000003 /* HelperStateStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9F000000000000000000000A; };
 /* End PBXBuildFile section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		9F000000000000000000002B /* Embed Helper Tools */ = {isa = PBXCopyFilesBuildPhase; buildActionMask = 2147483647; dstPath = ""; dstSubfolderSpec = 6; files = (9F000000000000000000002D, ); name = "Embed Helper Tools"; runOnlyForDeploymentPostprocessing = 0; };
+		9F000000000000000000002C /* Copy LaunchDaemons */ = {isa = PBXCopyFilesBuildPhase; buildActionMask = 2147483647; dstPath = Contents/Library/LaunchDaemons; dstSubfolderSpec = 1; files = (9F000000000000000000002E, ); name = "Copy LaunchDaemons"; runOnlyForDeploymentPostprocessing = 0; };
+/* End PBXCopyFilesBuildPhase section */
+
+/* Begin PBXContainerItemProxy section */
+		9F000000000000000000002F /* PBXContainerItemProxy */ = {isa = PBXContainerItemProxy; containerPortal = A90000000000000000000001; proxyType = 1; remoteGlobalIDString = 9F0000000000000000000011; remoteInfo = BenzoHelper; };
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXTargetDependency section */
+		9F0000000000000000000030 /* PBXTargetDependency */ = {isa = PBXTargetDependency; target = 9F0000000000000000000011; targetProxy = 9F000000000000000000002F; };
+/* End PBXTargetDependency section */
 
 /* Begin PBXFileReference section */
 		A20000010000000000000001 /* BenzoApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BenzoApp.swift; sourceTree = "<group>"; };
@@ -112,6 +152,21 @@
 		F20000000000000000000007 /* RecoveryTransport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecoveryTransport.swift; sourceTree = "<group>"; };
 		F20000000000000000000008 /* RecoveryEngineTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecoveryEngineTests.swift; sourceTree = "<group>"; };
 		F20000000000000000000009 /* RecoveryStorageTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecoveryStorageTests.swift; sourceTree = "<group>"; };
+		9F0000000000000000000002 /* HelperProtocol.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HelperProtocol.swift; sourceTree = "<group>"; };
+		9F0000000000000000000003 /* HelperReadiness.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HelperReadiness.swift; sourceTree = "<group>"; };
+		9F0000000000000000000004 /* HelperEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HelperEngine.swift; sourceTree = "<group>"; };
+		9F0000000000000000000005 /* HelperXPCProtocol.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HelperXPCProtocol.swift; sourceTree = "<group>"; };
+		9F0000000000000000000006 /* HelperIdentity.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HelperIdentity.swift; sourceTree = "<group>"; };
+		9F0000000000000000000007 /* HelperEnrollmentAuthorization.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HelperEnrollmentAuthorization.swift; sourceTree = "<group>"; };
+		9F0000000000000000000008 /* HelperServiceClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HelperServiceClient.swift; sourceTree = "<group>"; };
+		9F0000000000000000000009 /* HelperMain.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HelperMain.swift; sourceTree = "<group>"; };
+		9F000000000000000000000A /* HelperStateStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HelperStateStore.swift; sourceTree = "<group>"; };
+		9F000000000000000000000B /* com.benzo.helper.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = com.benzo.helper.plist; sourceTree = "<group>"; };
+		9F000000000000000000000C /* BenzoHelper.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = BenzoHelper.entitlements; sourceTree = "<group>"; };
+		9F000000000000000000000D /* HelperEngineTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HelperEngineTests.swift; sourceTree = "<group>"; };
+		9F000000000000000000000E /* Benzo.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Benzo.entitlements; sourceTree = "<group>"; };
+		9F0000000000000000000012 /* BenzoHelper */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = BenzoHelper; sourceTree = BUILT_PRODUCTS_DIR; };
+		9E0000000000000000000001 /* HelperStateStoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HelperStateStoreTests.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -128,12 +183,14 @@
 			files = ();
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		9F0000000000000000000010 /* Frameworks */ = {isa = PBXFrameworksBuildPhase; buildActionMask = 2147483647; files = (); runOnlyForDeploymentPostprocessing = 0; };
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
 		A50000000000000000000000 = {
 			isa = PBXGroup;
 			children = (
+				9F0000000000000000000001 /* BenzoHelper */,
 				A50000010000000000000001 /* Benzo */,
 				A50000020000000000000002 /* Products */,
 				D50000000000000000000001 /* BenzoTests */,
@@ -143,6 +200,7 @@
 		A50000010000000000000001 /* Benzo */ = {
 			isa = PBXGroup;
 			children = (
+				9F000000000000000000000E /* Benzo.entitlements */,
 				A50000030000000000000003 /* App */,
 				A50000040000000000000004 /* Models */,
 				A50000050000000000000005 /* Services */,
@@ -158,6 +216,7 @@
 		A50000020000000000000002 /* Products */ = {
 			isa = PBXGroup;
 			children = (
+				9F0000000000000000000012 /* BenzoHelper */,
 				A30000000000000000000001 /* Benzo.app */,
 				D30000000000000000000001 /* BenzoCoreTests.xctest */,
 			);
@@ -176,6 +235,8 @@
 		A50000040000000000000004 /* Models */ = {
 			isa = PBXGroup;
 			children = (
+				9F0000000000000000000003 /* HelperReadiness.swift */,
+				9F0000000000000000000002 /* HelperProtocol.swift */,
 				F20000000000000000000001 /* RecoveryJournal.swift */,
 				F20000000000000000000002 /* ControlState.swift */,
 				A20000030000000000000003 /* SleepSetting.swift */,
@@ -191,6 +252,11 @@
 		A50000050000000000000005 /* Services */ = {
 			isa = PBXGroup;
 			children = (
+				9F0000000000000000000008 /* HelperServiceClient.swift */,
+				9F0000000000000000000007 /* HelperEnrollmentAuthorization.swift */,
+				9F0000000000000000000006 /* HelperIdentity.swift */,
+				9F0000000000000000000005 /* HelperXPCProtocol.swift */,
+				9F0000000000000000000004 /* HelperEngine.swift */,
 				F20000000000000000000003 /* OperationCoordinator.swift */,
 				F20000000000000000000004 /* DurableJournal.swift */,
 				F20000000000000000000005 /* ExecutionFenceStore.swift */,
@@ -249,6 +315,8 @@
 		D50000000000000000000001 /* BenzoTests */ = {
 			isa = PBXGroup;
 			children = (
+				9E0000000000000000000001 /* HelperStateStoreTests.swift */,
+				9F000000000000000000000D /* HelperEngineTests.swift */,
 				F20000000000000000000009 /* RecoveryStorageTests.swift */,
 				F20000000000000000000008 /* RecoveryEngineTests.swift */,
 				D20000000000000000000005 /* BenzoCoreTests.swift */,
@@ -268,6 +336,12 @@
 			path = Fixtures;
 			sourceTree = "<group>";
 		};
+		9F0000000000000000000001 /* BenzoHelper */ = {isa = PBXGroup; children = (
+				9F000000000000000000000C /* BenzoHelper.entitlements */,
+				9F000000000000000000000B /* com.benzo.helper.plist */,
+				9F000000000000000000000A /* HelperStateStore.swift */,
+				9F0000000000000000000009 /* HelperMain.swift */,
+			); path = BenzoHelper; sourceTree = "<group>"; };
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
@@ -275,6 +349,8 @@
 			isa = PBXNativeTarget;
 			buildConfigurationList = A80000000000000000000001 /* Build configuration list for PBXNativeTarget "Benzo" */;
 			buildPhases = (
+				9F000000000000000000002B /* Embed Helper Tools */,
+				9F000000000000000000002C /* Copy LaunchDaemons */,
 				A70000000000000000000001 /* Sources */,
 				A40000000000000000000001 /* Frameworks */,
 				A70000010000000000000002 /* Resources */,
@@ -282,6 +358,7 @@
 			buildRules = (
 			);
 			dependencies = (
+				9F0000000000000000000030 /* PBXTargetDependency */,
 			);
 			name = Benzo;
 			productName = Benzo;
@@ -303,6 +380,7 @@
 			productReference = D30000000000000000000001 /* BenzoCoreTests.xctest */;
 			productType = "com.apple.product-type.bundle.unit-test";
 		};
+		9F0000000000000000000011 /* BenzoHelper */ = {isa = PBXNativeTarget; buildConfigurationList = 9F0000000000000000000013; buildPhases = (9F000000000000000000000F, 9F0000000000000000000010, ); buildRules = (); dependencies = (); name = BenzoHelper; productName = BenzoHelper; productReference = 9F0000000000000000000012; productType = "com.apple.product-type.tool"; };
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -334,6 +412,7 @@
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
+				9F0000000000000000000011 /* BenzoHelper */,
 				A60000000000000000000001 /* Benzo */,
 				D60000000000000000000001 /* BenzoCoreTests */,
 			);
@@ -364,6 +443,12 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				9F0000000000000000000019 /* HelperServiceClient.swift in Sources */,
+				9F0000000000000000000018 /* HelperEnrollmentAuthorization.swift in Sources */,
+				9F0000000000000000000017 /* HelperIdentity.swift in Sources */,
+				9F0000000000000000000016 /* HelperXPCProtocol.swift in Sources */,
+				9F0000000000000000000015 /* HelperReadiness.swift in Sources */,
+				9F0000000000000000000014 /* HelperProtocol.swift in Sources */,
 				F10000000000000000000001 /* RecoveryJournal.swift in Sources */,
 				F10000000000000000000002 /* ControlState.swift in Sources */,
 				F10000000000000000000003 /* OperationCoordinator.swift in Sources */,
@@ -403,6 +488,12 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				9E0000000000000000000002 /* HelperStateStoreTests.swift in Sources */,
+				9E0000000000000000000003 /* HelperStateStore.swift in Sources */,
+				9F000000000000000000001D /* HelperEngineTests.swift in Sources */,
+				9F000000000000000000001C /* HelperEngine.swift in Sources */,
+				9F000000000000000000001B /* HelperReadiness.swift in Sources */,
+				9F000000000000000000001A /* HelperProtocol.swift in Sources */,
 				F11000000000000000000009 /* RecoveryStorageTests.swift in Sources */,
 				F11000000000000000000001 /* RecoveryJournal.swift in Sources */,
 				F11000000000000000000002 /* ControlState.swift in Sources */,
@@ -431,6 +522,21 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		9F000000000000000000000F /* Sources */ = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (
+				9F000000000000000000002A /* BootIdentityProvider.swift in Sources */,
+				9F0000000000000000000029 /* CommandRunner.swift in Sources */,
+				9F0000000000000000000028 /* SleepSetting.swift in Sources */,
+				9F0000000000000000000027 /* RecoveryJournal.swift in Sources */,
+				9F0000000000000000000026 /* PMSetState.swift in Sources */,
+				9F0000000000000000000025 /* PMSetService.swift in Sources */,
+				9F0000000000000000000024 /* HelperStateStore.swift in Sources */,
+				9F0000000000000000000023 /* HelperMain.swift in Sources */,
+				9F0000000000000000000022 /* HelperEnrollmentAuthorization.swift in Sources */,
+				9F0000000000000000000021 /* HelperIdentity.swift in Sources */,
+				9F0000000000000000000020 /* HelperXPCProtocol.swift in Sources */,
+				9F000000000000000000001F /* HelperEngine.swift in Sources */,
+				9F000000000000000000001E /* HelperProtocol.swift in Sources */,
+			); runOnlyForDeploymentPostprocessing = 0; };
 /* End PBXSourcesBuildPhase section */
 
 /* Begin XCBuildConfiguration section */
@@ -492,6 +598,8 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = Benzo/Benzo.entitlements;
+				ENABLE_HARDENED_RUNTIME = YES;
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = 1;
@@ -516,6 +624,8 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = Benzo/Benzo.entitlements;
+				ENABLE_HARDENED_RUNTIME = YES;
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = 1;
@@ -541,6 +651,7 @@
 			buildSettings = {
 				CODE_SIGN_STYLE = Automatic;
 				ENABLE_TESTING_SEARCH_PATHS = YES;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "$(inherited) BENZO_STORAGE_TESTS";
 				GENERATE_INFOPLIST_FILE = YES;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -561,6 +672,7 @@
 			buildSettings = {
 				CODE_SIGN_STYLE = Automatic;
 				ENABLE_TESTING_SEARCH_PATHS = YES;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "$(inherited) BENZO_STORAGE_TESTS";
 				GENERATE_INFOPLIST_FILE = YES;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -576,6 +688,40 @@
 			};
 			name = Release;
 		};
+		9F0000000000000000000031 /* Debug */ = {
+            isa = XCBuildConfiguration;
+            buildSettings = {
+                CODE_SIGN_ENTITLEMENTS = BenzoHelper/BenzoHelper.entitlements;
+                CODE_SIGN_STYLE = Automatic;
+                ENABLE_HARDENED_RUNTIME = YES;
+                ENABLE_DEBUG_DYLIB = NO;
+                OTHER_CODE_SIGN_FLAGS = "$(inherited) --identifier com.benzo.helper";
+                MACOSX_DEPLOYMENT_TARGET = 13.0;
+                PRODUCT_BUNDLE_IDENTIFIER = com.benzo.helper;
+                PRODUCT_NAME = BenzoHelper;
+                SKIP_INSTALL = YES;
+                SUPPORTED_PLATFORMS = macosx;
+                SWIFT_VERSION = 5.0;
+            };
+            name = Debug;
+        };
+		9F0000000000000000000032 /* Release */ = {
+            isa = XCBuildConfiguration;
+            buildSettings = {
+                CODE_SIGN_ENTITLEMENTS = BenzoHelper/BenzoHelper.entitlements;
+                CODE_SIGN_STYLE = Automatic;
+                ENABLE_HARDENED_RUNTIME = YES;
+                ENABLE_DEBUG_DYLIB = NO;
+                OTHER_CODE_SIGN_FLAGS = "$(inherited) --identifier com.benzo.helper";
+                MACOSX_DEPLOYMENT_TARGET = 13.0;
+                PRODUCT_BUNDLE_IDENTIFIER = com.benzo.helper;
+                PRODUCT_NAME = BenzoHelper;
+                SKIP_INSTALL = YES;
+                SUPPORTED_PLATFORMS = macosx;
+                SWIFT_VERSION = 5.0;
+            };
+            name = Release;
+        };
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -606,6 +752,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Debug;
 		};
+		9F0000000000000000000013 /* BenzoHelper configuration */ = {isa = XCConfigurationList; buildConfigurations = (9F0000000000000000000031, 9F0000000000000000000032, ); defaultConfigurationIsVisible = 0; defaultConfigurationName = Release; };
 /* End XCConfigurationList section */
 	};
 	rootObject = A90000000000000000000001 /* Project object */;

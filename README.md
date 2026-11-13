@@ -52,9 +52,14 @@ brew install --cask benzo
 
 Benzo lives in your menubar. It captures the available AC, battery and UPS
 profiles, then applies only selected settings and profile/key values that are
-reported and supported. Writes use macOS's administrator-authorized path;
-prompt caching is managed by macOS. Readback checks reported values; hardware
-sleep behavior is a separate outcome.
+reported and supported. The next native release uses a signed, notarized helper:
+setup guides the user through macOS approval and authorizes only the local account
+completing setup. Ordinary apply/restore operations then use that lasting grant,
+without an administrator dialog for each setting. Setup may require more than
+one approval, and users can revoke the helper in System Settings. Readback checks
+reported values; hardware sleep behavior is a separate outcome. This source work
+is not yet a published or natively accepted release; the latest public release
+remains v0.3.0.
 
 A setting is unavailable when any required key is absent from a reported
 profile. Benzo disables that control and reports the missing profile/key; it
@@ -70,6 +75,7 @@ what Benzo stores on your Mac and what the website does.
 - **Conflict recovery** — Keep Current, Restore Recorded Original Anyway, or Defer retains explicit recovery choices
 - **Sleep Now unavailable** — sleep commands and timed sleep remain disabled
 - **Diagnostics** — Option-click the menubar icon for existing sleep sessions, wake reasons, USB devices and settings observations; these do not prove recovery or hardware behavior
+- **Account-specific setup** — the helper checks the enrolled account's UID and persistent local account identity; another account cannot inherit access by reusing a user ID
 
 ### Recovery and removal
 
@@ -96,12 +102,25 @@ entire directory and ask an administrator to inspect its ownership, permissions,
 and recovery generations together with execution evidence. Do not automatically
 change permissions or remove temporary files to bypass Recovery Required.
 
+The helper separately retains its account grant and bounded execution evidence in
+`/private/var/db/com.benzo.helper`, owned by root with mode 0700 (files 0600).
+It does not read a client-supplied journal path or store administrator credentials.
+Missing/corrupt evidence or an interrupted commit fails closed. Disabling or
+removing the helper does not restore power settings, erase the grant, or transfer
+it to another account. Lost-owner recovery and retirement require explicit
+administrator assistance; deleting evidence to force enrollment is unsupported.
+Updates and removal must wait for resolved settings and quiescent execution,
+retain evidence, and use the supported service lifecycle. Their signed-artifact
+acceptance remains a release gate in the
+[helper amendment](documentation/planning/tech_debt/benzo-remediation_2026-11-02/08_helper-authorization.md).
+
 ## Requirements
 
 - macOS Ventura (13.0) or later
 - Intel or Apple Silicon
-- macOS administrator authorization for settings writes; prompt caching is
-  managed by macOS, and no new passwordless sudoers rule is installed
+- Administrator approval during helper setup; no passwordless sudoers rule
+- A Developer ID-signed, notarized release to enable the helper. Unsigned CI/source
+  builds can compile and run injected tests but cannot authorize power writes.
 
 ## Build from source
 
@@ -150,9 +169,12 @@ native presentation reference. Native UI changes must match this active demo.
 Unbundled `BenzoHybrid`, `BenzoMockup` and their historical tests remain unchanged.
 
 The read runner has bounded time and output, with separate stdout/stderr capture.
-The recovery transport uses fixed per-profile reads and foreground exact-cell
-administrator-authorized writes. Request completion and subsequent readback are
-separate evidence; neither establishes physical sleep behavior.
+The recovery transport uses unprivileged per-profile reads and authenticated XPC
+for exact-cell writes. The helper invokes fixed `/usr/bin/pmset` argument arrays,
+serializes admission, checks expected values and durable revisions, and preserves
+uncertain execution across helper restarts. There is no AppleScript fallback.
+Request completion and subsequent readback are separate evidence; neither
+establishes physical sleep behavior.
 
 The `build` workflow runs web tests/build, full-Xcode Debug and core tests, and
 uploads a seven-day universal `.xcarchive` with distribution signing disabled as CI build evidence. It is

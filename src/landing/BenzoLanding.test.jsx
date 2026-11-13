@@ -7,6 +7,14 @@ import { siteCopy } from '../design/siteCopy'
 afterEach(cleanup)
 const click = name => fireEvent.click(screen.getByRole('button', { name, exact: true }))
 const switchMaster = () => fireEvent.click(screen.getByRole('switch', { name: 'Deep Sleep' }))
+function completeSetup() {
+  click('Helper Setup')
+  click('Set Up')
+  click('Open System Settings')
+  click('Simulate macOS Approval')
+  click('Authorize This Account')
+  click('Done')
+}
 
 function expectPageState(active) {
   const root = document.querySelector('.benzo-site')
@@ -25,7 +33,7 @@ describe('shared page and app state', () => {
     expectPageState(false)
     expect(screen.getByRole('switch', { name: 'Deep Sleep' }).getAttribute('aria-checked')).toBe('false')
     expect(screen.getByRole('checkbox', { name: 'Hibernate Mode' }).disabled).toBe(true)
-    click('First launch'); click('Back'); click('Options')
+    click('First launch'); completeSetup(); click('Options')
     expect(screen.getByRole('checkbox', { name: 'Disable TCP Keep-Alive' }).disabled).toBe(false)
     fireEvent.click(screen.getByRole('checkbox', { name: 'Disable TCP Keep-Alive' }))
     expectPageState(false)
@@ -40,7 +48,8 @@ describe('shared page and app state', () => {
     expect(screen.getByRole('button', { name: 'Sleep Now' }).disabled).toBe(true)
     click('Sleep Now'); expectPageState(false)
     click('First launch'); expectPageState(false)
-    click('Back'); expectPageState(false)
+    expect(screen.getByRole('switch', { name: 'Deep Sleep' }).disabled).toBe(true)
+    completeSetup(); expectPageState(false)
     switchMaster(); expectPageState(true)
     click('Quit'); expectPageState(false)
     // The toolbar and closed panel each offer a restart.

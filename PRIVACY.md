@@ -1,8 +1,9 @@
 # Privacy and local data
 
-Reviewed November 4, 2026. Native behavior below describes
-[recovery source revision c291011](https://github.com/chrisrogers37/benzo/tree/c2910116eaaa0d8019572c6768a8b226bbe07d33/Benzo/Benzo),
-not verified behavior of the older v0.3.0 download. Update-checker behavior is
+Reviewed November 13, 2026. Native behavior below describes the unreleased
+recovery and account-authorized helper source, not verified behavior of the older
+v0.3.0 download. Helper installation and signed native acceptance remain pending.
+Update-checker behavior is
 outside this revision and must be documented when delivered.
 
 ## Mac app
@@ -26,9 +27,16 @@ outside this revision and must be documented when delivered.
   macOS manages its own system logs separately.
 - **Permissions and writes:** the source observes metadata at
   `/private/etc/sudoers.d/benzo`; presence does not establish authorization.
-  Applying/restoring settings writes exact selected profile/key values system-wide
-  through macOS administrator prompts. Recovery reads use `pmset -g custom`.
-  Benzo does not save the administrator password or create a standing grant.
+  Guided setup registers an app-bundled background helper, asks for macOS approval,
+  and uses a temporary administrator authorization to enroll the connecting local
+  account. The helper retains a standing grant for that account's UID and local
+  GeneratedUID in `/private/var/db/com.benzo.helper/authority.json`. This root-owned
+  private directory (0700, files 0600) also retains bounded request identity,
+  boot identity, revision, setting/precondition/target and execution evidence.
+  It stores no administrator password or reusable authorization token. Applying
+  and restoring uses authenticated local XPC and exact selected profile/key values
+  system-wide; ordinary operations do not request a new administrator authorization.
+  Recovery reads use `pmset -g custom`. The helper never opens client-supplied paths.
 - **Network:** the reviewed native source has no analytics, crash reporting or
   diagnostics upload implementation. This says nothing about other software or
   macOS network activity.
@@ -36,7 +44,8 @@ outside this revision and must be documented when delivered.
 Recovery evidence retains unresolved data, required previous generations and a
 resolved receipt; it is not erased just because the app quits. Preferences and
 legacy evidence have no automatic cleanup in this source. App
-removal does not restore settings or retire legacy permissions. Preserve recovery
+removal does not restore settings, transfer the enrolled account, erase helper
+evidence, or retire legacy permissions. Preserve recovery
 evidence if the outcome is uncertain; see [recovery and removal](README.md#recovery-and-removal).
 
 ## Security reports

@@ -44,6 +44,7 @@ private final class EngineTransport: RecoveryCommanding {
     var values: [ManagedCell: Int]
     var profiles: [PowerProfile]
     var writes: [CellValue] = []
+    var preflightError: Error?
     var captureCount = 0
     var beforeCapture: ((Int) throws -> Void)?
     var onWrite: ((ManagedCell, Int, Int) async -> RecoveryWriteOutcome)?
@@ -60,7 +61,8 @@ private final class EngineTransport: RecoveryCommanding {
         }.joined(separator: "\n")
         return try ProfileSnapshot(parsing: raw)
     }
-    func write(cell: ManagedCell, value: Int, operationID: UUID) async -> RecoveryWriteOutcome {
+    func preflightWrite() async throws { if let preflightError { throw preflightError } }
+    func write(cell: ManagedCell, value: Int, expectedValue: Int, operationID: UUID, bootID: String) async -> RecoveryWriteOutcome {
         writes.append(CellValue(cell: cell, value: value))
         if let onWrite { return await onWrite(cell, value, writes.count) }
         values[cell] = value
@@ -408,26 +410,42 @@ final class RecoveryEngineTests: XCTestCase {
         XCTAssertEqual(subject.state, .off)
     }
 
-    func testCompletionRequiresWholeFixedProtocolNotDirectChildExit() throws {
-        let id = UUID()
-        func outcome(_ text: String, status: Termination = .exited(0), complete: Bool = true,
-                     truncated: Bool = false, stopped: Bool = true, stderr: String = "") -> CommandOutcome {
-            CommandOutcome(stdout: Data(text.utf8), stderr: Data(stderr.utf8), termination: status,
+    func testFixedHelperCommandRequiresCompleteTerminationEvidence() throws {
+        func outcome(status: Termination = .exited(0), complete: Bool = true,
+                     truncated: Bool = false, stopped: Bool = true) -> CommandOutcome {
+            CommandOutcome(stdout: Data(), stderr: Data(), termination: status,
                 outputComplete: complete, outputTruncated: truncated, directChildStopped: stopped)
         }
-        let reply = "BENZO1:\(id.uuidString):0\n"
-        XCTAssertEqual(PMSetService.completion(outcome(reply), operationID: id), .completed(status: 0))
-        for result in [outcome(reply, status: .timedOut), outcome(reply, complete: false),
-                       outcome(reply, truncated: true), outcome(reply, stopped: false), outcome(reply, stderr: "error"),
-                       outcome("extra\n" + reply), outcome(reply + "\n"), outcome("BENZO1:\(UUID().uuidString):0\n"),
-                       outcome("BENZO1:\(id.uuidString):٠\n"), outcome("BENZO1:\(id.uuidString):256\n")] {
-            guard case .uncertain = PMSetService.completion(result, operationID: id) else { return XCTFail("Incomplete or mismatched execution evidence accepted") }
+        XCTAssertEqual(PMSetService.completion(outcome()), .completed(status: 0))
+        for result in [outcome(status: .timedOut), outcome(complete: false),
+                       outcome(truncated: true), outcome(stopped: false), outcome(status: .signaled(9))] {
+            guard case .uncertain = PMSetService.completion(result) else { return XCTFail("Incomplete execution accepted") }
         }
-        XCTAssertThrowsError(try PMSetService.writeRequest(cell: acNap, value: 25, operationID: id))
-        let request = try PMSetService.writeRequest(cell: batteryNap, value: 1, operationID: id)
-        XCTAssertEqual(request.executable, "/usr/bin/osascript")
-        XCTAssertTrue(request.arguments[1].contains("/usr/bin/pmset -b powernap 1"))
-        XCTAssertFalse(request.arguments[1].contains(" -a "))
-        XCTAssertEqual(request.timeout, 120)
+        XCTAssertThrowsError(try PMSetService.writeRequest(cell: acNap, value: 25))
+        let request = try PMSetService.writeRequest(cell: batteryNap, value: 1)
+        XCTAssertEqual(request.executable, "/usr/bin/pmset")
+        XCTAssertEqual(request.arguments, ["-b", "powernap", "1"])
+    }
+
+    func testUnavailableHelperDoesNotCreateExecutionFence() async {
+        let store = EngineStore(), transport = EngineTransport([acNap: 1])
+        transport.preflightError = RecoveryEvidenceError.invalid("Helper access unavailable")
+        let subject = engine(store, transport)
+        await subject.apply(settings: [.disablePowerNap])
+        XCTAssertTrue(transport.writes.isEmpty)
+        XCTAssertNil(store.fence)
+        XCTAssertFalse(subject.executionUncertain)
+        XCTAssertFalse(subject.state.isActive)
+    }
+
+    func testAuthenticatedRejectionRetainsEvidenceWithoutInventingExecution() async {
+        let store = EngineStore(), transport = EngineTransport([acNap: 1])
+        transport.onWrite = { _, _, _ in .notExecuted("Permission revoked before dispatch") }
+        let subject = engine(store, transport)
+        await subject.apply(settings: [.disablePowerNap])
+        XCTAssertEqual(store.fence?.completed, true)
+        XCTAssertFalse(subject.executionUncertain)
+        XCTAssertEqual(transport.values[acNap], 1)
+        XCTAssertFalse(subject.state.isActive)
     }
 }

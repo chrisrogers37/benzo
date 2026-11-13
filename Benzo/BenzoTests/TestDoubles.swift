@@ -20,6 +20,45 @@ final class FakeLoginItem: LoginItemClient {
     func unregister() throws { calls.append("unregister"); if let error { throw error } }
 }
 
+@MainActor
+final class FakeHelperSetup: HelperSetupClient {
+    var readiness: HelperReadiness = .ready
+    var registrationResult: HelperReadiness = .requiresApproval
+    var authorizationResult: HelperReadiness = .ready
+    var replacementResult: HelperReadiness = .ready
+    var error: Error?
+    var calls: [String] = []
+    var refreshHandler: (() async -> HelperReadiness)?
+    var replacementHandler: (() async throws -> HelperReadiness)?
+    func refresh() async -> HelperReadiness {
+        calls.append("refresh")
+        return await refreshHandler?() ?? readiness
+    }
+    func register() async throws -> HelperReadiness {
+        calls.append("register")
+        if let error { throw error }
+        readiness = registrationResult
+        return readiness
+    }
+    func authorizeCurrentAccount() async throws -> HelperReadiness {
+        calls.append("authorize")
+        if let error { throw error }
+        readiness = authorizationResult
+        return readiness
+    }
+    func replace() async throws -> HelperReadiness {
+        calls.append("replace")
+        if let error { throw error }
+        if let replacementHandler {
+            readiness = try await replacementHandler()
+            return readiness
+        }
+        readiness = replacementResult
+        return readiness
+    }
+    func openApprovalSettings() { calls.append("openSettings") }
+}
+
 final class IntegrationRecoveryStore: RecoveryStoring {
     var journal: RecoveryJournal?
     var fence: ExecutionFence?
@@ -55,7 +94,8 @@ final class IntegrationRecoveryTransport: RecoveryCommanding {
         let raw = "AC Power:\n" + values.keys.sorted().map { " \($0) \(values[$0]!)" }.joined(separator: "\n")
         return try ProfileSnapshot(parsing: raw)
     }
-    func write(cell: ManagedCell, value: Int, operationID: UUID) async -> RecoveryWriteOutcome {
+    func preflightWrite() async throws {}
+    func write(cell: ManagedCell, value: Int, expectedValue: Int, operationID: UUID, bootID: String) async -> RecoveryWriteOutcome {
         writes.append(Write(cell: cell, value: value))
         if case .completed(status: 0) = writeOutcome { values[cell.key.rawValue] = value }
         return writeOutcome
@@ -70,6 +110,7 @@ final class FakeDependencies {
     let transport = IntegrationRecoveryTransport()
     let preferences = FakePreferences()
     let login = FakeLoginItem()
+    let helperSetup = FakeHelperSetup()
     var permissionObservation: PermissionObservation = .noLegacyRule
     var permissionObservations = 0
     var diagnosticCalls = 0
@@ -94,6 +135,7 @@ final class FakeDependencies {
             coordinator: coordinator,
             preferences: preferences,
             loginItem: login,
+            helperSetup: helperSetup,
             observePermission: { self.permissionObservations += 1; return self.permissionObservation },
             fetchSleepData: { self.diagnosticCalls += 1; return self.sleepResult },
             fetchUSBDevices: { self.diagnosticCalls += 1; return self.usbResult },

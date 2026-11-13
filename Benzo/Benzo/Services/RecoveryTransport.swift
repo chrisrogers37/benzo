@@ -1,8 +1,11 @@
 import Foundation
 
-/// App-only adapter over the existing bounded process engine.
+/// App-only reads remain unprivileged. Every write goes through the authenticated
+/// helper; there is no AppleScript or sudo fallback when setup is unavailable.
+@MainActor
 struct RecoveryTransport: RecoveryCommanding {
     let runner: CommandRunner
+    let helper: HelperServiceClient
 
     func capture() async throws -> ProfileSnapshot {
         let result = await runner.run(request: PMSetService.captureRequest)
@@ -13,14 +16,26 @@ struct RecoveryTransport: RecoveryCommanding {
         return try ProfileSnapshot(parsing: output)
     }
 
-    func write(cell: ManagedCell, value: Int, operationID: UUID) async -> RecoveryWriteOutcome {
+    func preflightWrite() async throws { _ = try await helper.writableStatus() }
+
+    func write(cell: ManagedCell, value: Int, expectedValue: Int,
+               operationID: UUID, bootID: String) async -> RecoveryWriteOutcome {
+        let status: HelperStatus
         do {
-            let request = try PMSetService.writeRequest(cell: cell, value: value, operationID: operationID)
-            return PMSetService.completion(await runner.run(request: request), operationID: operationID)
+            guard cell.key.isValid(value), cell.key.isValid(expectedValue) else {
+                return .notExecuted("The requested setting value is unsupported.")
+            }
+            status = try await helper.writableStatus()
+            guard UUID(uuidString: status.bootID) == UUID(uuidString: bootID) else {
+                return .notExecuted("The helper boot identity changed before dispatch.")
+            }
         } catch {
-            // Coordinator validates before intent. A contract violation still must
-            // not clear an already durable fence.
-            return .uncertain(error.localizedDescription)
+            // Only status was requested. No setting command was sent.
+            return .notExecuted(error.localizedDescription)
         }
+        let request = HelperWriteRequest(requestID: UUID(), operationID: operationID,
+            bootID: bootID, cell: cell, expectedValue: expectedValue, target: value,
+            expectedRevision: status.revision)
+        return await helper.sendWrite(request)
     }
 }

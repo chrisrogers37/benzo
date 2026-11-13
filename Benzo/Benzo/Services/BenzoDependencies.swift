@@ -35,6 +35,7 @@ struct BenzoDependencies {
     let coordinator: OperationCoordinator
     let preferences: any PreferenceStoring
     let loginItem: any LoginItemClient
+    let helperSetup: any HelperSetupClient
     let observePermission: () -> PermissionObservation
     let fetchSleepData: () async -> Result<SleepReadPayload, DiagnosticReadError>
     let fetchUSBDevices: () async -> Result<[USBDevice], DiagnosticReadError>

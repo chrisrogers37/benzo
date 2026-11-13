@@ -60,6 +60,14 @@ jobs:
           [[ "$build" =~ ^[1-9][0-9]*$ ]] || fail 'Build number must be a positive integer'
           executable="$app/Contents/MacOS/Benzo"
           [[ -f "$executable" && ! -L "$executable" ]] || fail 'Archived app executable is missing'
+          helper="$app/Contents/MacOS/BenzoHelper"
+          helper_plist="$app/Contents/Library/LaunchDaemons/com.benzo.helper.plist"
+          [[ -f "$helper" && -x "$helper" && ! -L "$helper" ]] || fail 'Embedded helper executable is missing'
+          [[ -f "$helper_plist" && ! -L "$helper_plist" ]] || fail 'Embedded helper plist is missing'
+          [[ "$(plutil -extract Label raw -o - "$helper_plist")" == com.benzo.helper ]] || fail 'Helper service label differs'
+          [[ "$(plutil -extract BundleProgram raw -o - "$helper_plist")" == Contents/MacOS/BenzoHelper ]] || fail 'Helper executable path differs'
+          helper_archs=$(lipo -archs "$helper")
+          [[ "$helper_archs" == 'arm64 x86_64' || "$helper_archs" == 'x86_64 arm64' ]] || fail 'Helper must contain exactly arm64 and x86_64'
           archs=$(lipo -archs "$executable")
           [[ "$archs" == 'arm64 x86_64' || "$archs" == 'x86_64 arm64' ]] || fail 'Archived app must contain exactly arm64 and x86_64'
           commit=$(git rev-parse HEAD)
@@ -80,6 +88,7 @@ jobs:
           App version (CFBundleShortVersionString): $version
           Build number (CFBundleVersion): $build
           Architectures (lipo): $archs
+          Embedded helper architectures (lipo): $helper_archs
           Build: Release archive, ARCHS=arm64 x86_64, ONLY_ACTIVE_ARCH=NO
           Distribution signing: disabled (CODE_SIGNING_ALLOWED=NO); no Developer ID or notarization was performed
           Archive file: $tar_name (tar.gz preserves executable modes)

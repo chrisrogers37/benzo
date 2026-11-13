@@ -363,6 +363,7 @@ final class OperationCoordinator {
                   sameBoot(try currentBoot(), plan.bootID) else {
                 throw invalid("Operation identity changed before dispatch.")
             }
+            try await transport.preflightWrite()
             current.operation!.steps[index].phase = .intended
             // Covers intent persistence failure and the pre-child-identity gap.
             uncertainBoot = plan.bootID
@@ -372,8 +373,20 @@ final class OperationCoordinator {
                 incarnationID: incarnationID, sessionID: current.sessionID, operationID: plan.id,
                 cell: step.cell, target: step.target, completed: false)
             try store.commitFence(fence)
-            let result = await transport.write(cell: step.cell, value: step.target, operationID: plan.id)
+            let result = await transport.write(cell: step.cell, value: step.target, expectedValue: step.precondition,
+                                               operationID: plan.id, bootID: plan.bootID)
             switch result {
+            case .notExecuted(let message):
+                // Only an authenticated helper rejection before dispatch establishes
+                // this outcome. A timeout/disconnection must never take this path.
+                fence.completed = true
+                try store.commitFence(fence)
+                guard var rejected = journal else { throw invalid("Recovery evidence is unavailable.") }
+                rejected.operation!.steps[index].phase = .notExecuted
+                try commit(rejected)
+                uncertainBoot = nil
+                executionUncertain = false
+                throw invalid(message)
             case .uncertain(let message):
                 if var uncertain = journal {
                     uncertain.operation!.steps[index].phase = .uncertain

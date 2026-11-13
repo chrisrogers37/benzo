@@ -63,7 +63,10 @@ Benzo/Benzo/                     — Swift macOS menubar app
 │   └── USBDevice.swift          — USB device name and power draw
 ├── Services/
 │   ├── PMSetService.swift       — fixed pmset capture request and target mapping
-│   ├── RecoveryTransport.swift  — bounded reads and foreground exact-cell admin writes
+│   ├── RecoveryTransport.swift  — unprivileged reads and authenticated exact-cell helper writes
+│   ├── HelperServiceClient.swift — explicit SMAppService setup, enrollment and replacement
+│   ├── HelperEngine.swift       — enrolled-account admission, revisions and durable execution
+│   ├── HelperIdentity.swift     — exact Developer ID identities and local UID/GeneratedUID
 │   ├── CommandRunner.swift      — bounded process transport and owned-fixture tests
 │   ├── OperationCoordinator.swift — serialized apply, restore, conflict and admission
 │   ├── DurableJournal.swift    — checked account-local recovery evidence and lock
@@ -80,7 +83,7 @@ Benzo/Benzo/                     — Swift macOS menubar app
 │   ├── SleepNowButton.swift     — disabled sleep action with recovery explanation
 │   ├── SettingRowView.swift     — individual setting checkbox row
 │   ├── FooterView.swift         — launch at login, version, restore defaults, quit
-│   ├── SetupView.swift          — non-authorizing permission observation, Refresh and Back
+│   ├── SetupView.swift          — explicit helper approval, account enrollment and readiness
 │   └── DiagnosticView.swift     — ⌥-click view: sleep sessions, wake reason, USB, observed settings
 └── Theme/
     └── BenzoTheme.swift         — colors (accent: #d4749c)
@@ -91,7 +94,8 @@ src/landing/NativeAppDemo.jsx      — source-based interactive reproduction; or
 src/landing/BenzoLanding.jsx         — public landing page; single owner of interactive demo state
 src/design/                     — core web tokens, CSS, copy, metadata, icons and app presentation
 src/demo/                       — browser state/hooks and legacy compatibility fixture exports
-Benzo/BenzoTests/                — unhosted injected tests plus owned read-child fixture
+Benzo/BenzoHelper/               — root daemon entry point, private authority store and bundled launchd plist
+Benzo/BenzoTests/                — unhosted injected tests plus owned read-child/storage fixtures
 scripts/build-dmg.sh             — archive, sign, notarize, and package as DMG
 Casks/benzo.rb                   — Homebrew cask formula
 ```
@@ -102,6 +106,7 @@ Casks/benzo.rb                   — Homebrew cask formula
 - **Draft fidelity**: Marketing redesigns must preserve the native UI and interactive controls in `src/landing/NativeAppDemo.jsx`; keep demo navigation/disclosures outside the app panel. Verify against current Swift source, and reserve pixel-parity claims for comparison with an approved native screenshot.
 - **Core web design**: Import redesigned page/demo presentation from `src/design/`. Keep one `useBenzoDemo` state in `BenzoLanding` for panel and page theme; never mirror the master switch in a second state. Marketing copy and native UI copy have separate owners inside the module. See `src/design/README.md`.
 - **Recovery scope**: Manual apply captures immutable originals per reported profile and freezes selections. A setting is unavailable if any required key is absent from a reported profile. Off, System Defaults and quit attempt to restore the exact captured pre-Benzo values; System Defaults is not Apple's factory reset. Sleep Now remains unavailable. Readback establishes reported settings only; it cannot prove physical sleep, hibernation or USB behavior. Conflicts offer Keep Current, Restore Recorded Original Anyway or Defer. Same-boot execution uncertainty blocks further writes even if reads match; a verified later boot permits read-only reconciliation, never replay or automatic restore. Legacy flat originals remain untrusted for profile mapping; legacy recovery and rule retirement require administrator-assisted steps outside the app.
+- **Helper authorization**: The November 13 amendment `08_helper-authorization.md` replaces repeated AppleScript prompts with an app-bundled SMAppService daemon. Only the local account completing setup is enrolled, bound to UID plus GeneratedUID. Both peers require exact Developer ID identities and role entitlements. The helper accepts no paths or shell command input. Root-owned authority/revisions/fences supplement the GUI recovery journal; lost replies never permit replay. Unsigned CI artifacts cannot use this transport. Explicit replacement requires resolved settings, a helper admission pause, asynchronous unregister completion, and a matching embedded helper code hash. Do not silently transfer ownership or erase evidence.
 - **Not App Store**: Benzo requires root access for pmset, incompatible with App Store sandboxing.
 
 ---
@@ -165,7 +170,7 @@ npm run build        # Production build
 
 ### Distribution
 
-- **GitHub Releases** — signed `.dmg` (notarized when Apple Developer credentials are available)
+- **GitHub Releases** — the upcoming helper release requires Developer ID signing and notarization. Membership is deferred during source development; no ad-hoc fallback can enable the helper. Packaging integration and signed native acceptance remain required before release.
 - **Homebrew** — `brew install --cask benzo` (personal tap; official homebrew-cask tap requires notarized DMG)
 - Gatekeeper bypass: right-click → Open, or `xattr -d com.apple.quarantine /Applications/Benzo.app`
 - Vercel Git integration can deploy previews on branch pushes and production on main; deployment remains separately approved.

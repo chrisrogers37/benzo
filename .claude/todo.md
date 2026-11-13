@@ -1,5 +1,21 @@
 # Benzo Open Work
 
+## Lasting helper permission — November 13, 2026
+
+- [x] Owner approved SMAppService direction and only the account completing setup
+  (artemis on this Mac); enrollment in Apple Developer Program deferred.
+- [x] Archive and remove the abandoned persistent-AppleScript prototype; retain
+  the accepted recovery baseline and historical probe results.
+- [x] Record scope, account policy and reset handoff requirements in
+  [08_helper-authorization.md](../documentation/planning/tech_debt/benzo-remediation_2026-11-02/08_helper-authorization.md).
+- [x] Implement and review authenticated helper enrollment, bounded operations,
+  root-owned admission evidence, setup UX and active web parity.
+- [ ] Pass exact-head unhosted native/web tests, app/helper builds and security CI.
+- [ ] Validate a signed/notarized artifact on approved hardware, then integrate
+  packaging, update checker and native accessibility before release.
+- [ ] Verify remote source, accepted release assets and portable handoff before
+  the user's later, separately performed factory reset.
+
 ## Website trust follow-through — 2026-11-04
 
 - [x] Owner selected implementation of unowned website accessibility/trust work.

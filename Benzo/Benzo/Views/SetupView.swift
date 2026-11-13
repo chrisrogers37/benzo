@@ -1,20 +1,17 @@
 import SwiftUI
 
 struct SetupView: View {
-    let observation: PermissionObservation
+    let readiness: HelperReadiness
+    let isBusy: Bool
+    let canReplaceHelper: Bool
+    let error: String?
+    let recoveryMessage: String?
+    let onRegister: () -> Void
+    let onAuthorize: () -> Void
+    let onReplace: () -> Void
+    let onOpenSettings: () -> Void
     let onRefresh: () -> Void
     let onBack: () -> Void
-
-    private var statusText: String {
-        switch observation {
-        case .noLegacyRule:
-            return "No legacy permission rule found"
-        case .legacyRulePresent:
-            return "Legacy permission rule found; authorization is unverified"
-        case .unknown:
-            return "Permission status could not be determined"
-        }
-    }
 
     var body: some View {
         VStack(spacing: 16) {
@@ -23,33 +20,58 @@ struct SetupView: View {
             Text("💊")
                 .font(.system(size: 36))
 
-            Text("Permission status")
+            Text(readiness.title)
                 .font(.system(size: 15, weight: .semibold))
                 .foregroundColor(BenzoTheme.text)
 
-            Text(statusText)
+            Text(readiness.message)
                 .font(.system(size: 12))
                 .foregroundColor(BenzoTheme.textMuted)
                 .multilineTextAlignment(.center)
                 .padding(.horizontal, 20)
 
-            Button(action: onRefresh) {
-                Text("Refresh status")
-                    .font(.system(size: 12, weight: .semibold))
-                    .foregroundColor(.white)
-                    .padding(.horizontal, 24)
-                    .padding(.vertical, 8)
-                    .background(BenzoTheme.accent)
-                    .cornerRadius(6)
+            if let recoveryMessage {
+                Text(recoveryMessage)
+                    .font(.system(size: 12))
+                    .foregroundColor(BenzoTheme.text)
+                    .multilineTextAlignment(.center)
             }
-            .buttonStyle(.plain)
 
-            Button("Back", action: onBack)
-                .font(.system(size: 12))
-                .foregroundColor(BenzoTheme.textMuted)
-                .buttonStyle(.plain)
+            if let error {
+                Text(error)
+                    .font(.system(size: 12))
+                    .foregroundColor(.red)
+                    .multilineTextAlignment(.center)
+            }
 
-            Text("This only checks for a legacy rule. It does not verify authorization or change permissions.")
+            if readiness == .unavailable(.incompatible), !canReplaceHelper, !isBusy {
+                Text(BenzoViewModel.helperReplacementBlockedReason)
+                    .font(.system(size: 12))
+                    .foregroundColor(BenzoTheme.text)
+                    .multilineTextAlignment(.center)
+            }
+
+            Group {
+                switch readiness {
+                case .notInstalled: Button("Set Up", action: onRegister)
+                case .requiresApproval: Button("Open System Settings", action: onOpenSettings)
+                case .needsOwnerAuthorization: Button("Authorize This Account", action: onAuthorize)
+                case .unavailable(.incompatible):
+                    Button("Replace Helper", action: onReplace).disabled(!canReplaceHelper)
+                default: EmptyView()
+                }
+            }
+            .buttonStyle(.borderedProminent)
+            .tint(BenzoTheme.accent)
+            .disabled(isBusy)
+
+            Button("Check Again", action: onRefresh)
+                .disabled(isBusy)
+            Button(readiness == .ready ? "Done" : "Back", action: onBack)
+
+            if isBusy { ProgressView().controlSize(.small).accessibilityLabel("Checking helper setup") }
+
+            Text("Setup may require more than one administrator approval. You can review settings and recovery information without completing setup.")
                 .font(.system(size: 10))
                 .foregroundColor(BenzoTheme.textFaint)
                 .multilineTextAlignment(.center)
@@ -57,6 +79,7 @@ struct SetupView: View {
 
             Spacer()
         }
+        .padding(20)
         .frame(width: 320)
         .background(BenzoTheme.surface)
     }
