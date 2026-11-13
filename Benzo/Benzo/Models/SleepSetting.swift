@@ -21,11 +21,11 @@ enum SleepSetting: String, CaseIterable, Identifiable {
 
     var description: String {
         switch self {
-        case .hibernateMode: return "Full power-off, USB ports disabled"
-        case .disablePowerNap: return "No background syncing during sleep"
-        case .disableTcpKeepAlive: return "No network wake — disables Find My"
-        case .disableProximityWake: return "iPhone/Watch won't wake Mac"
-        case .disableNetworkWake: return "No Wake-on-LAN from network devices"
+        case .hibernateMode: return "Set hibernation mode 25, standby 0 and autopoweroff 0"
+        case .disablePowerNap: return "Set Power Nap to 0"
+        case .disableTcpKeepAlive: return "Set TCP keep-alive to 0; may affect Find My"
+        case .disableProximityWake: return "Set proximity wake to 0"
+        case .disableNetworkWake: return "Set Wake-on-LAN to 0"
         }
     }
 

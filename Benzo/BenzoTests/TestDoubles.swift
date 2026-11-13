@@ -1,65 +1,11 @@
 import Foundation
 
-final class FakeCommandRunner: CommandRunning {
-    struct Call {
-        let executable: String
-        let arguments: [String]
-        let privileged: Bool
-    }
-
-    var calls: [Call] = []
-    var error: Error?
-    var output = "hibernatemode 3\nstandby 1"
-
-    func runDirect(_ executable: String, _ arguments: [String]) throws -> String {
-        calls.append(Call(executable: executable, arguments: arguments, privileged: false))
-        if let error { throw error }
-        return output
-    }
-
-    func runDirectWithSudo(_ executable: String, _ arguments: [String]) throws {
-        calls.append(Call(executable: executable, arguments: arguments, privileged: true))
-        if let error { throw error }
-    }
-}
-
-final class FakeBackupStore: BackupStoring {
-    var accesses = 0
-    var evidenceChecks = 0
-    var evidence: BackupEvidencePresence = .present
-    var backup = OriginalSettingsBackup(values: ["hibernatemode": "3"], capturedAt: Date(timeIntervalSince1970: 0))
-
-    func evidencePresence() -> BackupEvidencePresence {
-        evidenceChecks += 1
-        return evidence
-    }
-
-    func hasBackup() -> Bool {
-        accesses += 1
-        return true
-    }
-
-    func save(_ state: PMSetState) throws {
-        accesses += 1
-        backup = OriginalSettingsBackup(values: state.values, capturedAt: Date(timeIntervalSince1970: 0))
-    }
-
-    func load() throws -> OriginalSettingsBackup {
-        accesses += 1
-        return backup
-    }
-}
-
 final class FakePreferences: PreferenceStoring {
     var values: [String: Any] = [:]
     var writes: [String] = []
-
     func bool(forKey key: String) -> Bool { values[key] as? Bool ?? false }
     func dictionary(forKey key: String) -> [String: Any]? { values[key] as? [String: Any] }
-    func set(_ value: Any?, forKey key: String) {
-        writes.append(key)
-        values[key] = value
-    }
+    func set(_ value: Any?, forKey key: String) { writes.append(key); values[key] = value }
 }
 
 final class FakeClock: BenzoClock {
@@ -70,41 +16,140 @@ final class FakeLoginItem: LoginItemClient {
     var isEnabled = false
     var calls: [String] = []
     var error: Error?
+    func register() throws { calls.append("register"); if let error { throw error } }
+    func unregister() throws { calls.append("unregister"); if let error { throw error } }
+}
 
-    func register() throws {
+@MainActor
+final class FakeHelperSetup: HelperSetupClient {
+    var readiness: HelperReadiness = .ready
+    var registrationResult: HelperReadiness = .requiresApproval
+    var authorizationResult: HelperReadiness = .ready
+    var replacementResult: HelperReadiness = .ready
+    var removalResult: HelperReadiness = .notInstalled
+    var error: Error?
+    var calls: [String] = []
+    var refreshHandler: (() async -> HelperReadiness)?
+    var replacementHandler: (() async throws -> HelperReadiness)?
+    var removalHandler: (() async throws -> HelperReadiness)?
+    func refresh() async -> HelperReadiness {
+        calls.append("refresh")
+        return await refreshHandler?() ?? readiness
+    }
+    func register() async throws -> HelperReadiness {
         calls.append("register")
         if let error { throw error }
+        readiness = registrationResult
+        return readiness
     }
-
-    func unregister() throws {
-        calls.append("unregister")
+    func authorizeCurrentAccount() async throws -> HelperReadiness {
+        calls.append("authorize")
         if let error { throw error }
+        readiness = authorizationResult
+        return readiness
+    }
+    func replace() async throws -> HelperReadiness {
+        calls.append("replace")
+        if let error { throw error }
+        if let replacementHandler {
+            readiness = try await replacementHandler()
+            return readiness
+        }
+        readiness = replacementResult
+        return readiness
+    }
+    func remove() async throws -> HelperReadiness {
+        calls.append("remove")
+        if let error { throw error }
+        if let removalHandler {
+            readiness = try await removalHandler()
+            return readiness
+        }
+        readiness = removalResult
+        return readiness
+    }
+    func openApprovalSettings() { calls.append("openSettings") }
+}
+
+final class IntegrationRecoveryStore: RecoveryStoring {
+    var journal: RecoveryJournal?
+    var fence: ExecutionFence?
+    var receipt: RecoveryJournal?
+    var legacy: Data?
+    var error: Error?
+    var lockCalls = 0
+    var journalCommits = 0
+    func acquireLock() throws { lockCalls += 1; if let error { throw error } }
+    func loadJournal() throws -> RecoveryJournal? { if let error { throw error }; return journal }
+    func commitJournal(_ journal: RecoveryJournal) throws {
+        if let error { throw error }
+        self.journal = journal
+        journalCommits += 1
+    }
+    func saveResolvedReceipt(_ journal: RecoveryJournal) throws { if let error { throw error }; receipt = journal }
+    func loadFence() throws -> ExecutionFence? { if let error { throw error }; return fence }
+    func commitFence(_ fence: ExecutionFence) throws { if let error { throw error }; self.fence = fence }
+    func loadLegacyEvidence() throws -> Data? { if let error { throw error }; return legacy }
+}
+
+final class IntegrationRecoveryTransport: RecoveryCommanding {
+    struct Write: Equatable { let cell: ManagedCell; let value: Int }
+    var writes: [Write] = []
+    var captureCalls = 0
+    var captureError: Error?
+    var beforeCapture: (() async throws -> Void)?
+    var writeOutcome: RecoveryWriteOutcome = .completed(status: 0)
+    var values: [String: Int] = ["hibernatemode": 3, "standby": 1, "autopoweroff": 1,
+                                "powernap": 1, "tcpkeepalive": 1, "proximitywake": 1, "womp": 1]
+    func capture() async throws -> ProfileSnapshot {
+        captureCalls += 1
+        try await beforeCapture?()
+        if let captureError { throw captureError }
+        let raw = "AC Power:\n" + values.keys.sorted().map { " \($0) \(values[$0]!)" }.joined(separator: "\n")
+        return try ProfileSnapshot(parsing: raw)
+    }
+    func preflightWrite() async throws {}
+    func write(cell: ManagedCell, value: Int, expectedValue: Int, operationID: UUID, bootID: String) async -> RecoveryWriteOutcome {
+        writes.append(Write(cell: cell, value: value))
+        if case .completed(status: 0) = writeOutcome { values[cell.key.rawValue] = value }
+        return writeOutcome
     }
 }
 
-/// In-memory boundaries only. No live factory, app host, standard preferences, real
-/// timers/queues, process execution, ServiceManagement, or application termination.
+/// In-memory boundaries only. Never selects a live adapter, standard preferences,
+/// process execution, ServiceManagement, or actual application termination.
+@MainActor
 final class FakeDependencies {
-    let commands = FakeCommandRunner()
-    let backup = FakeBackupStore()
+    let store = IntegrationRecoveryStore()
+    let transport = IntegrationRecoveryTransport()
     let preferences = FakePreferences()
     let login = FakeLoginItem()
+    let helperSetup = FakeHelperSetup()
     var permissionObservation: PermissionObservation = .noLegacyRule
     var permissionObservations = 0
     var diagnosticCalls = 0
     var terminationCalls = 0
-    var mainQueue: [() -> Void] = []
+    var mainQueue: [@MainActor () -> Void] = []
     var backgroundQueue: [() async -> Void] = []
     var sleepResult: Result<SleepReadPayload, DiagnosticReadError> = .success(SleepReadPayload(sessions: [], lastWakeReason: nil))
     var usbResult: Result<[USBDevice], DiagnosticReadError> = .success([])
     var settingsResult: Result<[ObservedSetting], DiagnosticReadError> = .success([])
+    private(set) var coordinator: OperationCoordinator!
 
-    func makeViewModel(startupPolicy: BenzoStartupPolicy = .manual, backupStore: (any BackupStoring)? = nil) -> BenzoViewModel {
+    func makeViewModel(startupPolicy: BenzoStartupPolicy = .manual) -> BenzoViewModel {
+        coordinator = OperationCoordinator(
+            store: store, transport: transport, uid: 501,
+            hostID: "99999999-9999-4999-8999-999999999999",
+            bootID: { "11111111-1111-4111-8111-111111111111" },
+            now: { Date(timeIntervalSince1970: 1_700_000_000) },
+            legacyActive: { self.preferences.bool(forKey: BenzoPreferenceKey.isActive) },
+            legacyRule: { self.permissionObservation }
+        )
         let dependencies = BenzoDependencies(
-            commands: commands,
-            backup: backupStore ?? backup,
+            coordinator: coordinator,
             preferences: preferences,
             loginItem: login,
+            helperSetup: helperSetup,
             observePermission: { self.permissionObservations += 1; return self.permissionObservation },
             fetchSleepData: { self.diagnosticCalls += 1; return self.sleepResult },
             fetchUSBDevices: { self.diagnosticCalls += 1; return self.usbResult },
@@ -121,7 +166,6 @@ final class FakeDependencies {
         backgroundQueue = []
         for work in pending { await work() }
     }
-
     func runMainQueue() {
         let pending = mainQueue
         mainQueue = []
@@ -129,13 +173,25 @@ final class FakeDependencies {
     }
 }
 
-/// Supplies captured bytes only; never launches a process.
 final class FakeReadCommandRunner: ReadCommandRunning {
     var calls: [ReadCommand] = []
     var outcome = CommandOutcome(stdout: Data(), stderr: Data(), termination: .exited(0), outputComplete: true, outputTruncated: false, directChildStopped: true)
+    func run(_ command: ReadCommand) async -> CommandOutcome { calls.append(command); return outcome }
+}
 
-    func run(_ command: ReadCommand) async -> CommandOutcome {
-        calls.append(command)
-        return outcome
-    }
+/// GitHub metadata only. No network, credentials, app launch or privileged boundaries.
+func releaseFixture(_ overrides: [String: Any] = [:]) throws -> Data {
+    var release: [String: Any] = [
+        "tag_name": "v0.10.0", "draft": false, "prerelease": false,
+        "published_at": "2026-11-04T12:00:00Z",
+        "html_url": "https://attacker.invalid/not-used",
+        "assets": [["name": "Benzo-0.10.0.dmg", "state": "uploaded", "size": 624510]],
+    ]
+    release.merge(overrides) { _, new in new }
+    return try JSONSerialization.data(withJSONObject: release)
+}
+
+func releaseResponse(status: Int = 200) -> HTTPURLResponse {
+    HTTPURLResponse(url: URL(string: "https://api.github.com/repos/chrisrogers37/benzo/releases/latest")!,
+                    statusCode: status, httpVersion: nil, headerFields: nil)!
 }

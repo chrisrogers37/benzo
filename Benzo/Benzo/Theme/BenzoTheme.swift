@@ -2,12 +2,16 @@ import SwiftUI
 
 enum BenzoTheme {
     static let accent = Color(hex: "d4749c")
+    static let accentControl = Color(hex: "a54370")
     static let accentSoft = Color(hex: "d4749c").opacity(0.08)
     static let background = Color(hex: "f6f5f3")
     static let surface = Color.white
     static let text = Color(hex: "1a1a1a")
-    static let textMuted = Color(hex: "999999")
-    static let textFaint = Color(hex: "cccccc")
+    static let textMuted = Color(hex: "666666")
+    static let textFaint = Color(hex: "707070")
+    static let controlBorder = Color(hex: "767676")
+    static let positiveText = Color(hex: "23752f")
+    static let errorText = Color(hex: "b42318")
     static let border = Color.black.opacity(0.06)
 }
 

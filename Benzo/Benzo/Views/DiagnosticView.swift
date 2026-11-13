@@ -1,12 +1,24 @@
 import SwiftUI
+import AppKit
 
 struct DiagnosticView: View {
     @ObservedObject var viewModel: BenzoViewModel
+    let maximumContentHeight: () -> CGFloat
     let onBack: () -> Void
+    @FocusState private var backFocused: Bool
+    @AccessibilityFocusState private var backAccessibilityFocused: Bool
+    @State private var scrollMarker = NSView(frame: .zero)
+    @State private var heightLimit: CGFloat = 600
+    @State private var headerHeight: CGFloat = 0
 
     var body: some View {
         VStack(spacing: 0) {
             header
+                .background {
+                    GeometryReader { geometry in
+                        Color.clear.preference(key: DiagnosticHeaderHeightKey.self, value: geometry.size.height)
+                    }
+                }
             ScrollView {
                 VStack(spacing: 0) {
                     sleepSessionsPanel
@@ -14,13 +26,63 @@ struct DiagnosticView: View {
                     usbDevicesPanel
                     observedSettingsPanel
                 }
+                .background {
+                    DiagnosticScrollMarker(view: scrollMarker)
+                        .frame(width: 0, height: 0)
+                        .accessibilityHidden(true)
+                }
             }
-            .frame(maxHeight: 400)
+            .frame(maxHeight: min(400, max(0, heightLimit - headerHeight)))
+            .focusable()
+            .accessibilityLabel("Diagnostic results")
+            .onMoveCommand { direction in
+                switch direction {
+                case .up: scrollDiagnostics(down: false)
+                case .down: scrollDiagnostics(down: true)
+                default: break
+                }
+            }
+            .onCommand(#selector(NSResponder.scrollPageUp(_:))) {
+                scrollDiagnostics(down: false, page: true)
+            }
+            .onCommand(#selector(NSResponder.scrollPageDown(_:))) {
+                scrollDiagnostics(down: true, page: true)
+            }
+            .onCommand(#selector(NSResponder.pageUp(_:))) {
+                scrollDiagnostics(down: false, page: true)
+            }
+            .onCommand(#selector(NSResponder.pageDown(_:))) {
+                scrollDiagnostics(down: true, page: true)
+            }
         }
         .frame(width: 320)
         .fixedSize(horizontal: false, vertical: true)
         .background(BenzoTheme.surface)
-        .onAppear { viewModel.loadDiagnostics() }
+        .onPreferenceChange(DiagnosticHeaderHeightKey.self) { headerHeight = $0 }
+        .onReceive(NotificationCenter.default.publisher(for: NSApplication.didChangeScreenParametersNotification)) { _ in
+            heightLimit = maximumContentHeight()
+        }
+        .onAppear {
+            heightLimit = maximumContentHeight()
+            viewModel.loadDiagnostics()
+            backFocused = true
+            backAccessibilityFocused = true
+        }
+    }
+
+    private func scrollDiagnostics(down: Bool, page: Bool = false) {
+        guard let scroll = scrollMarker.enclosingScrollView,
+              let document = scroll.documentView else { return }
+        let clip = scroll.contentView
+        let line = max(scroll.verticalLineScroll, 1)
+        let distance = page ? max(clip.bounds.height - scroll.verticalPageScroll, line) : line
+        let direction: CGFloat = (down == document.isFlipped) ? 1 : -1
+        var proposed = clip.bounds
+        proposed.origin.y += direction * distance
+        // The hosted scroll view did not move for the standard responder scroll actions.
+        // Constrain the clip bounds so short content and either document orientation stay valid.
+        clip.scroll(to: clip.constrainBoundsRect(proposed).origin)
+        scroll.reflectScrolledClipView(clip)
     }
 
     // MARK: - Header
@@ -34,15 +96,24 @@ struct DiagnosticView: View {
                     Text("Back")
                         .font(.system(size: 11, weight: .medium))
                 }
-                .foregroundColor(BenzoTheme.accent)
+                .foregroundColor(BenzoTheme.accentControl)
             }
             .buttonStyle(.plain)
+            .focused($backFocused)
+            .accessibilityFocused($backAccessibilityFocused)
+            .overlay {
+                RoundedRectangle(cornerRadius: 3)
+                    .stroke(backFocused ? BenzoTheme.accentControl : .clear, lineWidth: 2)
+                    .padding(-3)
+                    .allowsHitTesting(false)
+            }
 
             Spacer()
 
             Text("Diagnostics")
                 .font(.system(size: 13, weight: .semibold))
                 .foregroundColor(BenzoTheme.text)
+                .accessibilityAddTraits(.isHeader)
 
             Spacer()
 
@@ -54,6 +125,7 @@ struct DiagnosticView: View {
                     .font(.system(size: 11, weight: .medium))
             }
             .opacity(0)
+            .accessibilityHidden(true)
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 12)
@@ -107,7 +179,7 @@ struct DiagnosticView: View {
                     let delta = session.batteryDelta ?? 0
                     Text("\(s)% → \(w)% (\(delta > 0 ? "+" : "")\(delta)%)")
                         .font(.system(size: 10, design: .monospaced))
-                        .foregroundColor(delta == 0 ? Color.green : BenzoTheme.textMuted)
+                        .foregroundColor(delta == 0 ? BenzoTheme.positiveText : BenzoTheme.textMuted)
                 }
 
                 if session.wakeReason != nil {
@@ -162,16 +234,17 @@ struct DiagnosticView: View {
                     emptyRow("No USB devices reported")
                 } else {
                     ForEach(devices) { device in
-                        HStack {
+                        HStack(alignment: .top) {
                             Text(device.name)
                                 .font(.system(size: 11, weight: .medium))
                                 .foregroundColor(BenzoTheme.text)
-                                .lineLimit(1)
+                                .fixedSize(horizontal: false, vertical: true)
                             Spacer()
                             if let power = device.busPowerUsed {
                                 Text("\(power) mA")
                                     .font(.system(size: 10, design: .monospaced))
                                     .foregroundColor(BenzoTheme.textMuted)
+                                    .fixedSize()
                             }
                         }
                         .padding(.horizontal, 16)
@@ -275,4 +348,17 @@ struct DiagnosticView: View {
         if reason.contains("Notification") { return "bell" }
         return "questionmark.circle"
     }
+}
+
+private struct DiagnosticHeaderHeightKey: PreferenceKey {
+    static let defaultValue: CGFloat = 0
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) { value = max(value, nextValue()) }
+}
+
+// Resolve the existing scroll view from its content rather than replacing its layout.
+private struct DiagnosticScrollMarker: NSViewRepresentable {
+    let view: NSView
+
+    func makeNSView(context: Context) -> NSView { view }
+    func updateNSView(_ nsView: NSView, context: Context) {}
 }

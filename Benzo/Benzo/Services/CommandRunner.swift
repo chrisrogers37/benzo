@@ -46,17 +46,24 @@ struct CommandRequest: Equatable, Sendable {
     let timeout: TimeInterval
     let maximumOutputBytes: Int
     let finalizationReserve: TimeInterval
+    let standardInput: Data?
+    let environment: [String: String]?
 
-    init(executable: String, arguments: [String], timeout: TimeInterval, maximumOutputBytes: Int, finalizationReserve: TimeInterval = 0.5) {
+    init(executable: String, arguments: [String], timeout: TimeInterval, maximumOutputBytes: Int,
+         finalizationReserve: TimeInterval = 0.5, standardInput: Data? = nil,
+         environment: [String: String]? = nil) {
         precondition(executable.hasPrefix("/"))
         precondition(timeout.isFinite && timeout > 0)
         precondition(finalizationReserve.isFinite && finalizationReserve > 0 && finalizationReserve < timeout)
         precondition(maximumOutputBytes >= 0)
+        precondition((standardInput?.count ?? 0) <= 4_096)
         self.executable = executable
         self.arguments = arguments
         self.timeout = timeout
         self.maximumOutputBytes = maximumOutputBytes
         self.finalizationReserve = finalizationReserve
+        self.standardInput = standardInput
+        self.environment = environment
     }
 }
 
@@ -90,6 +97,7 @@ private final class ReadExecution: @unchecked Sendable {
     private var continuation: CheckedContinuation<CommandOutcome, Never>?
     private var stdoutPipe: Pipe?
     private var stderrPipe: Pipe?
+    private var stdinPipe: Pipe?
     private var stdoutSource: DispatchSourceRead?
     private var stderrSource: DispatchSourceRead?
     private var stopTimer: DispatchSourceTimer?
@@ -158,7 +166,29 @@ private final class ReadExecution: @unchecked Sendable {
 
         process.executableURL = URL(fileURLWithPath: request.executable)
         process.arguments = request.arguments
-        process.standardInput = FileHandle.nullDevice
+        process.environment = request.environment
+        if let input = request.standardInput {
+            // The bounded payload fits in a pipe before launch. Keep its read end
+            // open until Process has inherited it; no asynchronous writer or
+            // caller-controlled file path is needed.
+            let pipe = Pipe()
+            stdinPipe = pipe
+            do {
+                try pipe.fileHandleForWriting.write(contentsOf: input)
+                try pipe.fileHandleForWriting.close()
+                process.standardInput = pipe
+            } catch {
+                try? pipe.fileHandleForWriting.close()
+                try? pipe.fileHandleForReading.close()
+                try? stdoutPipe.fileHandleForWriting.close()
+                try? stderrPipe.fileHandleForWriting.close()
+                stopReason = .launchFailed("The bounded command input could not be prepared.")
+                finish()
+                return
+            }
+        } else {
+            process.standardInput = FileHandle.nullDevice
+        }
         process.standardOutput = stdoutPipe
         process.standardError = stderrPipe
         process.terminationHandler = { [weak self] process in
@@ -189,6 +219,8 @@ private final class ReadExecution: @unchecked Sendable {
             }
             self.queue.async {
                 self.launchResolved = true
+                try? self.stdinPipe?.fileHandleForReading.close()
+                self.stdinPipe = nil
                 try? stdoutPipe.fileHandleForWriting.close()
                 try? stderrPipe.fileHandleForWriting.close()
                 if let failure {

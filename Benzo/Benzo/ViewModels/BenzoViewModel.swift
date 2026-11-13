@@ -1,138 +1,244 @@
 import Combine
 import Foundation
 
+@MainActor
 final class BenzoViewModel: ObservableObject {
-    static let sleepUnavailableReason = "Sleep Now is unavailable while recovery controls are being updated."
+    static let sleepUnavailableReason = "Sleep Now is unavailable for this manual apply-and-restore workflow."
     static let selectionEditBlockedReason = "Resolve the current session or recovery before changing settings."
+    static let helperAccessRequiredReason = "Power access is needed to change settings. Open Power Access to complete setup."
+    static let helperRecoveryReason = "Settings may still be changed. Power access is needed to restore them. Your recovery record is retained."
+    static let helperReplacementBlockedReason = "Restore or resolve the current settings session before repairing or updating power access. If needed, use the previous Benzo release to restore settings."
+    static let helperRemovalBlockedReason = "Restore or resolve the current settings session before removing power access. Your account and recovery records will be retained."
+    static let helperSetupInProgressReason = "Finish power access setup before changing settings or quitting Benzo."
+    static let quitInProgressReason = "Benzo is preparing to quit. Wait for restoration to finish."
 
-    @Published var isActive: Bool {
-        didSet { dependencies.preferences.set(isActive, forKey: BenzoPreferenceKey.isActive) }
-    }
-    @Published private(set) var settingStates: [SleepSetting: Bool] {
-        didSet { persistSettingStates() }
-    }
-    @Published var launchAtLogin: Bool = false {
+    @Published private(set) var controlState: ControlState = .checking
+    @Published private(set) var conflicts: [RecoveryConflict] = []
+    @Published private(set) var unavailableSettings: [SleepSetting: String] = [:]
+    @Published private(set) var executionUncertain = false
+    @Published private(set) var hasSession = false
+    @Published private(set) var frozenSettings: [SleepSetting]?
+    @Published private(set) var capturedAt: Date?
+    @Published private(set) var settingStates: [SleepSetting: Bool]
+    @Published var launchAtLogin = false {
         didSet {
             guard isInitialized else { return }
+            guard !isPreparingToQuit else {
+                // @Published reenters didSet on assignment; suppress that nested
+                // observer while putting the displayed preference back.
+                isInitialized = false
+                launchAtLogin = oldValue
+                isInitialized = true
+                return
+            }
             updateLaunchAtLogin()
         }
     }
-    @Published private(set) var permissionObservation: PermissionObservation = .unknown("Not checked")
-    @Published var showPermissionStatus = true
+    @Published private(set) var helperReadiness: HelperReadiness = .checking
+    @Published private(set) var isRefreshingHelper = false
+    @Published private(set) var isPerformingHelperSetup = false
+    @Published private(set) var isPreparingToQuit = false
+    @Published private(set) var helperSetupError: String?
+    @Published var showHelperSetup = false
     @Published var errorMessage: String?
 
-    // Diagnostics
     @Published var showDiagnostics = false
     @Published private(set) var sleepData: DiagnosticState<SleepReadPayload> = .idle
     @Published private(set) var usbDevices: DiagnosticState<[USBDevice]> = .idle
     @Published private(set) var observedSettings: DiagnosticState<[ObservedSetting]> = .idle
     private var diagnosticGeneration = 0
-
-    var isLoadingDiagnostics: Bool {
-        sleepData.isLoading || usbDevices.isLoading || observedSettings.isLoading
-    }
-
-    var onStateChange: ((Bool) -> Void)?
+    private var refreshHelperAgain = false
     private var isInitialized = false
     private let dependencies: BenzoDependencies
-    private let pmset: PMSetService
+    private(set) var startupTask: Task<Void, Never>?
+    var onStateChange: ((ControlState) -> Void)?
 
     init(dependencies: BenzoDependencies, startupPolicy: BenzoStartupPolicy) {
         self.dependencies = dependencies
-        self.pmset = PMSetService(runner: dependencies.commands)
-        let savedActive = dependencies.preferences.bool(forKey: BenzoPreferenceKey.isActive)
-
-        if let data = dependencies.preferences.dictionary(forKey: BenzoPreferenceKey.settingStates) as? [String: Bool] {
-            var states: [SleepSetting: Bool] = [:]
-            for setting in SleepSetting.allCases {
-                states[setting] = data[setting.rawValue] ?? setting.defaultEnabled
-            }
-            self.settingStates = states
-        } else {
-            var states: [SleepSetting: Bool] = [:]
-            for setting in SleepSetting.allCases {
-                states[setting] = setting.defaultEnabled
-            }
-            self.settingStates = states
-        }
-
-        self.isActive = savedActive
-
-        self.launchAtLogin = dependencies.loginItem.isEnabled
-        self.isInitialized = true
-
+        let saved = dependencies.preferences.dictionary(forKey: BenzoPreferenceKey.settingStates) as? [String: Bool]
+        settingStates = Dictionary(uniqueKeysWithValues: SleepSetting.allCases.map {
+            ($0, saved?[$0.rawValue] ?? $0.defaultEnabled)
+        })
+        launchAtLogin = dependencies.loginItem.isEnabled
+        isInitialized = true
+        dependencies.coordinator.onChange = { [weak self] in self?.publishControlState() }
+        publishControlState()
         if startupPolicy == .automatic {
-            refreshPermissionObservation()
+            startupTask = Task { [weak self] in await self?.reconcile() }
         }
     }
 
-    func refreshPermissionObservation() {
-        permissionObservation = dependencies.observePermission()
+    var isActive: Bool { controlState.isActive }
+    var isLoadingDiagnostics: Bool { sleepData.isLoading || usbDevices.isLoading || observedSettings.isLoading }
+    var isSelectionEditBlocked: Bool { controlState != .off || isPreparingToQuit }
+    var activeCount: Int { frozenSettings?.count ?? selectedSettings.count }
+    var hasHelperAccess: Bool { helperReadiness == .ready && !isPerformingHelperSetup && !isPreparingToQuit }
+    var canToggleMaster: Bool { hasHelperAccess && ((controlState == .off && activeCount > 0) || isActive) }
+    var canRestore: Bool { hasHelperAccess && hasSession && !controlState.isBusy && !executionUncertain && conflicts.isEmpty }
+    var canReplaceHelper: Bool {
+        helperReadiness.supportsRepair && canChangeHelperInstallation
+    }
+    var canRemoveHelper: Bool {
+        (helperReadiness == .ready || helperReadiness == .unavailable(.incompatible)) && canChangeHelperInstallation
+    }
+    private var canChangeHelperInstallation: Bool {
+        controlState == .off && !hasSession &&
+            !executionUncertain && !isPerformingHelperSetup && !isRefreshingHelper && !isPreparingToQuit
     }
 
-    var activeCount: Int {
-        settingStates.values.filter { $0 }.count
+    // Eligibility is observed before a session is admitted. Stored choices are not proof of support.
+    private var selectedSettings: [SleepSetting] {
+        SleepSetting.allCases.filter { settingStates[$0] == true && unavailableSettings[$0] == nil }
     }
 
-    var isSelectionEditBlocked: Bool {
-        dependencies.backup.evidencePresence() != .absent
+    func isSelected(_ setting: SleepSetting) -> Bool {
+        if let frozenSettings { return frozenSettings.contains(setting) }
+        return settingStates[setting] == true && unavailableSettings[setting] == nil
     }
 
-    func toggleMaster() {
-        if isActive {
-            deactivate()
-        } else {
-            activate()
+    func refreshHelperReadiness() async {
+        if isRefreshingHelper {
+            refreshHelperAgain = true
+            return
         }
+        isRefreshingHelper = true
+        defer { isRefreshingHelper = false }
+        // Keep the previous observation visible while refreshing. The write
+        // transport independently checks authority at admission. If an operation
+        // settles during the read, check again after the older response arrives.
+        repeat {
+            refreshHelperAgain = false
+            helperReadiness = await dependencies.helperSetup.refresh()
+        } while refreshHelperAgain
+    }
+
+    func registerHelper() async {
+        guard helperReadiness == .notInstalled || helperReadiness == .requiresApproval else { return }
+        await performHelperSetup { try await self.dependencies.helperSetup.register() }
+    }
+
+    func authorizeCurrentAccount() async {
+        guard helperReadiness == .needsOwnerAuthorization else { return }
+        await performHelperSetup { try await self.dependencies.helperSetup.authorizeCurrentAccount() }
+    }
+
+    func replaceHelper() async {
+        guard canReplaceHelper else { return }
+        await performHelperSetup { try await self.dependencies.helperSetup.replace() }
+    }
+
+    func removeHelper() async {
+        guard canRemoveHelper else { return }
+        await performHelperSetup { try await self.dependencies.helperSetup.remove() }
+    }
+
+    func openHelperApprovalSettings() {
+        guard helperReadiness == .requiresApproval, !isPerformingHelperSetup, !isPreparingToQuit else { return }
+        dependencies.helperSetup.openApprovalSettings()
+    }
+
+    private func performHelperSetup(_ action: () async throws -> HelperReadiness) async {
+        guard !isPerformingHelperSetup, !isRefreshingHelper, !isPreparingToQuit else { return }
+        isPerformingHelperSetup = true
+        helperSetupError = nil
+        defer { isPerformingHelperSetup = false }
+        do { _ = try await action() }
+        catch { helperSetupError = error.localizedDescription }
+        // Setup returning successfully is not evidence that power access is ready.
+        await refreshHelperReadiness()
+    }
+
+    func reconcile() async {
+        await dependencies.coordinator.reconcile()
+        await refreshHelperReadiness()
+    }
+
+    private func requireHelperAccess() -> Bool {
+        guard !isPreparingToQuit else {
+            errorMessage = Self.quitInProgressReason
+            return false
+        }
+        guard !isPerformingHelperSetup else {
+            errorMessage = Self.helperSetupInProgressReason
+            return false
+        }
+        guard hasHelperAccess else {
+            errorMessage = hasSession ? Self.helperRecoveryReason : Self.helperAccessRequiredReason
+            return false
+        }
+        return true
+    }
+
+    func toggleMaster() async {
+        errorMessage = nil
+        guard requireHelperAccess() else { return }
+        if isActive { await dependencies.coordinator.restore() }
+        else if controlState == .off { await dependencies.coordinator.apply(settings: selectedSettings) }
+        await refreshHelperReadiness()
     }
 
     func toggleSetting(_ setting: SleepSetting) {
-        guard !isActive, !isSelectionEditBlocked else {
+        guard !isPreparingToQuit else { errorMessage = Self.quitInProgressReason; return }
+        guard dependencies.coordinator.mayEditSelections() else {
             errorMessage = Self.selectionEditBlockedReason
             return
         }
-        settingStates[setting]?.toggle()
-    }
-
-    func revertToDefaults() {
-        guard let backup = try? dependencies.backup.load() else {
-            errorMessage = "Nothing to revert — activate Benzo first."
+        guard unavailableSettings[setting] == nil else {
+            errorMessage = unavailableSettings[setting]
             return
         }
-        do {
-            try pmset.restoreValues(backup)
-            isActive = false
-            onStateChange?(false)
-            errorMessage = nil
-        } catch ShellError.userCancelled {
-            // Don't change state
-        } catch {
-            errorMessage = error.localizedDescription
+        settingStates[setting] = !(settingStates[setting] ?? false)
+        dependencies.preferences.set(Dictionary(uniqueKeysWithValues: settingStates.map { ($0.key.rawValue, $0.value) }),
+                                     forKey: BenzoPreferenceKey.settingStates)
+        errorMessage = nil
+    }
+
+    func revertToDefaults() async {
+        guard !isPreparingToQuit else { errorMessage = Self.quitInProgressReason; return }
+        errorMessage = nil
+        guard !hasSession || requireHelperAccess() else { return }
+        await dependencies.coordinator.restore()
+        await refreshHelperReadiness()
+    }
+
+    func resolveConflict(_ conflict: RecoveryConflict, choice: ConflictChoice) async {
+        guard !isPreparingToQuit else { errorMessage = Self.quitInProgressReason; return }
+        if choice == .restoreOriginal, !requireHelperAccess() { return }
+        await dependencies.coordinator.resolveConflict(conflict.cell, choice: choice)
+        await refreshHelperReadiness()
+    }
+
+    func prepareToQuit() async -> Bool {
+        guard !isPreparingToQuit else { return false }
+        guard !isPerformingHelperSetup else {
+            errorMessage = Self.helperSetupInProgressReason
+            return false
         }
-    }
-
-    func quit() {
-        if isActive, let backup = try? dependencies.backup.load() {
-            try? pmset.restoreValues(backup)
+        // An operation already in flight remains owned by the coordinator.
+        if !controlState.isBusy && hasSession && !requireHelperAccess() { return false }
+        // Keep admission closed after the coordinator restores Off, through the
+        // AppKit termination reply. A new apply or helper lifecycle action must
+        // never race a successful quit decision across an actor suspension.
+        isPreparingToQuit = true
+        let mayQuit = await dependencies.coordinator.prepareToQuit()
+        if !mayQuit {
+            await refreshHelperReadiness()
+            isPreparingToQuit = false
         }
-        dependencies.terminate()
+        return mayQuit
     }
 
-    func sleepNow() {
-        errorMessage = Self.sleepUnavailableReason
-    }
-
-    // MARK: - Diagnostics
+    // AppKit owns the terminateLater / Retry / Stay Open / Quit Anyway decision.
+    func quit() { dependencies.terminate() }
+    func sleepNow() { errorMessage = Self.sleepUnavailableReason }
 
     func loadDiagnostics() {
-        // Called by the UI; all generation and published state access stays on its main boundary.
         diagnosticGeneration += 1
         let generation = diagnosticGeneration
         sleepData = .loading
         usbDevices = .loading
         observedSettings = .loading
         let dependencies = self.dependencies
-
         dependencies.runInBackground { [weak self] in
             let result = await dependencies.fetchSleepData()
             dependencies.runOnMain {
@@ -156,62 +262,21 @@ final class BenzoViewModel: ObservableObject {
         }
     }
 
-    // MARK: - Private
-
-    private func activate() {
-        do {
-            // Backup current values on first activation
-            if !dependencies.backup.hasBackup() {
-                let state = try pmset.readCurrentState()
-                try dependencies.backup.save(state)
-            }
-
-            let enabled = SleepSetting.allCases.filter { settingStates[$0] == true }
-            try pmset.applySettings(enabled)
-            isActive = true
-            onStateChange?(true)
-            errorMessage = nil
-        } catch ShellError.userCancelled {
-            // Don't change state
-        } catch {
-            errorMessage = error.localizedDescription
-        }
-    }
-
-    private func deactivate() {
-        guard let backup = try? dependencies.backup.load() else {
-            // No backup — just toggle off visually
-            isActive = false
-            onStateChange?(false)
-            return
-        }
-        do {
-            try pmset.restoreValues(backup)
-            isActive = false
-            onStateChange?(false)
-            errorMessage = nil
-        } catch ShellError.userCancelled {
-            // Don't change state
-        } catch {
-            errorMessage = error.localizedDescription
-        }
-    }
-
-    private func persistSettingStates() {
-        var dict: [String: Bool] = [:]
-        for (setting, enabled) in settingStates {
-            dict[setting.rawValue] = enabled
-        }
-        dependencies.preferences.set(dict, forKey: BenzoPreferenceKey.settingStates)
+    private func publishControlState() {
+        controlState = dependencies.coordinator.state
+        conflicts = dependencies.coordinator.conflicts
+        unavailableSettings = dependencies.coordinator.unavailable
+        executionUncertain = dependencies.coordinator.executionUncertain
+        hasSession = dependencies.coordinator.hasSession
+        frozenSettings = dependencies.coordinator.frozenSettings
+        capturedAt = dependencies.coordinator.capturedAt
+        onStateChange?(controlState)
     }
 
     private func updateLaunchAtLogin() {
         do {
-            if launchAtLogin {
-                try dependencies.loginItem.register()
-            } else {
-                try dependencies.loginItem.unregister()
-            }
+            if launchAtLogin { try dependencies.loginItem.register() }
+            else { try dependencies.loginItem.unregister() }
         } catch {
             errorMessage = "Failed to update launch at login: \(error.localizedDescription)"
         }

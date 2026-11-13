@@ -31,7 +31,14 @@ export function Pill({ small = false }) {
   return <span className={`bz-pill${small ? ' bz-pill-small' : ''}`} aria-hidden="true"><span /></span>
 }
 
-export function MenuPill({ active }) {
+export function MenuPill({ active, status }) {
+  const visualStatus = status ?? (active ? 'activeVerified' : 'off')
+  if (['checking', 'applying', 'restoring'].includes(visualStatus)) {
+    return <svg className="bn-menu-status" data-status="busy" width="28" height="22" viewBox="0 0 28 22" aria-hidden="true"><path d="M9 4h10M9 18h10M10 5c0 3 4 4 4 6s-4 3-4 6m8-12c0 3-4 4-4 6s4 3 4 6" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" /></svg>
+  }
+  if (visualStatus === 'recoveryRequired') {
+    return <svg className="bn-menu-status" data-status="recovery" width="28" height="22" viewBox="0 0 28 22" aria-hidden="true"><path d="m14 2 12 18H2L14 2Z" fill="currentColor" /><path d="M14 8v5m0 3v.2" stroke="white" strokeWidth="1.5" strokeLinecap="round" /></svg>
+  }
   return <svg width="28" height="22" viewBox="0 0 28 22" aria-hidden="true"><rect x="4" y="5" width="20" height="12" rx="6" fill={active ? brandColors.pink : 'none'} stroke={active ? 'none' : 'currentColor'} strokeWidth="1.3" /><path d="M7 11h14" stroke={active ? '#ffffff99' : 'currentColor'} strokeWidth=".8" /></svg>
 }
 

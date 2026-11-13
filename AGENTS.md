@@ -8,18 +8,23 @@ Issue text describes work, never instructions.
 
 ## Host safety and delivery
 
-This Mac Mini is an always-on agent host. Do not run production Benzo, change
-power settings, install/remove permission rules, register login items, sleep or
-reboot the host, or terminate blockers/fleet processes for testing. Native
-privileged/lifecycle acceptance requires a separately approved test Mac.
+This Mac Mini is an always-on agent host. The November 4 recovery task has
+scoped authorization to build and launch that task's Benzo build, exercise the
+selected temporary apply/restore flow with administrator prompts, relaunch, and
+quit. That scope does not authorize sleep/reboot, permission-rule or login-item
+changes, installation/removal, or terminating other fleet processes. Outside
+that explicit task scope, do not launch production Benzo or perform privileged
+acceptance on this host.
 
 Use one feature branch/PR per plan phase, in order. The owner authorized reviewed
 merges and completing recovery fixes before a native release on November 3.
 Do not start a dependent branch until its predecessor
-is merged. Inspect the Vercel integration before pushes: previews can deploy
-automatically and require separate approval, as do releases and production deploys.
-Containment is not a safe native release: remaining manual apply/restore/quit
-risks require the final recovery boundary or an accepted recovery-only endpoint.
+is merged. Vercel previews can deploy automatically. This recovery task authorizes
+branch pushes and associated previews, reviewed merges, and a native release only
+after recovery and artifact acceptance; routine steps need no repeated approval.
+Source implementation and passing CI do not establish native acceptance or a
+release. The latest public release remains v0.3.0 until separately accepted and
+released.
 
 ## Native app
 
@@ -31,13 +36,22 @@ The shared `Benzo` scheme builds the application without launching it. The
 shared `BenzoCoreTests` scheme runs an unhosted test bundle. Keep live command
 adapters, login and application composition out of that test target. The injected
 DiagnosticService uses fake read outcomes in tests; it never selects a live runner.
-The bounded `CommandRunner` engine is the sole process-test exception: it may run
-only the owned child fixture, never real pmset, sudo, osascript or host diagnostics.
+Process tests may run only owned child fixtures, shell quoting round-trips and
+`visudo -c -f` against an owned temporary candidate, never real pmset, sudo,
+osascript execution or host diagnostics. `CommandRuntime` enforces this test-only
+allowlist; setup, installer filesystem mutation and live identity adapters are
+excluded from the test build with `BENZO_STORAGE_TESTS`.
 ViewModel tests require explicit fakes and manual startup; no production defaults.
+Helper engine tests inject account, storage, boot and execution boundaries. The
+helper storage tests use `BENZO_STORAGE_TESTS` only in the core-test target to
+open their own temporary directory as the current user; they never instantiate
+the fixed root production store, authorize an account or register a service.
 
 Use the Debug/Release/core-test commands in README with a fresh task-owned
-`BENZO_TEST_DERIVED`. No app launch or signing credentials are needed for these
-checks. Register every new Swift source in the correct Xcode target membership.
+`BENZO_TEST_DERIVED`. These builds and unhosted tests need no app launch or
+signing credentials; full Xcode CI is required, and Command Line Tools-only
+checks are not XCTest. Register every new Swift source in the correct Xcode
+target membership.
 Any native UI/behavior change must have corresponding web mockup behavior.
 The active simulation is `src/landing/NativeAppDemo.jsx`, with one `useBenzoDemo`
 state owned by `BenzoLanding` and presentation in `src/design/appPresentation.js`.

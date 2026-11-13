@@ -1,5 +1,66 @@
 # Benzo Open Work
 
+## Complete engineering before paid enrollment — November 13, 2026
+
+Owner clarified: finish the installable app and all engineering possible without
+Apple Developer enrollment, signing credentials or notarization. Those remaining
+distribution steps must not block source integration, packaging or ordinary tests.
+This amendment integrates the existing draft work into the current recovery PR;
+it does not open another dependent phase or modify the original worktrees.
+
+- [x] Integrate manual update checker #103 and accessibility #105 with helper setup
+  and recovery, preserving their tested behavior and active browser parity.
+- [x] Adapt packaging #102 for a clearly labeled development DMG; validate both
+  executable architectures, embedded daemon/plist, signatures and bundle metadata.
+- [x] Prepare separate Developer ID signing and explicit notarization commands;
+  no credential required or Apple upload during development packaging.
+- [x] Run local web/packaging checks, independent review, full-Xcode CI and real
+  development-DMG verification. Integration checkpoint `9d963d6` passed build
+  run `43490604850` and security run `43490604908`; final artifact receipts belong
+  in PR #104 and the local pre-enrollment handoff.
+- [x] Remove the popover resize feedback loop observed in the old running app.
+  A displayed, isolated SwiftUI/AppKit probe verified 180 → 360 → 420 (cap) → 140
+  point sizing with settled frame-change counts. All app sources typecheck; the
+  final layout commit must pass CI and artifact inspection before handoff.
+- [x] Document install/setup/update/removal behavior, deferred signed acceptance,
+  and a portable continuation before the eventual separately authorized reset.
+- [x] Replace invented role entitlements with signed Info.plist markers after
+  native launch rejected the otherwise verified development artifact. Preserve
+  strict Developer ID/team/identifier admission. Parser tests, complete app/helper
+  typechecks and a fresh metadata-signed GUI canary pass. The rebuilt Benzo
+  artifact still requires final CI inspection and its own native walkthrough.
+
+No relaxed helper identity check, automatic installer, public release, service
+registration, enrollment purchase or host permission/power change is part of this
+pre-enrollment work. The final signed artifact still needs native acceptance.
+
+Review corrected a quit-admission race, guarded registration from read-only
+distribution volumes, and made failed Git provenance inspection stop packaging.
+Integration CI: 153 native tests, 120 web tests, Debug/universal Release builds,
+67 packaging fixtures and actual development-DMG construction/read-only inspection
+passed. Real Apple tools exposed two packaging assumptions: codesign needs
+explicit XML output, and hdiutil reports canonical mount paths. Both are corrected
+with regression coverage. Independent review also caught and corrected recursive
+`@Published` preference rollback before push. Native UI/VoiceOver acceptance and
+the eventual signed helper acceptance remain distinct from these checks.
+
+## Lasting helper permission — November 13, 2026
+
+- [x] Owner approved SMAppService direction and only the account completing setup
+  (artemis on this Mac); enrollment in Apple Developer Program deferred.
+- [x] Archive and remove the abandoned persistent-AppleScript prototype; retain
+  the accepted recovery baseline and historical probe results.
+- [x] Record scope, account policy and reset handoff requirements in
+  [08_helper-authorization.md](../documentation/planning/tech_debt/benzo-remediation_2026-11-02/08_helper-authorization.md).
+- [x] Implement and review authenticated helper enrollment, bounded operations,
+  root-owned admission evidence, setup UX and active web parity.
+- [x] Helper checkpoint 4f40b3b passed native/web tests, app/helper builds and security CI.
+- [x] Integrate packaging, update checker and native accessibility in PR #104.
+- [ ] Validate the signed artifact on approved hardware after credentials become
+  available; retain the pending native UI/VoiceOver walkthrough as a separate gate.
+- [ ] Verify remote source, accepted release assets and portable handoff before
+  the user's later, separately performed factory reset.
+
 ## Website trust follow-through — 2026-11-04
 
 - [x] Owner selected implementation of unowned website accessibility/trust work.

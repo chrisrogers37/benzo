@@ -4,6 +4,9 @@
 set -eu
 
 case "$1" in
+  input)
+    /bin/cat
+    ;;
   streams)
     (printf 'stdout\n'; /bin/dd if=/dev/zero bs=65536 count=32 2>/dev/null) &
     (printf 'stderr\n'; /bin/dd if=/dev/zero bs=65536 count=32 2>/dev/null) >&2 &
