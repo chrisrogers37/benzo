@@ -1,5 +1,12 @@
 # Lessons
 
+## Application roles are signed metadata, not invented entitlements
+The development artifact passed codesign verification but AMFI rejected native
+launch because of custom role entitlements. Use supported signed Info.plist
+markers with exact Developer ID/team/identifier checks for application roles.
+Do not assume a paid certificate authorizes arbitrary restricted entitlements.
+Keep artifact inspection and actual native launch as distinct acceptance gates.
+
 ## Paid enrollment is a distribution boundary, not a development stop
 The owner wants all pre-enrollment engineering completed before paying for Apple
 Developer membership. Explain when our own helper identity policy requires a

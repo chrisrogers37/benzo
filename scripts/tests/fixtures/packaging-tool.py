@@ -4,6 +4,7 @@ import json
 import os
 from pathlib import Path
 import plistlib
+import re
 import shutil
 import sys
 
@@ -39,7 +40,7 @@ def make_app(app):
         (app / 'Contents/MacOS' / name).write_text('fixture executable\n')
         (app / 'Contents/MacOS' / name).chmod(0o755)
     info = {'CFBundleIdentifier': 'com.benzo.app', 'CFBundleExecutable': 'Benzo',
-            'CFBundleShortVersionString': '0.3.0', 'CFBundleVersion': '7'}
+            'CFBundleShortVersionString': '0.3.0', 'CFBundleVersion': '7', 'BenzoHelperRole': 'client-v1'}
     if scenario == 'bundle-version': info['CFBundleShortVersionString'] = '0.2.0'
     if scenario == 'bundle-build': info['CFBundleVersion'] = '99'
     if scenario == 'bundle-id': info['CFBundleIdentifier'] = 'com.other.app'
@@ -117,19 +118,36 @@ elif tool == 'codesign':
     elif '--verify' in args:
         fail_if('bad-signature')
         if not signature_path.exists(): reject('Verification before signing')
-        if '-R' in args and ('anchor apple generic' not in value('-R') or 'TEAM123456' not in value('-R')): reject()
+        if '-R' in args:
+            requirement = value('-R')
+            if not requirement.startswith('='): reject('Inline requirement needs = prefix; otherwise codesign treats it as a file path')
+            requirement = requirement[1:]
+            arch = value('--arch')
+            expected_identifier = 'com.benzo.helper' if component == 'helper' else 'com.benzo.app'
+            actual_role = 'service-v1' if component == 'helper' else 'client-v1'
+            if scenario == component + '-role-missing-' + arch: actual_role = None
+            if scenario == component + '-role-wrong-' + arch: actual_role = 'wrong-v1'
+            marker = re.search(r'info\[BenzoHelperRole\] = "([^"]+)"', requirement)
+            if marker is None or marker.group(1) != actual_role: reject('Signing role metadata mismatch')
+            if 'info[CFBundleIdentifier] = "' + expected_identifier + '"' not in requirement: reject('Missing metadata identifier check')
+            if 'identifier "' + expected_identifier + '"' not in requirement: reject('Missing signing identifier check')
+            if mode == 'developer-id' and ('anchor apple generic' not in requirement or 'TEAM123456' not in requirement): reject('Developer ID identity constraint missing')
     elif '-dv' in args or '-d' in args:
         signature = json.loads(signature_path.read_text())
         if '--entitlements' in args:
-            entitlements = signature['entitlements']
+            entitlements = signature.get('entitlements', {})
             if scenario == 'wrong-helper-role' and component == 'helper': entitlements = {'com.benzo.helper-client': True}
             if scenario == 'extra-entitlement': entitlements['com.apple.security.get-task-allow'] = True
+            if scenario == 'malformed-entitlements':
+                print('not a plist')
+                raise SystemExit(0)
+            if not entitlements and scenario != 'empty-entitlements-plist': raise SystemExit(0)
             if '--xml' in args:
                 sys.stdout.buffer.write(plistlib.dumps(entitlements))
             else:
                 # Current codesign defaults to a human-readable abstraction,
                 # which must not pass the production plist parser.
-                print('[Dict]\n    [Key] ' + next(iter(entitlements)) + '\n    [Value]\n        [Bool] true')
+                print('[Dict]' + ''.join('\n    [Key] ' + key + '\n    [Value]\n        [Bool] true' for key in entitlements))
         else:
             identifier = signature['identifier']
             if scenario == 'wrong-helper-id' and component == 'helper': identifier = 'BenzoHelper'

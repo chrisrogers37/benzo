@@ -24,6 +24,11 @@ it does not open another dependent phase or modify the original worktrees.
   final layout commit must pass CI and artifact inspection before handoff.
 - [x] Document install/setup/update/removal behavior, deferred signed acceptance,
   and a portable continuation before the eventual separately authorized reset.
+- [x] Replace invented role entitlements with signed Info.plist markers after
+  native launch rejected the otherwise verified development artifact. Preserve
+  strict Developer ID/team/identifier admission. Parser tests, complete app/helper
+  typechecks and a fresh metadata-signed GUI canary pass. The rebuilt Benzo
+  artifact still requires final CI inspection and its own native walkthrough.
 
 No relaxed helper identity check, automatic installer, public release, service
 registration, enrollment purchase or host permission/power change is part of this

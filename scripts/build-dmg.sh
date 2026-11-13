@@ -145,7 +145,8 @@ for relative in ['Contents/Frameworks', 'Contents/PlugIns', 'Contents/XPCService
 info_path = app / 'Contents/Info.plist'
 with info_path.open('rb') as f: info = plistlib.load(f)
 for key, expected in {'CFBundleIdentifier': 'com.benzo.app', 'CFBundleExecutable': 'Benzo',
-                      'CFBundleShortVersionString': sys.argv[2], 'CFBundleVersion': sys.argv[3]}.items():
+                      'CFBundleShortVersionString': sys.argv[2], 'CFBundleVersion': sys.argv[3],
+                      'BenzoHelperRole': 'client-v1'}.items():
     require(info.get(key) == expected, 'App metadata mismatch: ' + key)
 with (app / 'Contents/Library/LaunchDaemons/com.benzo.helper.plist').open('rb') as f: launchd = plistlib.load(f)
 require(launchd == {'Label': 'com.benzo.helper', 'BundleProgram': 'Contents/MacOS/BenzoHelper',
@@ -162,42 +163,44 @@ for executable in "$app/Contents/MacOS/Benzo" "$helper"; do
     [[ "$archs" == 'arm64 x86_64' || "$archs" == 'x86_64 arm64' ]] || fail 'Both executables must contain exactly arm64 and x86_64'
 done
 check_entitlements() {
-    python3 - "$1" "$2" <<'PY'
-import plistlib, sys
-with open(sys.argv[1], 'rb') as f: actual = plistlib.load(f)
-if actual != {sys.argv[2]: True}: raise SystemExit('Unexpected signing role or additional entitlements')
+    python3 - "$1" <<'PY'
+import pathlib, plistlib, sys
+data = pathlib.Path(sys.argv[1]).read_bytes()
+# codesign emits no stdout when the signature has no entitlement blob.
+actual = plistlib.loads(data) if data else {}
+if actual != {}: raise SystemExit('Unexpected entitlements in a Benzo executable')
 PY
 }
-app_entitlements="$repo/Benzo/Benzo/Benzo.entitlements"
-helper_entitlements="$repo/Benzo/BenzoHelper/BenzoHelper.entitlements"
-check_entitlements "$app_entitlements" com.benzo.helper-client
-check_entitlements "$helper_entitlements" com.benzo.helper-service
 sign_args=(--force --options runtime)
 if [[ "$mode" == developer-id ]]; then sign_args+=(--sign "$identity" --timestamp)
 else sign_args+=(--sign - --timestamp=none); fi
-# Explicit inside-out signing preserves the two different security roles.
-(umask 022; codesign "${sign_args[@]}" --identifier com.benzo.helper --entitlements "$helper_entitlements" "$helper") > "$output/sign-helper.log" 2>&1
-(umask 022; codesign "${sign_args[@]}" --identifier com.benzo.app --entitlements "$app_entitlements" "$app") > "$output/sign-app.log" 2>&1
+# Roles are signed Info.plist metadata, not invented entitlement claims.
+# Explicit inside-out signing preserves each role without adding privileges.
+(umask 022; codesign "${sign_args[@]}" --identifier com.benzo.helper "$helper") > "$output/sign-helper.log" 2>&1
+(umask 022; codesign "${sign_args[@]}" --identifier com.benzo.app "$app") > "$output/sign-app.log" 2>&1
 for component in app helper; do
-    target="$app"; role=com.benzo.helper-client; identifier=com.benzo.app
-    if [[ "$component" == helper ]]; then target="$helper"; role=com.benzo.helper-service; identifier=com.benzo.helper; fi
+    target="$app"; role=client-v1; identifier=com.benzo.app
+    if [[ "$component" == helper ]]; then target="$helper"; role=service-v1; identifier=com.benzo.helper; fi
     codesign --verify --strict --all-architectures "$target" > "$output/verify-$component.log" 2>&1
     for arch in arm64 x86_64; do
         signature="$output/signature-$component-$arch.txt"
         codesign -dv --verbose=4 --arch "$arch" "$target" > "$signature" 2>&1
         grep -qx "Identifier=$identifier" "$signature" || fail 'Signing identifier mismatch'
         codesign -d --entitlements - --xml --arch "$arch" "$target" > "$output/entitlements-$component-$arch.plist" 2>> "$output/verify-$component.log"
-        check_entitlements "$output/entitlements-$component-$arch.plist" "$role"
+        check_entitlements "$output/entitlements-$component-$arch.plist"
+        # Security.framework parses and attests the app's signed Info.plist or
+        # the helper's embedded __TEXT,__info_plist separately for each slice.
+        requirement="=identifier \"$identifier\" and info[CFBundleIdentifier] = \"$identifier\" and info[BenzoHelperRole] = \"$role\""
         if [[ "$mode" == developer-id ]]; then
             grep -q '^Authority=Developer ID Application:' "$signature" || fail 'Developer ID signature is missing'
             grep -qx "TeamIdentifier=$team" "$signature" || fail 'Signing team mismatch'
             grep -Eq '^CodeDirectory .*flags=.*\(.*runtime.*\)' "$signature" || fail 'Hardened runtime is missing'
             grep -q '^Timestamp=' "$signature" || fail 'Secure timestamp is missing'
-            requirement="anchor apple generic and certificate 1[field.1.2.840.113635.100.6.2.6] exists and certificate leaf[field.1.2.840.113635.100.6.1.13] exists and certificate leaf[subject.OU] = \"$team\" and identifier \"$identifier\""
-            codesign --verify --strict --arch "$arch" -R "$requirement" "$target" >> "$output/verify-$component.log" 2>&1
+            requirement="$requirement and anchor apple generic and certificate 1[field.1.2.840.113635.100.6.2.6] exists and certificate leaf[field.1.2.840.113635.100.6.1.13] exists and certificate leaf[subject.OU] = \"$team\""
         else
             grep -qx 'Signature=adhoc' "$signature" || fail 'Development component is not ad-hoc signed'
         fi
+        codesign --verify --strict --arch "$arch" -R "$requirement" "$target" >> "$output/verify-$component.log" 2>&1
     done
 done
 codesign --verify --deep --strict --all-architectures "$app" >> "$output/verify-app.log" 2>&1

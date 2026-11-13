@@ -2,25 +2,11 @@ import Foundation
 import OpenDirectory
 import Security
 
-enum HelperIdentityError: LocalizedError {
-    case invalidSigningIdentity
-    case invalidLocalAccount
-
-    var errorDescription: String? {
-        switch self {
-        case .invalidSigningIdentity:
-            return "Benzo needs a valid Developer ID signed build before its helper can be used."
-        case .invalidLocalAccount:
-            return "Benzo could not verify this local Mac account. Power-setting access remains unavailable."
-        }
-    }
-}
-
 /// Shared by the app and daemon. No ad-hoc or unsigned development exception is
 /// accepted by the privileged transport; tests use the pure requirement builder.
 enum HelperIdentity {
-    static let appIdentifier = "com.benzo.app"
-    static let helperIdentifier = "com.benzo.helper"
+    static let appIdentifier = HelperCodeRequirement.appIdentifier
+    static let helperIdentifier = HelperCodeRequirement.helperIdentifier
 
     /// Cache this at helper startup. Validating the dynamic code against the
     /// extracted hash prevents an old running helper from reporting a new binary
@@ -100,24 +86,8 @@ enum HelperIdentity {
         return try requirement(for: identifier, teamIdentifier: team)
     }
 
-    /// A closed vocabulary prevents requirement-language injection. Team ID is
-    /// obtained from this process's verified signature by the production caller.
     static func requirement(for identifier: String, teamIdentifier: String) throws -> String {
-        guard [appIdentifier, helperIdentifier].contains(identifier),
-              teamIdentifier.utf8.count == 10,
-              teamIdentifier.utf8.allSatisfy({ (65...90).contains($0) || (48...57).contains($0) }) else {
-            throw HelperIdentityError.invalidSigningIdentity
-        }
-        let capability = identifier == appIdentifier ? "com.benzo.helper-client" : "com.benzo.helper-service"
-        return "anchor apple generic" +
-            " and certificate 1[field.1.2.840.113635.100.6.2.6] exists" +
-            " and certificate leaf[field.1.2.840.113635.100.6.1.13] exists" +
-            " and certificate leaf[subject.OU] = \"\(teamIdentifier)\"" +
-            " and identifier \"\(identifier)\"" +
-            " and entitlement[\"\(capability)\"] exists" +
-            " and ! entitlement[\"com.apple.security.get-task-allow\"] exists" +
-            " and ! entitlement[\"com.apple.security.cs.disable-library-validation\"] exists" +
-            " and ! entitlement[\"com.apple.security.cs.allow-dyld-environment-variables\"] exists"
+        try HelperCodeRequirement.requirement(for: identifier, teamIdentifier: teamIdentifier)
     }
 
     /// The UID comes from NSXPCConnection, never from the request body. A local

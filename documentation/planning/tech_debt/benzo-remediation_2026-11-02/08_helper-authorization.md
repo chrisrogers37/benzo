@@ -88,7 +88,7 @@ Implementation and acceptance receipts will be appended here. This amendment
 does not claim that a helper is installed, permissions are granted, or a native
 release has been published.
 
-## Source review checkpoint
+## Historical helper source review checkpoint (4f40b3b)
 
 Implemented the app-bundled daemon, explicit setup/account enrollment, direct
 allowlisted pmset execution, UID plus local GeneratedUID owner binding, root-owned
@@ -121,3 +121,18 @@ apply/restore/quit remain native acceptance gates. The known contrast defects ar
 owned by PR #105 and must be integrated before release. Packaging #102 and manual
 update checker #103 are still separate integration work. No helper was installed
 or registered during source development.
+
+## Native signing correction and integrated delivery
+
+Packaging, manual updates and accessibility are now integrated into PR #104;
+`docs/release-preparation.md` records the current delivery boundary. The old
+checkpoint above is retained as historical evidence.
+
+Actual development launch exposed AMFI rejection of custom role entitlements
+even though codesign and package inspection passed. Role identification now uses
+signed Info.plist metadata (`BenzoHelperRole=client-v1` for the app and
+`service-v1` in the helper's embedded plist). Exact Developer ID certificate,
+team, identifier and hardening requirements still gate privileged communication.
+The development build cannot use the helper. Final CI and native acceptance
+receipts must identify the replacement artifact; the rejected artifact is retained
+unchanged as evidence.

@@ -59,6 +59,7 @@ import sys
 commands = [line for line in open(sys.argv[1]) if line.startswith('codesign\t') and '\t--sign\t' in line]
 assert len(commands) == 2 and '--identifier\tcom.benzo.helper' in commands[0] and '--identifier\tcom.benzo.app' in commands[1]
 assert all('\t--sign\t-\t' in line and '--timestamp=none' in line for line in commands)
+assert all('--entitlements' not in line and '--options\truntime' in line for line in commands)
 PY
 PATH="$task/bin" BENZO_FIXTURE_LOG="$case_dir/argv.log" /bin/bash "$repo/scripts/tests/validate-development-dmg.sh" "$case_dir/output" > "$case_dir/mount.log" 2>&1 || { cat "$case_dir/mount.log"; exit 1; }
 check test -f "$case_dir/output/mounted-validation.txt"
@@ -103,9 +104,20 @@ check test "$(grep -c 'notarytool.*log' "$case_dir/argv.log")" -eq 2
 check test "$(grep -c 'stapler.*validate' "$case_dir/argv.log")" -eq 2
 run_case dirty-source development dirty-source success
 check grep -qx 'Source tree: dirty' "$case_dir/output/artifact.txt"
-for scenario in git-status-failure invalid-version ambiguous-version duplicate-target bundle-version bundle-build bundle-id missing-slice helper-missing-slice helper-missing helper-symlink helper-program helper-service helper-root helper-extra-arguments extra-executable nested-code wrong-helper-id wrong-helper-role extra-entitlement bad-signature sign-failure archive-failure dmg-invalid; do
+run_case empty-entitlements-plist development empty-entitlements-plist success
+for scenario in git-status-failure invalid-version ambiguous-version duplicate-target bundle-version bundle-build bundle-id missing-slice helper-missing-slice helper-missing helper-symlink helper-program helper-service helper-root helper-extra-arguments extra-executable nested-code wrong-helper-id wrong-helper-role extra-entitlement malformed-entitlements bad-signature sign-failure archive-failure dmg-invalid; do
     run_case "$scenario" development "$scenario" failure
 done
+for component in app helper; do
+    for kind in wrong missing; do
+        for arch in arm64 x86_64; do
+            scenario="$component-role-$kind-$arch"
+            run_case "$scenario" development "$scenario" failure
+        done
+    done
+done
+run_case developer-unexpected-entitlement developer-id extra-entitlement failure
+run_case developer-wrong-helper-role developer-id helper-role-wrong-x86_64 failure
 for scenario in identity-missing wrong-team no-runtime no-timestamp; do
     run_case "$scenario" developer-id "$scenario" failure
 done

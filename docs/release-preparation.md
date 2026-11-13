@@ -57,14 +57,23 @@ Application certificate/private key, build the signed package explicitly:
 
 Replace the placeholders with the selected identity's 40 hexadecimal characters
 and 10-character team identifier. No certificate, password or private key belongs
-in the repository. The script verifies app/helper identities, role entitlements,
-both architectures, hardened runtime and secure timestamps. Signing alone does
+in the repository. The script verifies app/helper identities, signed Info.plist
+role markers, absence of unexpected entitlements, both architectures, hardened
+runtime and secure timestamps. Signing alone does
 not upload the artifact, notarize it or publish a release.
 
 This intermediate signed package is for inspection, not proof that macOS will
 approve its daemon. Apple's ServiceManagement requirements include notarization
 for apps containing LaunchDaemons; the final permission test uses the notarized
 artifact, with real macOS approval and account authorization.
+
+Application-specific roles use the signed `BenzoHelperRole` Info.plist key;
+the standalone helper embeds its plist in the executable. They are not custom
+entitlements. A native development launch exposed AMFI rejection of the earlier
+invented entitlement keys despite successful on-disk signature verification.
+The certificate, team, identifier and role requirements remain mandatory for
+privileged communication. Apple's [code requirement language](https://developer.apple.com/library/archive/documentation/Security/Conceptual/CodeSigningGuide/RequirementLang/RequirementLang.html)
+supports these signed Info.plist predicates.
 
 An individual membership is sufficient; Benzo's users do not need membership.
 The exact signing/notarization path cannot be accepted using stubbed tools or an

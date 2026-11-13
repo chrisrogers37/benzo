@@ -65,7 +65,7 @@ for name in ['Benzo', 'BenzoHelper']:
 with (app / 'Contents/Info.plist').open('rb') as f: info = plistlib.load(f)
 for key, value in {'CFBundleIdentifier': 'com.benzo.app', 'CFBundleExecutable': 'Benzo',
                    'CFBundleShortVersionString': sys.argv[3], 'CFBundleVersion': sys.argv[4],
-                   'CFBundleDisplayName': 'Benzo Development'}.items():
+                   'CFBundleDisplayName': 'Benzo Development', 'BenzoHelperRole': 'client-v1'}.items():
     require(info.get(key) == value, 'Packaged metadata differs: ' + key)
 with (app / 'Contents/Library/LaunchDaemons/com.benzo.helper.plist').open('rb') as f: launchd = plistlib.load(f)
 require(launchd == {'Label': 'com.benzo.helper', 'BundleProgram': 'Contents/MacOS/BenzoHelper',
@@ -74,8 +74,8 @@ require(launchd == {'Label': 'com.benzo.helper', 'BundleProgram': 'Contents/MacO
 PY
 app="$mount/Benzo Development.app"
 for component in app helper; do
-    target="$app"; executable="$app/Contents/MacOS/Benzo"; identifier=com.benzo.app; role=com.benzo.helper-client
-    if [[ "$component" == helper ]]; then target="$app/Contents/MacOS/BenzoHelper"; executable="$target"; identifier=com.benzo.helper; role=com.benzo.helper-service; fi
+    target="$app"; executable="$app/Contents/MacOS/Benzo"; identifier=com.benzo.app; role=client-v1
+    if [[ "$component" == helper ]]; then target="$app/Contents/MacOS/BenzoHelper"; executable="$target"; identifier=com.benzo.helper; role=service-v1; fi
     archs=$(lipo -archs "$executable")
     [[ "$archs" == 'arm64 x86_64' || "$archs" == 'x86_64 arm64' ]] || exit 1
     codesign --verify --strict --all-architectures "$target"
@@ -84,11 +84,13 @@ for component in app helper; do
         grep -qx "Identifier=$identifier" "$task/signature.txt"
         grep -qx 'Signature=adhoc' "$task/signature.txt"
         codesign -d --entitlements - --xml --arch "$arch" "$target" > "$task/entitlements.plist" 2> "$task/entitlements.log"
-        python3 - "$task/entitlements.plist" "$role" <<'PY'
-import plistlib, sys
-with open(sys.argv[1], 'rb') as f: entitlements = plistlib.load(f)
-if entitlements != {sys.argv[2]: True}: raise SystemExit('Packaged signing role differs')
+        python3 - "$task/entitlements.plist" <<'PY'
+import pathlib, plistlib, sys
+data = pathlib.Path(sys.argv[1]).read_bytes()
+entitlements = plistlib.loads(data) if data else {}
+if entitlements != {}: raise SystemExit('Packaged executable has unexpected entitlements')
 PY
+        codesign --verify --strict --arch "$arch" -R "=identifier \"$identifier\" and info[CFBundleIdentifier] = \"$identifier\" and info[BenzoHelperRole] = \"$role\"" "$target"
     done
 done
 codesign --verify --deep --strict --all-architectures "$app"
