@@ -69,6 +69,32 @@ check test "$(grep -c '^hdiutil.*detach' "$case_dir/argv.log")" -eq 2
 check test -f "$case_dir/output/MOUNT_VALIDATION_INCOMPLETE"
 check test ! -e "$case_dir/output/mounted-validation.txt"
 count=$((count+2))
+mkdir "$task/mount-tmp"
+ln -s "$task/mount-tmp" "$task/mount-tmp-alias"
+PATH="$task/bin" TMPDIR="$task/mount-tmp-alias" BENZO_FIXTURE_LOG="$case_dir/argv.log" \
+    /bin/bash "$repo/scripts/tests/validate-development-dmg.sh" "$case_dir/output" > "$case_dir/canonical-mount.log" 2>&1 || { cat "$case_dir/canonical-mount.log"; exit 1; }
+check test -f "$case_dir/output/mounted-validation.txt"
+count=$((count+1))
+for scenario in mounted-wrong-path mounted-duplicate mounted-extra mounted-missing; do
+    if PATH="$task/bin" BENZO_FIXTURE_LOG="$case_dir/argv.log" BENZO_FIXTURE_SCENARIO="$scenario" \
+        /bin/bash "$repo/scripts/tests/validate-development-dmg.sh" "$case_dir/output" > "$case_dir/$scenario.log" 2>&1; then check false; fi
+    check grep -q 'Unexpected mount result' "$case_dir/$scenario.log"
+    check test -s "$case_dir/output/mounted-attachment.plist"
+    check test -f "$case_dir/output/mounted-attachment.log"
+    check test -f "$case_dir/output/MOUNT_VALIDATION_INCOMPLETE"
+    check test ! -e "$case_dir/output/mounted-validation.txt"
+    count=$((count+1))
+done
+"$fixture_python" - "$case_dir/argv.log" <<'PY'
+import sys
+expected = None
+for line in open(sys.argv[1]):
+    args = line.rstrip('\n').split('\t')
+    if args[:2] == ['hdiutil', 'attach']:
+        expected = args[args.index('-mountpoint') + 1]
+    elif args[:2] == ['hdiutil', 'detach']:
+        assert args[2:] == [expected], 'Detach must use only the requested task-owned mountpoint'
+PY
 run_case signed developer-id success success
 check grep -q 'not notarized' "$case_dir/output/artifact.txt"
 run_case notarized developer-id success success --notarize --notary-profile benzo-fixture

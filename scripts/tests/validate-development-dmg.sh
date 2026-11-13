@@ -35,14 +35,20 @@ trap 'exit 143' TERM
 # Mark before attaching so even an incomplete attachment gets a bounded cleanup
 # attempt at this unique mountpoint. Never detach a discovered/global device.
 attached=true
-hdiutil attach -readonly -nobrowse -noautoopen -mountpoint "$mount" -plist "$dmg" > "$task/attachment.plist"
-python3 - "$mount" "$task/attachment.plist" "$version" "$build" <<'PY'
+# Keep the actual attachment response even when inspection fails and scratch is
+# removed, so CI preserves mount diagnostics alongside its incomplete marker.
+hdiutil attach -readonly -nobrowse -noautoopen -mountpoint "$mount" -plist "$dmg" > "$output/mounted-attachment.plist" 2> "$output/mounted-attachment.log"
+python3 - "$mount" "$output/mounted-attachment.plist" "$version" "$build" <<'PY'
 import os, pathlib, plistlib, sys
 mount = pathlib.Path(sys.argv[1])
 def require(condition, message):
     if not condition: raise SystemExit(message)
 with open(sys.argv[2], 'rb') as f: attachment = plistlib.load(f)
-require(sum(x.get('mount-point') == str(mount) for x in attachment['system-entities']) == 1, 'Unexpected mount result')
+mounted = [x['mount-point'] for x in attachment['system-entities'] if 'mount-point' in x]
+require(len(mounted) == 1 and isinstance(mounted[0], str) and pathlib.Path(mounted[0]).is_absolute(), 'Unexpected mount result')
+# hdiutil canonicalizes /var to /private/var (and other ancestor symlinks).
+# Accept only that same existing directory, never another mount or device.
+require(pathlib.Path(mounted[0]).resolve(strict=True) == mount.resolve(strict=True), 'Unexpected mount result')
 require(mount.stat().st_mode & 0o777 == 0o755, 'Mounted root must be readable by other accounts')
 require((mount / 'Applications').is_symlink() and os.readlink(mount / 'Applications') == '/Applications', 'Applications link differs')
 require('DEVELOPMENT ONLY' in (mount / 'README.txt').read_text(), 'Development disclosure is missing')

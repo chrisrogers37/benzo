@@ -171,7 +171,14 @@ elif tool == 'hdiutil':
         mount = Path(value('-mountpoint'))
         shutil.copytree(log.parent / 'dmg-tree', mount, symlinks=True, dirs_exist_ok=True)
         if scenario == 'mounted-helper-missing': (mount / 'Benzo Development.app/Contents/MacOS/BenzoHelper').unlink()
-        sys.stdout.buffer.write(plistlib.dumps({'system-entities': [{'dev-entry': '/dev/disk42s1', 'mount-point': str(mount)}]}))
+        # Real hdiutil reports canonical paths and unmounted container entities.
+        mounted = {'dev-entry': '/dev/disk42s1', 'mount-point': str(mount.resolve(strict=True))}
+        entities = [{'dev-entry': '/dev/disk42', 'potentially-mountable': False}, mounted]
+        if scenario == 'mounted-wrong-path': mounted['mount-point'] = str(mount.parent.resolve(strict=True))
+        if scenario == 'mounted-duplicate': entities.append(dict(mounted))
+        if scenario == 'mounted-extra': entities.append({'dev-entry': '/dev/disk43s1', 'mount-point': str(mount.parent.resolve(strict=True))})
+        if scenario == 'mounted-missing': entities = entities[:1]
+        sys.stdout.buffer.write(plistlib.dumps({'system-entities': entities}))
     elif args[0] == 'detach': fail_if('detach-failure')
     else: reject()
 elif tool == 'spctl':
