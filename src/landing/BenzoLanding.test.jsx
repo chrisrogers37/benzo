@@ -6,7 +6,7 @@ import { siteCopy } from '../design/siteCopy'
 
 afterEach(cleanup)
 const click = name => fireEvent.click(screen.getByRole('button', { name, exact: true }))
-const switchMaster = () => fireEvent.click(screen.getByRole('switch', { name: 'Deep Sleep' }))
+const switchMaster = () => fireEvent.click(screen.getByRole('switch', { name: /^(Apply selected settings|Restore captured settings)$/ }))
 function completeSetup() {
   click('Helper Setup')
   click('Set Up')
@@ -31,7 +31,7 @@ describe('shared page and app state', () => {
     expectPageState(true)
     switchMaster()
     expectPageState(false)
-    expect(screen.getByRole('switch', { name: 'Deep Sleep' }).getAttribute('aria-checked')).toBe('false')
+    expect(screen.getByRole('switch', { name: /^(Apply selected settings|Restore captured settings)$/ }).getAttribute('aria-checked')).toBe('false')
     expect(screen.getByRole('checkbox', { name: 'Hibernate Mode' }).disabled).toBe(true)
     click('First launch'); completeSetup(); click('Options')
     expect(screen.getByRole('checkbox', { name: 'Disable TCP Keep-Alive' }).disabled).toBe(false)
@@ -48,7 +48,7 @@ describe('shared page and app state', () => {
     expect(screen.getByRole('button', { name: 'Sleep Now' }).disabled).toBe(true)
     click('Sleep Now'); expectPageState(false)
     click('First launch'); expectPageState(false)
-    expect(screen.getByRole('switch', { name: 'Deep Sleep' }).disabled).toBe(true)
+    expect(screen.getByRole('switch', { name: /^(Apply selected settings|Restore captured settings)$/ }).disabled).toBe(true)
     completeSetup(); expectPageState(false)
     switchMaster(); expectPageState(true)
     click('Quit'); expectPageState(false)

@@ -3,8 +3,8 @@
 Reviewed November 13, 2026. Native behavior below describes the unreleased
 recovery and account-authorized helper source, not verified behavior of the older
 v0.3.0 download. Helper installation and signed native acceptance remain pending.
-Update-checker behavior is
-outside this revision and must be documented when delivered.
+The manual update checker is included in the integrated source; the development
+package does not establish acceptance of signed helper installation.
 
 ## Mac app
 
@@ -38,7 +38,16 @@ outside this revision and must be documented when delivered.
   system-wide; ordinary operations do not request a new administrator authorization.
   Recovery reads use `pmset -g custom`. The helper never opens client-supplied paths.
 - **Network:** the reviewed native source has no analytics, crash reporting or
-  diagnostics upload implementation. This says nothing about other software or
+  diagnostics upload implementation. Only an explicit Check for Updates requests
+  the latest stable release metadata from GitHub's API for `chrisrogers37/benzo`.
+  GitHub receives the ordinary connection data, including IP address and a fixed
+  `Benzo-Update-Check` user agent; no recovery records, diagnostics, account identity
+  or installed version are sent. Version comparison happens locally. The request
+  uses an ephemeral session with cookies and persistent caching disabled; results
+  are held in memory and cleared when the popover closes. View Release opens the
+  fixed repository's validated release page in your browser, subject to the
+  browser's own settings and GitHub's policies. There is no automatic polling,
+  artifact download or installation. This says nothing about other software or
   macOS network activity.
 
 Recovery evidence retains unresolved data, required previous generations and a

@@ -29,18 +29,20 @@ acceptance or release, and the latest public release remains v0.3.0. See the
 [remediation plan](documentation/planning/tech_debt/benzo-remediation_2026-11-02/00_TECH_DEBT.md)
 and [recovery plan](documentation/planning/tech_debt/benzo-remediation_2026-11-02/02_recovery-engine.md).
 
-The current source also removes permission installation and repair. Its permission
-panel only observes metadata for the legacy rule: absent, present but unverified,
-or unknown. Refresh and Back never authorize an operation or change permissions.
-Existing downloads still use their older setup flow.
+Helper Setup is an explicit, account-specific installation flow. The separate
+legacy-rule observation reports only absent, present but unverified, or unknown;
+it never installs or repairs a sudoers rule. Existing downloads still use their
+older setup flow.
 
 ## Install
 
 **Download** the latest `.dmg` from [Releases](https://github.com/chrisrogers37/benzo/releases).
 
-Since Benzo isn't notarized yet, macOS will block it on first launch. Either:
-- Right-click the app → **Open**
-- Or run: `xattr -d com.apple.quarantine /Applications/Benzo.app`
+The existing v0.3.0 download predates the helper, recovery and interface changes
+described here. Development artifacts below are for evaluation, not a new public
+release. The upcoming public helper release must be Developer ID-signed,
+notarized and accepted on a test Mac before publication. Do not disable Gatekeeper
+or remove quarantine attributes as an installation step.
 
 **Homebrew** (personal tap):
 ```
@@ -76,6 +78,9 @@ what Benzo stores on your Mac and what the website does.
 - **Sleep Now unavailable** — sleep commands and timed sleep remain disabled
 - **Diagnostics** — Option-click the menubar icon for existing sleep sessions, wake reasons, USB devices and settings observations; these do not prove recovery or hardware behavior
 - **Account-specific setup** — the helper checks the enrolled account's UID and persistent local account identity; another account cannot inherit access by reusing a user ID
+- **Manual update check** — Check for Updates contacts GitHub only when requested;
+  View Release opens the verified release page. There is no automatic downloader
+  or installer, and results clear when the popover closes.
 
 ### Recovery and removal
 
@@ -109,8 +114,17 @@ Missing/corrupt evidence or an interrupted commit fails closed. Disabling or
 removing the helper does not restore power settings, erase the grant, or transfer
 it to another account. Lost-owner recovery and retirement require explicit
 administrator assistance; deleting evidence to force enrollment is unsupported.
-Updates and removal must wait for resolved settings and quiescent execution,
-retain evidence, and use the supported service lifecycle. Their signed-artifact
+Open Benzo from Applications before setup. Registration and replacement reject
+read-only volumes such as the distribution DMG; the app never moves itself.
+Before replacing or removing the app, restore or resolve its settings session.
+Helper Setup offers **Remove Helper**, with confirmation, only while settings are
+Off and no unresolved session or execution remains. It pauses helper writes and
+awaits macOS service removal; it does not erase records or the account grant.
+Quit the app before moving its bundle to Trash. Reinstallation retains the
+original account ownership. If permission is revoked or the helper cannot be
+reached, preserve the app and records and seek administrator-assisted recovery;
+do not delete evidence to bypass the gate. Updates and removal retain evidence
+and use the supported service lifecycle. Their signed-artifact
 acceptance remains a release gate in the
 [helper amendment](documentation/planning/tech_debt/benzo-remediation_2026-11-02/08_helper-authorization.md).
 
@@ -119,8 +133,10 @@ acceptance remains a release gate in the
 - macOS Ventura (13.0) or later
 - Intel or Apple Silicon
 - Administrator approval during helper setup; no passwordless sudoers rule
-- A Developer ID-signed, notarized release to enable the helper. Unsigned CI/source
-  builds can compile and run injected tests but cannot authorize power writes.
+- Developer ID signing, notarization and macOS approval for the final helper-enabled
+  release. Signing alone does not prove service readiness. Developer membership is a publisher
+  requirement, not something each Benzo user needs. Development builds can
+  compile, run injected tests and display the interface without granting power access.
 
 ## Build from source
 
@@ -146,6 +162,27 @@ to launching the task build, temporary selected-setting apply/restore with
 administrator prompts, relaunch and quit. It excludes sleep/reboot, permission
 rule or login-item changes, installation/removal and terminating other fleet
 processes. These checks do not establish physical sleep or USB behavior.
+
+## Package a development build
+
+No Apple Developer membership or signing credentials are required for this mode:
+
+```sh
+./scripts/build-dmg.sh --mode development --output-dir /absolute/new/benzo-development
+```
+
+Full Xcode is required. The output directory must be new and its parent must
+already exist. The resulting development DMG contains `Benzo Development.app`
+and an Applications shortcut, with checksums and source provenance alongside it.
+It is ad-hoc signed, unnotarized and cannot enable the privileged helper. Its
+filename differs from the public app, but it shares Benzo's bundle identifier and
+recovery storage; do not run two copies together. CI builds and inspects the real
+development DMG without installing or launching it.
+
+Developer ID signing and explicit notarization are separate, later commands in
+the [release preparation guide](docs/release-preparation.md). That guide also
+records installation, native acceptance and backup checks before the planned
+factory reset. No packaging command publishes a release.
 
 ## Landing page
 
@@ -177,8 +214,9 @@ Request completion and subsequent readback are separate evidence; neither
 establishes physical sleep behavior.
 
 The `build` workflow runs web tests/build, full-Xcode Debug and core tests, and
-uploads a seven-day universal `.xcarchive` with distribution signing disabled as CI build evidence. It is
-not distribution signing, a release candidate, or a release platform. The
+uploads a seven-day universal `.xcarchive` with distribution signing disabled plus
+a development DMG with packaging evidence. These are
+not Developer ID signing, notarization or native permission acceptance. The
 separate `security` workflow retains npm audit and Gitleaks. The connected Vercel
 Git integration can deploy previews on branch pushes and the site on main;
 inspect and authorize deployment before push.

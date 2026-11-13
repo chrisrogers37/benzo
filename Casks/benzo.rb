@@ -4,8 +4,8 @@ cask "benzo" do
 
   url "https://github.com/chrisrogers37/benzo/releases/download/v#{version}/Benzo-#{version}.dmg"
   name "Benzo"
-  desc "Force true deep sleep on macOS — the anti-Amphetamine"
-  homepage "https://benzo-gules.vercel.app"
+  desc "Manage selected macOS sleep and wake settings from the menu bar"
+  homepage "https://benzo.work"
 
   depends_on macos: ">= :ventura"
 

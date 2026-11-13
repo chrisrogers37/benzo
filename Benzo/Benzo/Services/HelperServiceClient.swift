@@ -31,6 +31,7 @@ final class HelperServiceClient: HelperSetupClient {
 
     func register() async throws -> HelperReadiness {
         _ = try HelperIdentity.requirement(for: HelperServiceDefinition.helperIdentifier)
+        try requireWritableInstallVolume()
         // Registration commonly reports authorizationRequired while leaving a
         // requiresApproval service. Show that actionable state rather than an error.
         do { try service.register() }
@@ -60,12 +61,41 @@ final class HelperServiceClient: HelperSetupClient {
     func replace() async throws -> HelperReadiness {
         _ = try HelperIdentity.requirement(for: HelperServiceDefinition.helperIdentifier)
         _ = try HelperIdentity.embeddedHelperCodeHash()
+        try requireWritableInstallVolume()
+        try await prepareForUnregistration()
+        // Await actual service termination before registering the changed bundle.
+        try await service.unregister()
+        do { try service.register() }
+        catch { if service.status != .requiresApproval { throw error } }
+        return await refresh()
+    }
+
+    func remove() async throws -> HelperReadiness {
+        _ = try HelperIdentity.requirement(for: HelperServiceDefinition.helperIdentifier)
+        try await prepareForUnregistration()
+        try await service.unregister()
+        // Unregistration removes the service, not the account grant or execution
+        // evidence. Reinstallation must not silently transfer ownership.
+        return await refresh()
+    }
+
+    private func requireWritableInstallVolume() throws {
+        // Registering a service from the distribution DMG would bind it to an
+        // ejectable, read-only location. Inspect the public volume property;
+        // do not rely on private translocation paths or move the app silently.
+        let values = try Bundle.main.bundleURL.resourceValues(forKeys: [.volumeIsReadOnlyKey])
+        guard values.volumeIsReadOnly == false else {
+            throw HelperServiceDefinition.failure("Move Benzo to Applications, reopen it there, then set up its helper.")
+        }
+    }
+
+    private func prepareForUnregistration() async throws {
         // The view model admits this only while the account's recovery lock is
         // held and settings are resolved. The server independently quiesces writes.
         let before = try await readStatus(requireMatchingBuild: false)
         let owner = try HelperIdentity.localOwner(uid: getuid())
         guard before.owner == owner, !before.executionUncertain else {
-            throw HelperServiceDefinition.failure("Resolve helper access and execution before replacement.")
+            throw HelperServiceDefinition.failure("Resolve helper access and execution before changing its installation.")
         }
         let data = try await call { proxy, reply in proxy.prepareForReplacement(withReply: reply) }
         let prepared = try HelperServiceDefinition.decode(HelperStatus.self, from: data)
@@ -73,13 +103,8 @@ final class HelperServiceClient: HelperSetupClient {
               prepared.buildIdentifier == before.buildIdentifier,
               prepared.bootID == before.bootID, prepared.revision == before.revision,
               prepared.replacementPrepared, !prepared.executionUncertain else {
-            throw HelperServiceDefinition.failure("The helper did not confirm safe replacement. Existing evidence was retained.")
+            throw HelperServiceDefinition.failure("The helper did not confirm that writes are paused. Existing evidence was retained.")
         }
-        // Await actual service termination before registering the changed bundle.
-        try await service.unregister()
-        do { try service.register() }
-        catch { if service.status != .requiresApproval { throw error } }
-        return await refresh()
     }
 
     func openApprovalSettings() { SMAppService.openSystemSettingsLoginItems() }

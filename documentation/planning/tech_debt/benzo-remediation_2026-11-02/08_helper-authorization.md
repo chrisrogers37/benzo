@@ -7,6 +7,15 @@ Mac), not every user or every administrator. Do not hardcode this account name.
 Apple Developer enrollment is deferred while source implementation proceeds;
 Developer ID signing and native permission acceptance remain release gates.
 
+**November 13 clarification:** complete all engineering, integration and
+development packaging before paid enrollment. The current account policy and
+Developer ID trust boundary remain unchanged. The owner authorized integration
+of the already implemented packaging, updater and accessibility work in this
+recovery branch; do not wait for signed acceptance to do that independent work.
+See [release preparation](../../../../docs/release-preparation.md). Signed testing,
+notarization and public release are still pending and distinct from development
+packaging. No credentials are needed to build or test the development artifact.
+
 ## Scope and authority
 
 Continue in the existing recovery worktree/PR #104. Preserve the primary checkout

@@ -4,14 +4,17 @@ struct SetupView: View {
     let readiness: HelperReadiness
     let isBusy: Bool
     let canReplaceHelper: Bool
+    let canRemoveHelper: Bool
     let error: String?
     let recoveryMessage: String?
     let onRegister: () -> Void
     let onAuthorize: () -> Void
     let onReplace: () -> Void
+    let onRemove: () -> Void
     let onOpenSettings: () -> Void
     let onRefresh: () -> Void
     let onBack: () -> Void
+    @State private var confirmingRemoval = false
 
     var body: some View {
         VStack(spacing: 16) {
@@ -23,6 +26,7 @@ struct SetupView: View {
             Text(readiness.title)
                 .font(.system(size: 15, weight: .semibold))
                 .foregroundColor(BenzoTheme.text)
+                .accessibilityAddTraits(.isHeader)
 
             Text(readiness.message)
                 .font(.system(size: 12))
@@ -40,7 +44,7 @@ struct SetupView: View {
             if let error {
                 Text(error)
                     .font(.system(size: 12))
-                    .foregroundColor(.red)
+                    .foregroundColor(BenzoTheme.errorText)
                     .multilineTextAlignment(.center)
             }
 
@@ -62,12 +66,36 @@ struct SetupView: View {
                 }
             }
             .buttonStyle(.borderedProminent)
-            .tint(BenzoTheme.accent)
+            .tint(BenzoTheme.accentControl)
+            .foregroundColor(.white)
             .disabled(isBusy)
 
+            if readiness == .ready || readiness == .unavailable(.incompatible) {
+                if !canRemoveHelper, !isBusy {
+                    Text(BenzoViewModel.helperRemovalBlockedReason)
+                        .font(.system(size: 12))
+                        .foregroundColor(BenzoTheme.text)
+                        .multilineTextAlignment(.center)
+                }
+                Button("Remove Helper") { confirmingRemoval = true }
+                    .buttonStyle(.plain)
+                    .foregroundColor(BenzoTheme.accentControl)
+                    .disabled(!canRemoveHelper || isBusy)
+                    .confirmationDialog("Remove Benzo’s helper?", isPresented: $confirmingRemoval, titleVisibility: .visible) {
+                        Button("Remove Helper", role: .destructive, action: onRemove)
+                        Button("Cancel", role: .cancel) {}
+                    } message: {
+                        Text("Benzo will need setup before it can change settings again. Your recovery records and account authorization are retained.")
+                    }
+            }
+
             Button("Check Again", action: onRefresh)
+                .buttonStyle(.plain)
+                .foregroundColor(BenzoTheme.accentControl)
                 .disabled(isBusy)
             Button(readiness == .ready ? "Done" : "Back", action: onBack)
+                .buttonStyle(.plain)
+                .foregroundColor(BenzoTheme.accentControl)
 
             if isBusy { ProgressView().controlSize(.small).accessibilityLabel("Checking helper setup") }
 

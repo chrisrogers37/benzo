@@ -1,5 +1,36 @@
 # Benzo Open Work
 
+## Complete engineering before paid enrollment — November 13, 2026
+
+Owner clarified: finish the installable app and all engineering possible without
+Apple Developer enrollment, signing credentials or notarization. Those remaining
+distribution steps must not block source integration, packaging or ordinary tests.
+This amendment integrates the existing draft work into the current recovery PR;
+it does not open another dependent phase or modify the original worktrees.
+
+- [x] Integrate manual update checker #103 and accessibility #105 with helper setup
+  and recovery, preserving their tested behavior and active browser parity.
+- [x] Adapt packaging #102 for a clearly labeled development DMG; validate both
+  executable architectures, embedded daemon/plist, signatures and bundle metadata.
+- [x] Prepare separate Developer ID signing and explicit notarization commands;
+  no credential required or Apple upload during development packaging.
+- [ ] Run local web/packaging checks, independent review, full-Xcode CI and real
+  development-DMG verification. Record exact source and artifact hashes.
+- [x] Document install/setup/update/removal behavior, deferred signed acceptance,
+  and a portable continuation before the eventual separately authorized reset.
+
+No relaxed helper identity check, automatic installer, public release, service
+registration, enrollment purchase or host permission/power change is part of this
+pre-enrollment work. The final signed artifact still needs native acceptance.
+
+Review corrected a quit-admission race, guarded registration from read-only
+distribution volumes, and made failed Git provenance inspection stop packaging.
+Local evidence: 62 stubbed packaging checks, app source typechecking, and an
+earlier 117-test web/build/audit pass. Final scroll/action-label changes and quit
+regressions require the new combined CI run. Source typechecking and injected
+fixtures are not XCTest or native acceptance. The native fixture review also
+caught and corrected recursive `@Published` preference rollback before push.
+
 ## Lasting helper permission — November 13, 2026
 
 - [x] Owner approved SMAppService direction and only the account completing setup
@@ -10,9 +41,9 @@
   [08_helper-authorization.md](../documentation/planning/tech_debt/benzo-remediation_2026-11-02/08_helper-authorization.md).
 - [x] Implement and review authenticated helper enrollment, bounded operations,
   root-owned admission evidence, setup UX and active web parity.
-- [ ] Pass exact-head unhosted native/web tests, app/helper builds and security CI.
-- [ ] Validate a signed/notarized artifact on approved hardware, then integrate
-  packaging, update checker and native accessibility before release.
+- [x] Helper checkpoint 4f40b3b passed native/web tests, app/helper builds and security CI.
+- [ ] Integrate packaging, update checker and native accessibility now; validate
+  the signed artifact on approved hardware after credentials become available.
 - [ ] Verify remote source, accepted release assets and portable handoff before
   the user's later, separately performed factory reset.
 

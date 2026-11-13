@@ -93,6 +93,12 @@
 		9F000000000000000000002E /* com.benzo.helper.plist in Copy LaunchDaemons */ = {isa = PBXBuildFile; fileRef = 9F000000000000000000000B; };
 		9E0000000000000000000002 /* HelperStateStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9E0000000000000000000001; };
 		9E0000000000000000000003 /* HelperStateStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9F000000000000000000000A; };
+		9D0000000000000000000011 /* AppVersion.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9D0000000000000000000001; };
+		9D0000000000000000000021 /* AppVersion.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9D0000000000000000000001; };
+		9D0000000000000000000012 /* ReleaseChecker.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9D0000000000000000000002; };
+		9D0000000000000000000022 /* ReleaseChecker.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9D0000000000000000000002; };
+		9D0000000000000000000013 /* UpdateViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9D0000000000000000000003; };
+		9D0000000000000000000023 /* UpdateViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9D0000000000000000000003; };
 /* End PBXBuildFile section */
 
 /* Begin PBXCopyFilesBuildPhase section */
@@ -167,6 +173,9 @@
 		9F000000000000000000000E /* Benzo.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Benzo.entitlements; sourceTree = "<group>"; };
 		9F0000000000000000000012 /* BenzoHelper */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = BenzoHelper; sourceTree = BUILT_PRODUCTS_DIR; };
 		9E0000000000000000000001 /* HelperStateStoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HelperStateStoreTests.swift; sourceTree = "<group>"; };
+		9D0000000000000000000001 /* AppVersion.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppVersion.swift; sourceTree = "<group>"; };
+		9D0000000000000000000002 /* ReleaseChecker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReleaseChecker.swift; sourceTree = "<group>"; };
+		9D0000000000000000000003 /* UpdateViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UpdateViewModel.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -235,6 +244,7 @@
 		A50000040000000000000004 /* Models */ = {
 			isa = PBXGroup;
 			children = (
+				9D0000000000000000000001 /* AppVersion.swift */,
 				9F0000000000000000000003 /* HelperReadiness.swift */,
 				9F0000000000000000000002 /* HelperProtocol.swift */,
 				F20000000000000000000001 /* RecoveryJournal.swift */,
@@ -252,6 +262,7 @@
 		A50000050000000000000005 /* Services */ = {
 			isa = PBXGroup;
 			children = (
+				9D0000000000000000000002 /* ReleaseChecker.swift */,
 				9F0000000000000000000008 /* HelperServiceClient.swift */,
 				9F0000000000000000000007 /* HelperEnrollmentAuthorization.swift */,
 				9F0000000000000000000006 /* HelperIdentity.swift */,
@@ -277,6 +288,7 @@
 		A50000060000000000000006 /* ViewModels */ = {
 			isa = PBXGroup;
 			children = (
+				9D0000000000000000000003 /* UpdateViewModel.swift */,
 				A20000090000000000000009 /* BenzoViewModel.swift */,
 			);
 			path = ViewModels;
@@ -443,6 +455,9 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				9D0000000000000000000011 /* AppVersion.swift in Sources */,
+				9D0000000000000000000012 /* ReleaseChecker.swift in Sources */,
+				9D0000000000000000000013 /* UpdateViewModel.swift in Sources */,
 				9F0000000000000000000019 /* HelperServiceClient.swift in Sources */,
 				9F0000000000000000000018 /* HelperEnrollmentAuthorization.swift in Sources */,
 				9F0000000000000000000017 /* HelperIdentity.swift in Sources */,
@@ -488,6 +503,9 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				9D0000000000000000000021 /* AppVersion.swift in Sources */,
+				9D0000000000000000000022 /* ReleaseChecker.swift in Sources */,
+				9D0000000000000000000023 /* UpdateViewModel.swift in Sources */,
 				9E0000000000000000000002 /* HelperStateStoreTests.swift in Sources */,
 				9E0000000000000000000003 /* HelperStateStore.swift in Sources */,
 				9F000000000000000000001D /* HelperEngineTests.swift in Sources */,

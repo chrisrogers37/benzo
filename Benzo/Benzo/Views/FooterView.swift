@@ -2,6 +2,7 @@ import SwiftUI
 
 struct FooterView: View {
     @Binding var launchAtLogin: Bool
+    @ObservedObject var updates: UpdateViewModel
     let canRestore: Bool
     let onRevert: () -> Void
     let onQuit: () -> Void
@@ -15,8 +16,10 @@ struct FooterView: View {
 
                 Spacer()
 
-                Toggle("", isOn: $launchAtLogin)
-                    .toggleStyle(.switch)
+                Toggle("Launch at Login", isOn: $launchAtLogin)
+                    .labelsHidden()
+                    .toggleStyle(PinkToggleStyle())
+                    .accessibilityLabel("Launch at Login")
                     .scaleEffect(0.6)
                     .frame(width: 36)
             }
@@ -24,10 +27,44 @@ struct FooterView: View {
             .padding(.top, 8)
 
             HStack {
-                Text("v\(Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "unknown")")
+                Text(updates.version.display)
                     .font(.system(size: 10))
-                    .foregroundColor(Color(hex: "d0d0d0"))
+                    .foregroundColor(BenzoTheme.textMuted)
 
+                Spacer()
+
+                Button(updates.state == .checking ? "Checking…" : "Check for Updates…") {
+                    updates.checkForUpdates()
+                }
+                .disabled(updates.state == .checking)
+                .buttonStyle(.plain)
+                .foregroundColor(BenzoTheme.accentControl)
+                .font(.system(size: 10))
+            }
+            .padding(.horizontal, 20)
+
+            if let message = updates.message {
+                VStack(alignment: .leading, spacing: 5) {
+                    Text(message)
+                    if updates.hasUpdate {
+                        Text("Compatibility isn't verified here. Review release requirements.")
+                        Text("Resolve any recovery before replacing Benzo.")
+                    }
+                    Button(updates.hasUpdate ? "View Release" : "View Releases", action: updates.openReleasePage)
+                        .buttonStyle(.plain)
+                        .foregroundColor(BenzoTheme.accentControl)
+                    if updates.browserOpenFailed {
+                        Text("Couldn't open the browser. Visit github.com/chrisrogers37/benzo/releases.")
+                    }
+                }
+                .font(.system(size: 10))
+                .foregroundColor(BenzoTheme.textMuted)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.horizontal, 20)
+                .accessibilityElement(children: .contain)
+            }
+
+            HStack {
                 Spacer()
 
                 Button("System Defaults") { onRevert() }
@@ -49,5 +86,6 @@ struct FooterView: View {
                 .padding(.horizontal, 20)
                 .padding(.bottom, 10)
         }
+        .onDisappear { updates.cancelCheck() }
     }
 }

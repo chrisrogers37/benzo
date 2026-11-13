@@ -8,7 +8,9 @@ final class BenzoViewModel: ObservableObject {
     static let helperAccessRequiredReason = "Helper access is needed to change settings. Open Helper Setup to review access."
     static let helperRecoveryReason = "Settings may still be changed. Helper access is needed to restore them. Your recovery record is retained."
     static let helperReplacementBlockedReason = "Restore or resolve the current settings session before replacing Benzo’s helper. If needed, use the previous Benzo release to restore settings."
+    static let helperRemovalBlockedReason = "Restore or resolve the current settings session before removing Benzo’s helper. Removal keeps account authorization and recovery records."
     static let helperSetupInProgressReason = "Finish helper setup before changing settings or quitting Benzo."
+    static let quitInProgressReason = "Benzo is preparing to quit. Wait for restoration to finish."
 
     @Published private(set) var controlState: ControlState = .checking
     @Published private(set) var conflicts: [RecoveryConflict] = []
@@ -21,12 +23,21 @@ final class BenzoViewModel: ObservableObject {
     @Published var launchAtLogin = false {
         didSet {
             guard isInitialized else { return }
+            guard !isPreparingToQuit else {
+                // @Published reenters didSet on assignment; suppress that nested
+                // observer while putting the displayed preference back.
+                isInitialized = false
+                launchAtLogin = oldValue
+                isInitialized = true
+                return
+            }
             updateLaunchAtLogin()
         }
     }
     @Published private(set) var helperReadiness: HelperReadiness = .checking
     @Published private(set) var isRefreshingHelper = false
     @Published private(set) var isPerformingHelperSetup = false
+    @Published private(set) var isPreparingToQuit = false
     @Published private(set) var helperSetupError: String?
     @Published var showHelperSetup = false
     @Published var errorMessage: String?
@@ -59,14 +70,20 @@ final class BenzoViewModel: ObservableObject {
 
     var isActive: Bool { controlState.isActive }
     var isLoadingDiagnostics: Bool { sleepData.isLoading || usbDevices.isLoading || observedSettings.isLoading }
-    var isSelectionEditBlocked: Bool { controlState != .off }
+    var isSelectionEditBlocked: Bool { controlState != .off || isPreparingToQuit }
     var activeCount: Int { frozenSettings?.count ?? selectedSettings.count }
-    var hasHelperAccess: Bool { helperReadiness == .ready && !isPerformingHelperSetup }
+    var hasHelperAccess: Bool { helperReadiness == .ready && !isPerformingHelperSetup && !isPreparingToQuit }
     var canToggleMaster: Bool { hasHelperAccess && ((controlState == .off && activeCount > 0) || isActive) }
     var canRestore: Bool { hasHelperAccess && hasSession && !controlState.isBusy && !executionUncertain && conflicts.isEmpty }
     var canReplaceHelper: Bool {
-        helperReadiness == .unavailable(.incompatible) && controlState == .off && !hasSession &&
-            !executionUncertain && !isPerformingHelperSetup && !isRefreshingHelper
+        helperReadiness == .unavailable(.incompatible) && canChangeHelperInstallation
+    }
+    var canRemoveHelper: Bool {
+        (helperReadiness == .ready || helperReadiness == .unavailable(.incompatible)) && canChangeHelperInstallation
+    }
+    private var canChangeHelperInstallation: Bool {
+        controlState == .off && !hasSession &&
+            !executionUncertain && !isPerformingHelperSetup && !isRefreshingHelper && !isPreparingToQuit
     }
 
     // Eligibility is observed before a session is admitted. Stored choices are not proof of support.
@@ -110,13 +127,18 @@ final class BenzoViewModel: ObservableObject {
         await performHelperSetup { try await self.dependencies.helperSetup.replace() }
     }
 
+    func removeHelper() async {
+        guard canRemoveHelper else { return }
+        await performHelperSetup { try await self.dependencies.helperSetup.remove() }
+    }
+
     func openHelperApprovalSettings() {
-        guard helperReadiness == .requiresApproval, !isPerformingHelperSetup else { return }
+        guard helperReadiness == .requiresApproval, !isPerformingHelperSetup, !isPreparingToQuit else { return }
         dependencies.helperSetup.openApprovalSettings()
     }
 
     private func performHelperSetup(_ action: () async throws -> HelperReadiness) async {
-        guard !isPerformingHelperSetup, !isRefreshingHelper else { return }
+        guard !isPerformingHelperSetup, !isRefreshingHelper, !isPreparingToQuit else { return }
         isPerformingHelperSetup = true
         helperSetupError = nil
         defer { isPerformingHelperSetup = false }
@@ -133,6 +155,10 @@ final class BenzoViewModel: ObservableObject {
     }
 
     private func requireHelperAccess() -> Bool {
+        guard !isPreparingToQuit else {
+            errorMessage = Self.quitInProgressReason
+            return false
+        }
         guard !isPerformingHelperSetup else {
             errorMessage = Self.helperSetupInProgressReason
             return false
@@ -153,6 +179,7 @@ final class BenzoViewModel: ObservableObject {
     }
 
     func toggleSetting(_ setting: SleepSetting) {
+        guard !isPreparingToQuit else { errorMessage = Self.quitInProgressReason; return }
         guard dependencies.coordinator.mayEditSelections() else {
             errorMessage = Self.selectionEditBlockedReason
             return
@@ -168,6 +195,7 @@ final class BenzoViewModel: ObservableObject {
     }
 
     func revertToDefaults() async {
+        guard !isPreparingToQuit else { errorMessage = Self.quitInProgressReason; return }
         errorMessage = nil
         guard !hasSession || requireHelperAccess() else { return }
         await dependencies.coordinator.restore()
@@ -175,20 +203,29 @@ final class BenzoViewModel: ObservableObject {
     }
 
     func resolveConflict(_ conflict: RecoveryConflict, choice: ConflictChoice) async {
+        guard !isPreparingToQuit else { errorMessage = Self.quitInProgressReason; return }
         if choice == .restoreOriginal, !requireHelperAccess() { return }
         await dependencies.coordinator.resolveConflict(conflict.cell, choice: choice)
         await refreshHelperReadiness()
     }
 
     func prepareToQuit() async -> Bool {
+        guard !isPreparingToQuit else { return false }
         guard !isPerformingHelperSetup else {
             errorMessage = Self.helperSetupInProgressReason
             return false
         }
         // An operation already in flight remains owned by the coordinator.
         if !controlState.isBusy && hasSession && !requireHelperAccess() { return false }
+        // Keep admission closed after the coordinator restores Off, through the
+        // AppKit termination reply. A new apply or helper lifecycle action must
+        // never race a successful quit decision across an actor suspension.
+        isPreparingToQuit = true
         let mayQuit = await dependencies.coordinator.prepareToQuit()
-        await refreshHelperReadiness()
+        if !mayQuit {
+            await refreshHelperReadiness()
+            isPreparingToQuit = false
+        }
         return mayQuit
     }
 

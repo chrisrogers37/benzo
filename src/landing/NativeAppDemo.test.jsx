@@ -19,6 +19,8 @@ function completeSetup() {
   click('Done')
 }
 const panel = name => screen.getByRole('heading', { name, exact: true }).parentElement
+const describedByText = element => (element.getAttribute('aria-describedby') ?? '')
+  .split(/\s+/).filter(Boolean).map(id => document.getElementById(id)?.textContent ?? '').join(' ')
 const success = value => ({ status: 'success', value })
 const diagnosticFixture = overrides => ({
   running: true, open: true, view: 'diagnostics', active: false,
@@ -30,6 +32,24 @@ const diagnosticFixture = overrides => ({
 afterEach(() => { cleanup(); vi.useRealTimers() })
 
 describe('source-matched browser simulation', () => {
+  it('names the master switch for applying or restoring captured settings', () => {
+    const dispatch = vi.fn()
+    const { rerender } = render(<NativeAppDemo state={initialDemoState(false)} dispatch={dispatch} />)
+    expect(screen.getByRole('switch', { name: 'Apply selected settings' }).getAttribute('aria-checked')).toBe('false')
+    rerender(<NativeAppDemo state={initialDemoState(true)} dispatch={dispatch} />)
+    expect(screen.getByRole('switch', { name: 'Restore captured settings' }).getAttribute('aria-checked')).toBe('true')
+    expect(screen.queryByRole('switch', { name: 'Deep Sleep' })).toBeNull()
+  })
+
+  it.each(['main', 'setup'])('makes the %s controls keyboard reachable in their scroll region', view => {
+    render(<NativeAppDemo state={{ ...initialDemoState(false), view }} dispatch={vi.fn()} />)
+    const region = screen.getByRole('region', { name: 'Benzo controls' })
+    expect(region.getAttribute('tabindex')).toBe('0')
+    region.focus()
+    expect(document.activeElement).toBe(region)
+    expect(within(region).getAllByRole('button').length).toBeGreaterThan(0)
+  })
+
   it('keeps originals immutable, freezes choices during apply, and unlocks only after verified restore', () => {
     const original = initialDemoState(false)
     let state = benzoDemoReducer(original, { type: 'setting', key: 'disableTcpKeepAlive' })
@@ -178,24 +198,24 @@ describe('source-matched browser simulation', () => {
     expect(menu.getAttribute('aria-description')).toContain('Benzo: Applying Settings.')
     expect(menu.title).toContain('Applying your frozen selection')
     expect(menu.querySelector('[data-status="busy"]')).toBeTruthy()
-    expect(screen.queryByRole('switch', { name: 'Deep Sleep' })).toBeNull()
+    expect(screen.queryByRole('switch', { name: /^(Apply selected settings|Restore captured settings)$/ })).toBeNull()
 
     rerender(<NativeAppDemo state={{ ...initialDemoState(true), open: false, phase: 'recoveryRequired', error: 'Restore failed.' }} dispatch={dispatch} />)
     menu = screen.getByRole('button', { name: 'Benzo menu' })
     expect(menu.getAttribute('aria-description')).toContain('Benzo: Recovery Required.')
     expect(menu.title).toContain('Restore failed.')
     expect(menu.querySelector('[data-status="recovery"]')).toBeTruthy()
-    expect(screen.queryByRole('switch', { name: 'Deep Sleep' })).toBeNull()
+    expect(screen.queryByRole('switch', { name: /^(Apply selected settings|Restore captured settings)$/ })).toBeNull()
   })
 
   it('disables the master without an available Off selection and disables restore without a session', () => {
     const emptySelection = { ...initialDemoState(false), settings: Object.fromEntries(Object.keys(initialDemoState(false).settings).map(key => [key, false])) }
     const { rerender } = render(<NativeAppDemo state={emptySelection} dispatch={vi.fn()} />)
-    expect(screen.getByRole('switch', { name: 'Deep Sleep' }).disabled).toBe(true)
+    expect(screen.getByRole('switch', { name: /^(Apply selected settings|Restore captured settings)$/ }).disabled).toBe(true)
     expect(screen.getByRole('button', { name: 'System Defaults' }).disabled).toBe(true)
 
     rerender(<NativeAppDemo state={{ ...emptySelection, phase: 'recoveryRequired', legacyUnknown: true }} dispatch={vi.fn()} />)
-    expect(screen.getByRole('switch', { name: 'Deep Sleep' }).disabled).toBe(true)
+    expect(screen.getByRole('switch', { name: /^(Apply selected settings|Restore captured settings)$/ }).disabled).toBe(true)
     expect(screen.getByRole('button', { name: 'System Defaults' }).disabled).toBe(true)
     expect(screen.getByText('Legacy or unknown recovery evidence needs administrator-assisted recovery and retirement. Preserve ~/Library/Application Support/Benzo/original-pmset.json and /private/etc/sudoers.d/benzo. This app cannot substantiate their profile ownership or mark them restored.')).toBeTruthy()
   })
@@ -239,21 +259,21 @@ describe('source-matched browser simulation', () => {
   it('allows restore for an active no-op session even when it owns no changed cells', () => {
     const noOpSession = { ...initialDemoState(true), ownedValues: {}, hasSession: true }
     render(<NativeAppDemo state={noOpSession} dispatch={vi.fn()} />)
-    expect(screen.getByRole('switch', { name: 'Deep Sleep' }).disabled).toBe(false)
+    expect(screen.getByRole('switch', { name: /^(Apply selected settings|Restore captured settings)$/ }).disabled).toBe(false)
     expect(screen.getByRole('button', { name: 'System Defaults' }).disabled).toBe(false)
   })
 
   it('starts in main with setup available and keeps diagnostics reachable before setup', () => {
     render(<Demo />)
     click('First launch')
-    expect(screen.getByRole('switch', { name: 'Deep Sleep' }).disabled).toBe(true)
+    expect(screen.getByRole('switch', { name: /^(Apply selected settings|Restore captured settings)$/ }).disabled).toBe(true)
     expect(screen.getByRole('button', { name: 'Helper Setup' })).toBeTruthy()
     expect(screen.queryByText('Permission status')).toBeNull()
     click('View diagnostics')
-    expect(screen.getByText('Diagnostics')).toBeTruthy()
+    expect(screen.getByRole('heading', { name: 'Diagnostics', exact: true })).toBeTruthy()
     click('Benzo menu')
     fireEvent.click(screen.getByRole('button', { name: 'Benzo menu' }), { altKey: true })
-    expect(screen.getByText('Diagnostics')).toBeTruthy()
+    expect(screen.getByRole('heading', { name: 'Diagnostics', exact: true })).toBeTruthy()
     click('Back')
     click('Helper Setup')
     click('Check Again')
@@ -266,8 +286,8 @@ describe('source-matched browser simulation', () => {
     click('First launch')
     click('View diagnostics')
     click('Benzo menu'); click('Benzo menu')
-    expect(screen.getByRole('switch', { name: 'Deep Sleep' })).toBeTruthy()
-    expect(screen.queryByText('Diagnostics')).toBeNull()
+    expect(screen.getByRole('switch', { name: /^(Apply selected settings|Restore captured settings)$/ })).toBeTruthy()
+    expect(screen.queryByRole('heading', { name: 'Diagnostics', exact: true })).toBeNull()
   })
 
   it('disables Sleep Now with an explanation and omits timer and blocker controls', () => {
@@ -280,7 +300,7 @@ describe('source-matched browser simulation', () => {
     expect(screen.queryByText(/app may prevent sleep/)).toBeNull()
     click('First launch')
     click('Sleep Now')
-    expect(screen.getByRole('switch', { name: 'Deep Sleep' }).getAttribute('aria-checked')).toBe('false')
+    expect(screen.getByRole('switch', { name: /^(Apply selected settings|Restore captured settings)$/ }).getAttribute('aria-checked')).toBe('false')
     expect(screen.getByRole('button', { name: 'Sleep Now' }).disabled).toBe(true)
   })
 
@@ -304,19 +324,19 @@ describe('source-matched browser simulation', () => {
     render(<Demo />)
     const initialSetting = screen.getByRole('checkbox', { name: 'Hibernate Mode' })
     expect(initialSetting.disabled).toBe(true)
-    expect(document.getElementById(initialSetting.getAttribute('aria-describedby')).textContent).toBe('Unavailable: AC Power does not report hibernatemode, autopoweroff.')
+    expect(describedByText(initialSetting)).toContain('Unavailable: AC Power does not report hibernatemode, autopoweroff.')
     click('First launch'); completeSetup(); click('Options')
     const setting = screen.getByRole('checkbox', { name: 'Disable TCP Keep-Alive' })
     expect(setting.disabled).toBe(false)
     expect(screen.queryByText('Resolve the current session or recovery before changing settings.')).toBeNull()
     fireEvent.click(setting)
     expect(setting.getAttribute('aria-checked')).toBe('true')
-    fireEvent.click(screen.getByRole('switch', { name: 'Deep Sleep' }))
+    fireEvent.click(screen.getByRole('switch', { name: /^(Apply selected settings|Restore captured settings)$/ }))
     expect(setting.disabled).toBe(true)
     fireEvent.click(setting)
     expect(setting.getAttribute('aria-checked')).toBe('true')
     click('System Defaults')
-    expect(screen.getByRole('switch', { name: 'Deep Sleep' }).getAttribute('aria-checked')).toBe('false')
+    expect(screen.getByRole('switch', { name: /^(Apply selected settings|Restore captured settings)$/ }).getAttribute('aria-checked')).toBe('false')
     expect(setting.disabled).toBe(false)
     expect(setting.getAttribute('aria-checked')).toBe('true')
     fireEvent.click(setting)
@@ -352,12 +372,12 @@ describe('source-matched browser simulation', () => {
     click('Simulate macOS Approval')
     expect(screen.getByRole('button', { name: 'Authorize This Account' })).toBeTruthy()
     click('Back')
-    expect(screen.getByRole('switch', { name: 'Deep Sleep' }).disabled).toBe(true)
+    expect(screen.getByRole('switch', { name: /^(Apply selected settings|Restore captured settings)$/ }).disabled).toBe(true)
     click('Helper Setup')
     click('Authorize This Account')
     expect(screen.getByText('Benzo Is Ready')).toBeTruthy()
     click('Done')
-    expect(screen.getByRole('switch', { name: 'Deep Sleep' }).disabled).toBe(false)
+    expect(screen.getByRole('switch', { name: /^(Apply selected settings|Restore captured settings)$/ }).disabled).toBe(false)
     expect(screen.getByRole('button', { name: 'System Defaults' }).disabled).toBe(true)
     expect(screen.queryByRole('alert')).toBeNull()
   })
@@ -438,11 +458,75 @@ describe('source-matched browser simulation', () => {
   it('blocks writes and ordinary quit during setup even if a concurrent status check reports ready', () => {
     const state = { ...initialDemoState(false), helperReadiness: 'ready', isPerformingHelperSetup: true }
     render(<NativeAppDemo state={state} dispatch={vi.fn()} />)
-    expect(screen.getByRole('switch', { name: 'Deep Sleep' }).disabled).toBe(true)
+    expect(screen.getByRole('switch', { name: /^(Apply selected settings|Restore captured settings)$/ }).disabled).toBe(true)
     for (const type of ['active', 'restore', 'retry', 'restoreRecordedOriginal', 'quit']) {
       const blocked = benzoDemoReducer(state, { type })
       expect(blocked).toEqual({ ...state, error: 'Finish helper setup before changing settings or quitting Benzo.' })
     }
+  })
+
+  it('requires confirmation to remove the helper and preserves enrollment through setup again', () => {
+    render(<Demo />)
+    click('System Defaults')
+    click('Helper Setup')
+    click('Remove Helper')
+    const confirmation = screen.getByRole('alertdialog', { name: 'Remove Benzo’s helper?' })
+    expect(within(confirmation).getByText('Benzo will need setup before it can change settings again. Your recovery records and account authorization are retained.')).toBeTruthy()
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Cancel' }))
+    click('Cancel')
+    expect(screen.queryByRole('alertdialog')).toBeNull()
+    expect(screen.getByText('Benzo Is Ready')).toBeTruthy()
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Remove Helper' }))
+    click('Remove Helper')
+    fireEvent.keyDown(screen.getByRole('button', { name: 'Cancel' }), { key: 'Escape' })
+    expect(screen.queryByRole('alertdialog')).toBeNull()
+    expect(screen.getByText('Benzo Is Ready')).toBeTruthy()
+    click('Remove Helper')
+    click('Remove Helper')
+    expect(screen.getByText('Set Up Benzo')).toBeTruthy()
+    click('Set Up')
+    click('Open System Settings')
+    click('Simulate macOS Approval')
+    expect(screen.getByText('Benzo Is Ready')).toBeTruthy()
+    expect(screen.queryByRole('button', { name: 'Authorize This Account' })).toBeNull()
+    click('Done')
+    expect(screen.getByRole('switch', { name: /^(Apply selected settings|Restore captured settings)$/ }).getAttribute('aria-checked')).toBe('false')
+  })
+
+  it.each(['ready', 'incompatible'])('removes a %s helper only after confirmation without changing captured data', helperReadiness => {
+    const before = { ...initialDemoState(false), helperReadiness }
+    expect(benzoDemoReducer(before, { type: 'removeHelper' })).toBe(before)
+    const confirmation = benzoDemoReducer(before, { type: 'requestRemoveHelper' })
+    expect(confirmation.helperRemovalConfirmation).toBe(true)
+    const removed = benzoDemoReducer(confirmation, { type: 'removeHelper' })
+    expect(removed.helperReadiness).toBe('notInstalled')
+    expect(removed.helperAccountAuthorized).toBe(before.helperAccountAuthorized)
+    expect(removed.originals).toBe(before.originals)
+    expect(removed.currentValues).toBe(before.currentValues)
+    expect(removed.ownedValues).toBe(before.ownedValues)
+  })
+
+  it.each([
+    { phase: 'activeVerified', hasSession: true },
+    { phase: 'recoveryRequired', hasSession: true },
+    { phase: 'recoveryRequired', legacyUnknown: true },
+    { phase: 'off', hasSession: true },
+    { operation: 'uncertain' },
+    { isPerformingHelperSetup: true },
+  ])('blocks helper removal for unresolved or busy state %j', overrides => {
+    const state = { ...initialDemoState(false), view: 'setup', ...overrides }
+    render(<NativeAppDemo state={state} dispatch={vi.fn()} />)
+    expect(screen.getByRole('button', { name: 'Remove Helper' }).disabled).toBe(true)
+    expect(benzoDemoReducer(state, { type: 'requestRemoveHelper' })).toBe(state)
+    const pending = { ...state, helperRemovalConfirmation: true }
+    expect(benzoDemoReducer(pending, { type: 'removeHelper' })).toBe(pending)
+  })
+
+  it.each(['notInstalled', 'requiresApproval', 'needsOwnerAuthorization', 'differentAccount', 'connectionUnavailable', 'signingUnavailable', 'executionUncertain'])('does not offer helper removal for %s', helperReadiness => {
+    const state = { ...initialDemoState(false), helperReadiness, view: 'setup' }
+    render(<NativeAppDemo state={state} dispatch={vi.fn()} />)
+    expect(screen.queryByRole('button', { name: 'Remove Helper' })).toBeNull()
+    expect(benzoDemoReducer(state, { type: 'requestRemoveHelper' })).toBe(state)
   })
 
   it.each(['notInstalled', 'requiresApproval', 'needsOwnerAuthorization', 'ready', 'differentAccount', 'connectionUnavailable', 'signingUnavailable', 'executionUncertain'])('never offers or performs replacement for %s', helperReadiness => {
@@ -455,16 +539,16 @@ describe('source-matched browser simulation', () => {
   it('matches native Option-click semantics and offers a touch-accessible diagnostic path', () => {
     render(<Demo />)
     fireEvent.click(screen.getByRole('button', { name: 'Benzo menu' }), { altKey: true })
-    expect(screen.queryByRole('switch', { name: 'Deep Sleep' })).toBeNull()
+    expect(screen.queryByRole('switch', { name: /^(Apply selected settings|Restore captured settings)$/ })).toBeNull()
     fireEvent.click(screen.getByRole('button', { name: 'Benzo menu' }), { altKey: true })
-    expect(screen.getByText('Diagnostics')).toBeTruthy()
+    expect(screen.getByRole('heading', { name: 'Diagnostics', exact: true })).toBeTruthy()
     expect(screen.getByText('Reported by pmset. Changes are not verified.')).toBeTruthy()
     click('Back')
-    expect(screen.getByRole('switch', { name: 'Deep Sleep' })).toBeTruthy()
+    expect(screen.getByRole('switch', { name: /^(Apply selected settings|Restore captured settings)$/ })).toBeTruthy()
     click('View diagnostics')
     click('Benzo menu'); click('Benzo menu')
-    expect(screen.queryByText('Diagnostics')).toBeNull()
-    expect(screen.getByRole('switch', { name: 'Deep Sleep' })).toBeTruthy()
+    expect(screen.queryByRole('heading', { name: 'Diagnostics', exact: true })).toBeNull()
+    expect(screen.getByRole('switch', { name: /^(Apply selected settings|Restore captured settings)$/ })).toBeTruthy()
   })
 
   it.each(['notInstalled', 'requiresApproval', 'needsOwnerAuthorization', 'differentAccount', 'connectionUnavailable', 'incompatible', 'signingUnavailable', 'executionUncertain'])('blocks writes with %s without erasing session evidence', helperReadiness => {
@@ -533,14 +617,76 @@ describe('source-matched browser simulation', () => {
     click('Back')
     click('First launch'); completeSetup(); click('Options')
     fireEvent.click(screen.getByRole('checkbox', { name: 'Disable TCP Keep-Alive' }))
-    fireEvent.click(screen.getByRole('switch', { name: 'Deep Sleep' }))
+    fireEvent.click(screen.getByRole('switch', { name: /^(Apply selected settings|Restore captured settings)$/ }))
     click('View diagnostics')
     expect(panel('Current Settings').textContent).toBe(before)
     expect(screen.queryByText(/drifted|\(expected/)).toBeNull()
     click('Back')
-    fireEvent.click(screen.getByRole('switch', { name: 'Deep Sleep' }))
+    fireEvent.click(screen.getByRole('switch', { name: /^(Apply selected settings|Restore captured settings)$/ }))
     click('View diagnostics')
     expect(panel('Current Settings').textContent).toBe(before)
+  })
+
+  it.each([['Diagnostics', 'internal'], ['View diagnostics', 'external']])('returns diagnostic focus to the %s invoker', (name) => {
+    render(<Demo />)
+    click(name)
+    const back = screen.getByRole('button', { name: 'Back', exact: true })
+    expect(document.activeElement).toBe(back)
+    if (name === 'View diagnostics') {
+      screen.getByRole('button', { name, exact: true }).focus()
+      click(name)
+      expect(document.activeElement).toBe(back)
+    }
+    click('Back')
+    expect(document.activeElement).toBe(screen.getByRole('button', { name, exact: true }))
+  })
+
+  it('returns focus to the menu after Option-click diagnostic navigation', () => {
+    render(<Demo />)
+    click('Benzo menu')
+    const menu = screen.getByRole('button', { name: 'Benzo menu' })
+    fireEvent.click(menu, { altKey: true })
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Back', exact: true }))
+    click('Back')
+    expect(document.activeElement).toBe(menu)
+  })
+
+  it('returns setup focus to Helper Setup after reviewing access', () => {
+    render(<Demo />)
+    click('First launch')
+    click('Helper Setup')
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Set Up', exact: true }))
+    click('Back')
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Helper Setup' }))
+  })
+
+  it.each(['main', 'setup', 'diagnostics'])('closes %s on Escape and preserves recovery state', view => {
+    render(<Demo />)
+    if (view === 'setup') click('Helper Setup')
+    if (view === 'diagnostics') click('Diagnostics')
+    const target = view === 'main' ? screen.getByRole('switch', { name: /^(Apply selected settings|Restore captured settings)$/ })
+      : screen.getByRole('button', { name: view === 'setup' ? 'Done' : 'Back', exact: true })
+    fireEvent.keyDown(target, { key: 'Escape' })
+    const menu = screen.getByRole('button', { name: 'Benzo menu' })
+    expect(menu.getAttribute('aria-expanded')).toBe('false')
+    expect(document.activeElement).toBe(menu)
+    click('Benzo menu')
+    expect(screen.getByRole('switch', { name: /^(Apply selected settings|Restore captured settings)$/ }).getAttribute('aria-checked')).toBe('true')
+    expect(screen.getByRole('button', { name: 'System Defaults' }).disabled).toBe(false)
+  })
+
+  it('associates descriptions and unavailable reasons without hiding frozen setting text', () => {
+    render(<Demo />)
+    for (const setting of screen.getAllByRole('checkbox')) {
+      expect(describedByText(setting)).toContain(setting.querySelector('small').textContent)
+      expect(describedByText(setting)).toContain('Resolve the current session or recovery before changing settings.')
+    }
+    expect(describedByText(screen.getByRole('checkbox', { name: 'Hibernate Mode' }))).toContain('Unavailable: AC Power')
+    click('System Defaults')
+    for (const setting of screen.getAllByRole('checkbox')) {
+      expect(describedByText(setting)).toContain(setting.querySelector('small').textContent)
+      expect(describedByText(setting)).not.toContain('Resolve the current session')
+    }
   })
 
   it('distinguishes supported empty results and missing observations from read failures', () => {
@@ -617,5 +763,87 @@ describe('source-matched browser simulation', () => {
     fireEvent.click(screen.getAllByRole('button', { name: /Restart demo/ })[0])
     expect(screen.getByRole('button', { name: 'Sleep Now' }).disabled).toBe(true)
     expect(screen.getByRole('switch', { name: 'Launch at Login' }).getAttribute('aria-checked')).toBe('false')
+  })
+})
+
+describe('manual update check simulation', () => {
+  it('checks only on request, then requires a separate release-page action', () => {
+    vi.useFakeTimers()
+    const fetch = vi.fn()
+    vi.stubGlobal('fetch', fetch)
+    try {
+      render(<Demo />)
+      expect(vi.getTimerCount()).toBe(0)
+      const check = screen.getByRole('button', { name: 'Check for Updates…' })
+      expect(screen.queryByText(/latest published release/)).toBeNull()
+      fireEvent.click(check)
+      expect(screen.getByRole('button', { name: 'Checking…' }).disabled).toBe(true)
+      expect(screen.getByRole('switch', { name: /^(Apply selected settings|Restore captured settings)$/ }).getAttribute('aria-checked')).toBe('true')
+      act(() => vi.advanceTimersByTime(400))
+      expect(screen.getByText(/latest published release \(0\.3\.0\)/)).toBeTruthy()
+      expect(screen.queryByText(/this would open/)).toBeNull()
+      click('View Releases')
+      expect(screen.getByText(/this would open.*releases/i)).toBeTruthy()
+      expect(fetch).not.toHaveBeenCalled()
+      expect(screen.queryByRole('button', { name: /install|download/i })).toBeNull()
+    } finally { vi.unstubAllGlobals() }
+  })
+
+  it('cancels checking on close and preserves Back navigation without moving footer controls', () => {
+    vi.useFakeTimers()
+    render(<Demo />)
+    click('Check for Updates…')
+    click('Benzo menu')
+    act(() => vi.advanceTimersByTime(400))
+    click('Benzo menu')
+    expect(screen.queryByText(/latest published release/)).toBeNull()
+    expect(screen.getByRole('button', { name: 'Check for Updates…' }).disabled).toBe(false)
+    click('First launch')
+    click('Helper Setup')
+    expect(screen.queryByRole('button', { name: 'Check for Updates…' })).toBeNull()
+    expect(screen.queryByRole('button', { name: 'System Defaults' })).toBeNull()
+    click('Back')
+    expect(screen.getByRole('button', { name: 'Check for Updates…' })).toBeTruthy()
+    click('View diagnostics')
+    expect(screen.queryByRole('button', { name: 'Check for Updates…' })).toBeNull()
+    click('Back')
+    expect(screen.getByRole('button', { name: 'Check for Updates…' })).toBeTruthy()
+  })
+
+  it('discards completed update results on close, diagnostics, or setup without automatically rechecking', () => {
+    vi.useFakeTimers()
+    render(<Demo />)
+    for (const leave of ['Benzo menu', 'View diagnostics', 'Helper Setup']) {
+      click('Check for Updates…')
+      act(() => vi.advanceTimersByTime(400))
+      expect(screen.getByText(/latest published release/)).toBeTruthy()
+      click(leave)
+      click(leave === 'Benzo menu' ? 'Benzo menu' : leave === 'Helper Setup' ? 'Done' : 'Back')
+      expect(screen.queryByText(/latest published release/)).toBeNull()
+      expect(screen.queryByRole('button', { name: 'View Releases' })).toBeNull()
+      // Focus changes also schedule DOM work; assert the updater's observable
+      // contract rather than counting unrelated browser timers.
+      act(() => vi.advanceTimersByTime(60_000))
+      expect(screen.queryByText(/latest published release/)).toBeNull()
+      expect(screen.getByRole('button', { name: 'Check for Updates…' }).disabled).toBe(false)
+    }
+  })
+
+  it.each([
+    [{ status: 'available', version: '0.4.0' }, /Benzo 0\.4\.0 is available/, 'View Release'],
+    [{ status: 'offline' }, /Couldn't check for updates/, 'View Releases'],
+    [{ status: 'unavailable' }, /Update check unavailable/, 'View Releases'],
+    [{ status: 'unknownVersion' }, /Couldn't compare this build/, 'View Releases'],
+    [{ status: 'ahead' }, /No newer stable release found/, 'View Releases'],
+  ])('shows informational result %j without installing', (update, message, action) => {
+    const { result } = renderHook(useBenzoDemo)
+    render(<NativeAppDemo state={{ ...result.current[0], update }} dispatch={() => {}} />)
+    expect(screen.getByText(message)).toBeTruthy()
+    expect(screen.getByRole('button', { name: action, exact: true })).toBeTruthy()
+    if (update.status === 'available') {
+      expect(screen.getByText(/Compatibility isn't verified/)).toBeTruthy()
+      expect(screen.getByText(/Resolve any recovery/)).toBeTruthy()
+    }
+    expect(screen.queryByRole('button', { name: /install|download/i })).toBeNull()
   })
 })

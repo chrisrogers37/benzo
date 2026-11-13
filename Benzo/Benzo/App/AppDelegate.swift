@@ -6,9 +6,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
     private var statusItem: NSStatusItem!
     private var popover: NSPopover!
     private let viewModel = AppDelegate.makeViewModel()
+    private let updateViewModel = AppDelegate.makeUpdateViewModel()
     private var eventMonitor: Any?
     private var sizeObserver: NSObjectProtocol?
     private var terminationPending = false
+
+    private static func makeUpdateViewModel() -> UpdateViewModel {
+        UpdateViewModel(version: AppVersion(bundle: .main),
+                        checker: ReleaseChecker(load: GitHubReleaseHTTP.load),
+                        openURL: { NSWorkspace.shared.open($0) })
+    }
 
     /// The only production composition root; it is never compiled into BenzoCoreTests.
     private static func makeViewModel() -> BenzoViewModel {
@@ -67,9 +74,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
             updateIcon(state: viewModel.controlState)
             button.action = #selector(togglePopover)
             button.target = self
+            button.setAccessibilityHelp("Open Benzo sleep controls. Diagnostics are available inside the panel.")
         }
 
-        let contentView = PopoverContentView(viewModel: viewModel)
+        let contentView = PopoverContentView(viewModel: viewModel, updates: updateViewModel,
+            maximumContentHeight: { [weak self] in self?.maximumPopoverContentHeight ?? 600 })
+            .onExitCommand { [weak self] in self?.closePopover() }
         let hostingController = NSHostingController(rootView: contentView)
         hostingController.view.setFrameSize(hostingController.sizeThatFits(in: NSSize(width: 320, height: 10000)))
 
@@ -94,6 +104,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
     }
 
     func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
+        updateViewModel.cancelCheck()
         guard !terminationPending else { return .terminateLater }
         terminationPending = true
         Task { await settleTermination(sender) }
@@ -109,6 +120,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
             application.activate(ignoringOtherApps: true)
             let alert = NSAlert()
             alert.alertStyle = .warning
+            if viewModel.isPerformingHelperSetup {
+                alert.messageText = "Helper setup is still in progress."
+                alert.informativeText = BenzoViewModel.helperSetupInProgressReason
+                alert.addButton(withTitle: "Stay Open")
+                alert.buttons[0].keyEquivalent = "\u{1b}"
+                alert.runModal()
+                terminationPending = false
+                application.reply(toApplicationShouldTerminate: false)
+                return
+            }
             alert.messageText = "Benzo could not finish restoring settings."
             alert.informativeText = "\(viewModel.controlState.message)\n\nSettings may remain changed. Quit Anyway preserves the recovery evidence for the next launch."
             alert.addButton(withTitle: "Retry")
@@ -130,15 +151,21 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
         }
     }
 
+    private var maximumPopoverContentHeight: CGFloat {
+        let visible = statusItem?.button?.window?.screen?.visibleFrame ?? NSScreen.main?.visibleFrame
+        return max(120, (visible?.height ?? 640) - 40)
+    }
+
     private func adjustPopoverFrame() {
         guard let contentController = popover.contentViewController,
               let window = contentController.view.window else { return }
         let oldFrame = window.frame
         let newContentSize = contentController.view.fittingSize
-        let newHeight = newContentSize.height + 20 // account for popover chrome/arrow
+        let newHeight = min(newContentSize.height, maximumPopoverContentHeight) + 20 // popover chrome/arrow
 
         if abs(oldFrame.height - newHeight) > 1 {
-            let newOrigin = NSPoint(x: oldFrame.origin.x, y: oldFrame.maxY - newHeight)
+            let bottom = window.screen?.visibleFrame.minY ?? oldFrame.minY
+            let newOrigin = NSPoint(x: oldFrame.origin.x, y: max(bottom, oldFrame.maxY - newHeight))
             let newFrame = NSRect(origin: newOrigin, size: NSSize(width: oldFrame.width, height: newHeight))
             window.setFrame(newFrame, display: true, animate: false)
         }
@@ -198,6 +225,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
         } else {
             // Detect ⌥-click for diagnostics
             let optionHeld = NSEvent.modifierFlags.contains(.option)
+            viewModel.showHelperSetup = false
             viewModel.showDiagnostics = optionHeld
             openPopover()
         }
@@ -215,11 +243,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
     }
 
     private func closePopover() {
+        updateViewModel.cancelCheck()
         popover.performClose(nil)
         if let monitor = eventMonitor {
             NSEvent.removeMonitor(monitor)
             eventMonitor = nil
         }
+    }
+
+    func popoverDidClose(_ notification: Notification) {
+        updateViewModel.cancelCheck()
     }
 }
 
@@ -236,4 +269,38 @@ private final class UnavailableRecoveryStore: RecoveryStoring {
     func loadFence() throws -> ExecutionFence? { throw error }
     func commitFence(_ fence: ExecutionFence) throws { throw error }
     func loadLegacyEvidence() throws -> Data? { throw error }
+}
+
+/// Live networking stays in the app composition boundary, outside core tests.
+private enum GitHubReleaseHTTP {
+    static func load(_ request: URLRequest) async throws -> (Data, HTTPURLResponse) {
+        let configuration = URLSessionConfiguration.ephemeral
+        configuration.timeoutIntervalForRequest = ReleaseChecker.timeout
+        configuration.timeoutIntervalForResource = ReleaseChecker.timeout
+        configuration.waitsForConnectivity = false
+        configuration.urlCache = nil
+        configuration.urlCredentialStorage = nil
+        configuration.httpCookieStorage = nil
+        configuration.httpShouldSetCookies = false
+        let session = URLSession(configuration: configuration, delegate: NoReleaseRedirects(), delegateQueue: nil)
+        defer { session.invalidateAndCancel() }
+        return try await withTaskCancellationHandler(operation: {
+            let (bytes, response) = try await session.bytes(for: request)
+            guard let response = response as? HTTPURLResponse,
+                  response.statusCode == 200, response.url == ReleaseChecker.endpoint,
+                  response.expectedContentLength <= Int64(ReleaseChecker.maximumBytes) else {
+                throw ReleaseCheckError.unavailable
+            }
+            return (try await ReleaseChecker.collect(bytes), response)
+        }, onCancel: { session.invalidateAndCancel() })
+    }
+}
+
+/// This endpoint needs no redirects; fail closed on moves instead of widening its origin.
+private final class NoReleaseRedirects: NSObject, URLSessionTaskDelegate {
+    func urlSession(_ session: URLSession, task: URLSessionTask,
+                    willPerformHTTPRedirection response: HTTPURLResponse, newRequest request: URLRequest,
+                    completionHandler: @escaping (URLRequest?) -> Void) {
+        completionHandler(nil)
+    }
 }

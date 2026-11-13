@@ -12,7 +12,7 @@ export const settingOptions = [
 export const appPresentation = {
   version: 'v0.3.0',
   menu: { name: 'Benzo menu', hint: 'Click to open or close. Option-click when closed for diagnostics.', finder: 'Finder', wifi: 'Wi-Fi', time: '9:41 AM' },
-  master: { name: 'Deep Sleep', on: 'Deep Sleep is On', off: 'Deep Sleep is Off', activeDescription: 'Selected settings are applied and verified.', inactiveDescription: 'Selected settings are off. Captured originals are preserved.' },
+  master: { apply: 'Apply selected settings', restore: 'Restore captured settings' },
   sleep: { action: 'Sleep Now', unavailable: 'Sleep Now is unavailable for this manual apply-and-restore workflow.' },
   recovery: {
     titles: { checking: 'Checking Settings', off: 'Settings Are Off', applying: 'Applying Settings', activeVerified: 'Settings Applied', restoring: 'Restoring Settings', recoveryRequired: 'Recovery Required' },
@@ -34,6 +34,16 @@ export const appPresentation = {
   options: 'Options',
   selectionBlocked: 'Resolve the current session or recovery before changing settings.',
   footer: { login: 'Launch at Login', restore: 'System Defaults', restoreHelp: 'System Defaults restores captured pre-Benzo settings.', quit: 'Quit', noBackup: 'Nothing to restore — apply a selected setting first.' },
+  updates: {
+    check: 'Check for Updates…', checking: 'Checking…', release: 'View Release', releases: 'View Releases',
+    current: version => `You're on the latest published release (${version}).`,
+    available: version => `Benzo ${version} is available.`,
+    ahead: 'No newer stable release found.', offline: "Couldn't check for updates. Try again.",
+    unavailable: 'Update check unavailable. Try later.', unknownVersion: "Couldn't compare this build. View Releases.",
+    compatibility: "Compatibility isn't verified here. Review release requirements.",
+    recovery: 'Resolve any recovery before replacing Benzo.',
+    demoNotice: "Demo only — this would open Benzo's releases in your browser. No update was downloaded.",
+  },
   setup: {
     name: 'Benzo helper setup', entry: 'Helper Setup', refresh: 'Check Again', back: 'Back', done: 'Done',
     note: 'Setup may require more than one administrator approval. You can review settings and recovery information without completing setup.',
@@ -41,6 +51,9 @@ export const appPresentation = {
     recoveryBlocked: 'Settings may still be changed. Helper access is needed to restore them. Your recovery record is retained.',
     replacementBlocked: 'Restore or resolve the current settings session before replacing Benzo’s helper. If needed, use the previous Benzo release to restore settings.',
     inProgress: 'Finish helper setup before changing settings or quitting Benzo.',
+    remove: 'Remove Helper', removeTitle: 'Remove Benzo’s helper?', cancel: 'Cancel',
+    removalBlocked: 'Restore or resolve the current settings session before removing Benzo’s helper. Removal keeps account authorization and recovery records.',
+    removalConfirmation: 'Benzo will need setup before it can change settings again. Your recovery records and account authorization are retained.',
     states: {
       checking: { title: 'Checking Benzo Setup', message: 'Checking the helper and this account’s access.' },
       notInstalled: { title: 'Set Up Benzo', message: 'Set up Benzo’s helper to apply and restore power settings. Only this Mac account will be authorized.', action: 'Set Up', event: 'registerHelper' },
@@ -50,7 +63,7 @@ export const appPresentation = {
       differentAccount: { title: 'Benzo Is Set Up for Another Account', message: 'Use the Mac account that completed setup. This account cannot change settings through Benzo.' },
       connectionUnavailable: { title: 'Benzo’s Helper Is Unavailable', message: 'Benzo couldn’t reach its helper. Check setup and try again.' },
       incompatible: { title: 'Benzo Needs a Matching Helper', message: 'Benzo’s bundled helper differs from the running helper. Replace it after resolving settings.', action: 'Replace Helper', event: 'replaceHelper' },
-      signingUnavailable: { title: 'Setup Is Unavailable in This Build', message: 'Helper setup requires a signed, notarized Benzo release.' },
+      signingUnavailable: { title: 'Setup Is Unavailable in This Build', message: 'Helper setup requires a Developer ID-signed Benzo build. Development packages cannot change power settings.' },
       executionUncertain: { title: 'Helper Recovery Required', message: 'A previous settings request has unresolved execution evidence. Keep the recovery record; checking again does not authorize another write.' },
     },
   },

@@ -107,6 +107,14 @@ Casks/benzo.rb                   — Homebrew cask formula
 - **Core web design**: Import redesigned page/demo presentation from `src/design/`. Keep one `useBenzoDemo` state in `BenzoLanding` for panel and page theme; never mirror the master switch in a second state. Marketing copy and native UI copy have separate owners inside the module. See `src/design/README.md`.
 - **Recovery scope**: Manual apply captures immutable originals per reported profile and freezes selections. A setting is unavailable if any required key is absent from a reported profile. Off, System Defaults and quit attempt to restore the exact captured pre-Benzo values; System Defaults is not Apple's factory reset. Sleep Now remains unavailable. Readback establishes reported settings only; it cannot prove physical sleep, hibernation or USB behavior. Conflicts offer Keep Current, Restore Recorded Original Anyway or Defer. Same-boot execution uncertainty blocks further writes even if reads match; a verified later boot permits read-only reconciliation, never replay or automatic restore. Legacy flat originals remain untrusted for profile mapping; legacy recovery and rule retirement require administrator-assisted steps outside the app.
 - **Helper authorization**: The November 13 amendment `08_helper-authorization.md` replaces repeated AppleScript prompts with an app-bundled SMAppService daemon. Only the local account completing setup is enrolled, bound to UID plus GeneratedUID. Both peers require exact Developer ID identities and role entitlements. The helper accepts no paths or shell command input. Root-owned authority/revisions/fences supplement the GUI recovery journal; lost replies never permit replay. Unsigned CI artifacts cannot use this transport. Explicit replacement requires resolved settings, a helper admission pause, asynchronous unregister completion, and a matching embedded helper code hash. Do not silently transfer ownership or erase evidence.
+- **Removal**: Explicit Remove Helper uses the same resolved-session and helper
+  quiescence boundary as replacement and awaits service unregistration. It keeps
+  the account grant and recovery records; it is not a reset or account transfer.
+- **Updates**: Check for Updates performs one bounded, ephemeral GitHub metadata
+  request after a user action. Release navigation uses the fixed repository and
+  validated numeric version; no automatic download, polling or installation.
+  Cancel requests and clear results on popover close/navigation. The canonical
+  public DMG remains `Benzo-<version>.dmg` for the checker and Homebrew cask.
 - **Not App Store**: Benzo requires root access for pmset, incompatible with App Store sandboxing.
 
 ---
@@ -136,7 +144,8 @@ npm run dev          # Dev server
 npm run build        # Production build
 
 # Distribution
-./scripts/build-dmg.sh   # Build DMG (set APPLE_ID, APPLE_TEAM_ID, APP_PASSWORD for notarization)
+./scripts/build-dmg.sh --mode development --output-dir /absolute/new/output
+# Developer ID signing and explicit --notarize are separate stages; see docs/release-preparation.md.
 ```
 
 ## Code Style & Conventions
@@ -172,7 +181,10 @@ npm run build        # Production build
 
 - **GitHub Releases** — the upcoming helper release requires Developer ID signing and notarization. Membership is deferred during source development; no ad-hoc fallback can enable the helper. Packaging integration and signed native acceptance remain required before release.
 - **Homebrew** — `brew install --cask benzo` (personal tap; official homebrew-cask tap requires notarized DMG)
-- Gatekeeper bypass: right-click → Open, or `xattr -d com.apple.quarantine /Applications/Benzo.app`
+- Do not instruct users to disable Gatekeeper or strip quarantine. Development
+  packages are labeled and cannot enable the helper. Keep pre-enrollment
+  engineering moving; signing, notarization and live signed acceptance are later
+  gates. Follow `docs/release-preparation.md`.
 - Vercel Git integration can deploy previews on branch pushes and production on main; deployment remains separately approved.
 
 ---

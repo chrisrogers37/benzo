@@ -308,6 +308,224 @@ final class BenzoCoreTests: XCTestCase {
         XCTAssertTrue(harness.transport.writes.isEmpty)
     }
 
+    func testHelperRemovalIsExplicitAndRetainsResolvedRecoveryEvidence() async {
+        for readiness in [HelperReadiness.ready, .unavailable(.incompatible)] {
+            let harness = FakeDependencies()
+            let viewModel = harness.makeViewModel()
+            await viewModel.reconcile()
+            await viewModel.toggleMaster()
+            await viewModel.revertToDefaults()
+            XCTAssertEqual(viewModel.controlState, .off)
+            let journal = harness.store.journal
+            let receipt = harness.store.receipt
+            let fence = harness.store.fence
+            let writes = harness.transport.writes
+            harness.helperSetup.readiness = readiness
+            await viewModel.refreshHelperReadiness()
+            XCTAssertTrue(viewModel.canRemoveHelper)
+            XCTAssertFalse(harness.helperSetup.calls.contains("remove"))
+            await viewModel.removeHelper()
+            XCTAssertEqual(Array(harness.helperSetup.calls.suffix(2)), ["remove", "refresh"])
+            XCTAssertEqual(viewModel.helperReadiness, .notInstalled)
+            XCTAssertFalse(viewModel.canRemoveHelper)
+            XCTAssertEqual(harness.store.journal, journal)
+            XCTAssertEqual(harness.store.receipt, receipt)
+            XCTAssertEqual(harness.store.fence, fence)
+            XCTAssertEqual(harness.transport.writes, writes)
+        }
+    }
+
+    func testHelperRemovalRefusesActiveSessionConflictAndExecutionUncertainty() async {
+        let harness = FakeDependencies()
+        let viewModel = harness.makeViewModel()
+        await viewModel.reconcile()
+        await viewModel.toggleMaster()
+        XCTAssertFalse(viewModel.canRemoveHelper)
+        await viewModel.removeHelper()
+        XCTAssertFalse(harness.helperSetup.calls.contains("remove"))
+        harness.transport.values["hibernatemode"] = 0
+        await viewModel.reconcile()
+        XCTAssertFalse(viewModel.conflicts.isEmpty)
+        XCTAssertFalse(viewModel.canRemoveHelper)
+        await viewModel.removeHelper()
+        XCTAssertFalse(harness.helperSetup.calls.contains("remove"))
+
+        let uncertain = FakeDependencies()
+        let uncertainViewModel = uncertain.makeViewModel()
+        await uncertainViewModel.reconcile()
+        uncertain.transport.writeOutcome = .uncertain("Execution did not settle.")
+        await uncertainViewModel.toggleMaster()
+        XCTAssertTrue(uncertainViewModel.executionUncertain)
+        XCTAssertFalse(uncertainViewModel.canRemoveHelper)
+        let journal = uncertain.store.journal
+        let fence = uncertain.store.fence
+        await uncertainViewModel.removeHelper()
+        XCTAssertFalse(uncertain.helperSetup.calls.contains("remove"))
+        XCTAssertEqual(uncertain.store.journal, journal)
+        XCTAssertEqual(uncertain.store.fence, fence)
+    }
+
+    func testFailedHelperRemovalRetainsEvidenceAndSurfacesTheError() async {
+        let harness = FakeDependencies()
+        let viewModel = harness.makeViewModel()
+        await viewModel.reconcile()
+        await viewModel.toggleMaster()
+        await viewModel.revertToDefaults()
+        let journal = harness.store.journal
+        let receipt = harness.store.receipt
+        let fence = harness.store.fence
+        let writes = harness.transport.writes
+        harness.helperSetup.error = NSError(domain: "SetupTest", code: 2,
+            userInfo: [NSLocalizedDescriptionKey: "Helper removal was denied."])
+        await viewModel.removeHelper()
+        XCTAssertEqual(viewModel.helperSetupError, "Helper removal was denied.")
+        XCTAssertEqual(viewModel.helperReadiness, .ready)
+        XCTAssertEqual(harness.store.journal, journal)
+        XCTAssertEqual(harness.store.receipt, receipt)
+        XCTAssertEqual(harness.store.fence, fence)
+        XCTAssertEqual(harness.transport.writes, writes)
+    }
+
+    func testPendingHelperRemovalBlocksDuplicateSetupWritesAndOrdinaryQuit() async {
+        let harness = FakeDependencies()
+        let viewModel = harness.makeViewModel()
+        await viewModel.reconcile()
+        var resume: CheckedContinuation<HelperReadiness, Never>?
+        harness.helperSetup.removalHandler = { await withCheckedContinuation { resume = $0 } }
+        let removal = Task { await viewModel.removeHelper() }
+        while resume == nil { await Task.yield() }
+        XCTAssertTrue(viewModel.isPerformingHelperSetup)
+        XCTAssertFalse(viewModel.canRemoveHelper)
+        XCTAssertFalse(viewModel.canToggleMaster)
+        await viewModel.toggleMaster()
+        await viewModel.removeHelper()
+        let mayQuit = await viewModel.prepareToQuit()
+        XCTAssertFalse(mayQuit)
+        XCTAssertEqual(viewModel.errorMessage, BenzoViewModel.helperSetupInProgressReason)
+        XCTAssertEqual(harness.helperSetup.calls.filter { $0 == "remove" }.count, 1)
+        XCTAssertTrue(harness.transport.writes.isEmpty)
+        resume?.resume(returning: .notInstalled)
+        await removal.value
+        XCTAssertFalse(viewModel.isPerformingHelperSetup)
+        XCTAssertEqual(viewModel.helperReadiness, .notInstalled)
+    }
+
+    func testSuccessfulQuitKeepsMutationAdmissionClosedUntilApplicationTerminates() async {
+        let harness = FakeDependencies()
+        let viewModel = harness.makeViewModel()
+        await viewModel.reconcile()
+        await viewModel.toggleMaster()
+        harness.helperSetup.refreshHandler = {
+            XCTFail("Successful quit must not reopen an asynchronous helper refresh window")
+            return .ready
+        }
+
+        let mayQuit = await viewModel.prepareToQuit()
+        XCTAssertTrue(mayQuit)
+        XCTAssertTrue(viewModel.isPreparingToQuit)
+        XCTAssertEqual(viewModel.controlState, .off)
+        XCTAssertFalse(viewModel.hasSession)
+        XCTAssertFalse(viewModel.canToggleMaster)
+        XCTAssertFalse(viewModel.canRestore)
+        XCTAssertFalse(viewModel.canRemoveHelper)
+        let writes = harness.transport.writes
+        let journal = harness.store.journal
+        let receipt = harness.store.receipt
+        let selection = viewModel.settingStates
+        let preferenceWrites = harness.preferences.writes
+        let setupCalls = harness.helperSetup.calls
+
+        // AppKit has not yet replied to the termination request. No new action
+        // may invalidate the successful restoration result in this interval.
+        await viewModel.toggleMaster()
+        viewModel.toggleSetting(.disablePowerNap)
+        await viewModel.revertToDefaults()
+        await viewModel.removeHelper()
+        viewModel.launchAtLogin = true
+        XCTAssertFalse(viewModel.launchAtLogin)
+        XCTAssertEqual(harness.transport.writes, writes)
+        XCTAssertEqual(harness.store.journal, journal)
+        XCTAssertEqual(harness.store.receipt, receipt)
+        XCTAssertEqual(viewModel.settingStates, selection)
+        XCTAssertEqual(harness.preferences.writes, preferenceWrites)
+        XCTAssertEqual(harness.helperSetup.calls, setupCalls)
+        XCTAssertTrue(harness.login.calls.isEmpty)
+        XCTAssertEqual(viewModel.controlState, .off)
+        XCTAssertFalse(viewModel.hasSession)
+    }
+
+    func testPendingQuitBlocksSetupAndSelectionAcrossHelperReadinessStates() async {
+        for readiness in [HelperReadiness.ready, .notInstalled, .needsOwnerAuthorization,
+                          .requiresApproval, .unavailable(.incompatible)] {
+            let harness = FakeDependencies()
+            harness.helperSetup.readiness = readiness
+            let viewModel = harness.makeViewModel()
+            await viewModel.reconcile()
+            let started = expectation(description: "Quit capture started: \(readiness)")
+            var resume: CheckedContinuation<Void, Never>?
+            harness.transport.beforeCapture = {
+                await withCheckedContinuation { resume = $0; started.fulfill() }
+            }
+            let pendingQuit = Task { await viewModel.prepareToQuit() }
+            await fulfillment(of: [started], timeout: 1)
+            guard let resume else { return XCTFail("Quit did not reach its injected capture") }
+            XCTAssertTrue(viewModel.isPreparingToQuit)
+            XCTAssertFalse(viewModel.canToggleMaster)
+            XCTAssertFalse(viewModel.canRestore)
+            XCTAssertFalse(viewModel.canReplaceHelper)
+            XCTAssertFalse(viewModel.canRemoveHelper)
+            let selection = viewModel.settingStates
+            let setupCalls = harness.helperSetup.calls
+            let preferenceWrites = harness.preferences.writes
+
+            await viewModel.toggleMaster()
+            viewModel.toggleSetting(.disablePowerNap)
+            await viewModel.registerHelper()
+            await viewModel.authorizeCurrentAccount()
+            await viewModel.replaceHelper()
+            await viewModel.removeHelper()
+            viewModel.openHelperApprovalSettings()
+            viewModel.launchAtLogin = true
+            XCTAssertFalse(viewModel.launchAtLogin)
+            XCTAssertEqual(viewModel.settingStates, selection)
+            XCTAssertEqual(harness.preferences.writes, preferenceWrites)
+            XCTAssertEqual(harness.helperSetup.calls, setupCalls)
+            XCTAssertFalse(viewModel.isPerformingHelperSetup)
+            XCTAssertTrue(harness.transport.writes.isEmpty)
+            XCTAssertTrue(harness.login.calls.isEmpty)
+
+            harness.transport.beforeCapture = nil
+            resume.resume()
+            let mayQuit = await pendingQuit.value
+            XCTAssertTrue(mayQuit)
+            XCTAssertTrue(viewModel.isPreparingToQuit)
+            XCTAssertEqual(viewModel.controlState, .off)
+            XCTAssertFalse(viewModel.hasSession)
+        }
+    }
+
+    func testFailedQuitReleasesAdmissionSoRestorationCanBeRetried() async {
+        let harness = FakeDependencies()
+        let viewModel = harness.makeViewModel()
+        await viewModel.reconcile()
+        await viewModel.toggleMaster()
+        harness.transport.captureError = NSError(domain: "QuitTest", code: 1)
+        let firstAttempt = await viewModel.prepareToQuit()
+        XCTAssertFalse(firstAttempt)
+        XCTAssertFalse(viewModel.isPreparingToQuit)
+        XCTAssertTrue(viewModel.hasSession)
+        XCTAssertTrue(viewModel.hasHelperAccess)
+        XCTAssertNotNil(harness.store.journal)
+
+        harness.transport.captureError = nil
+        let retry = await viewModel.prepareToQuit()
+        XCTAssertTrue(retry)
+        XCTAssertTrue(viewModel.isPreparingToQuit)
+        XCTAssertEqual(viewModel.controlState, .off)
+        XCTAssertFalse(viewModel.hasSession)
+        XCTAssertNotNil(harness.store.receipt)
+    }
+
     func testRefreshingReadyHelperKeepsLastObservationUntilNewStatusArrives() async {
         let harness = FakeDependencies()
         let viewModel = harness.makeViewModel()
@@ -782,4 +1000,193 @@ final class BenzoCoreTests: XCTestCase {
         CommandOutcome(stdout: Data(output.utf8), stderr: Data(), termination: .exited(0), outputComplete: true, outputTruncated: false, directChildStopped: true)
     }
 
+}
+
+extension BenzoCoreTests {
+    func testReleaseComparisonUsesNumericStableVersionsAndFixedRepositoryLinks() async throws {
+        let bytes = try releaseFixture()
+        var requests: [URLRequest] = []
+        let checker = ReleaseChecker(load: { request in
+            requests.append(request)
+            return (bytes, releaseResponse())
+        })
+        let result = try await checker.check(installed: AppVersion(shortVersion: "0.9.0", buildVersion: "1"))
+        XCTAssertEqual(result, .available(version: "0.10.0", page: URL(string: "https://github.com/chrisrogers37/benzo/releases/tag/v0.10.0")!))
+        XCTAssertEqual(requests.count, 1)
+        XCTAssertEqual(requests.first?.url?.absoluteString, "https://api.github.com/repos/chrisrogers37/benzo/releases/latest")
+        XCTAssertNil(requests.first?.value(forHTTPHeaderField: "Authorization"))
+        let equal = try await checker.check(installed: AppVersion(shortVersion: "0.10.0", buildVersion: "9"))
+        XCTAssertEqual(equal, .current(version: "0.10.0"))
+        let newerLocal = try await checker.check(installed: AppVersion(shortVersion: "1.0.0", buildVersion: "10"))
+        XCTAssertEqual(newerLocal, .ahead)
+    }
+
+    func testUnknownLocalVersionsNeverFetchOrClaimCurrent() async {
+        var calls = 0
+        let checker = ReleaseChecker(load: { _ in calls += 1; return (Data(), releaseResponse()) })
+        for value in [nil, "", "0.3", "v0.3.0", "0.3.0-beta.1", "0.3.0+dev", "0.٣.0", "01.2.3", "999999999999999999999.0.0"] as [String?] {
+            do {
+                _ = try await checker.check(installed: AppVersion(shortVersion: value, buildVersion: "1"))
+                XCTFail("Invalid local version must not compare: \(value ?? "nil")")
+            } catch { XCTAssertEqual(error as? ReleaseCheckError, .unknownVersion) }
+        }
+        XCTAssertEqual(calls, 0)
+    }
+
+    func testInvalidReleaseMetadataCannotClaimCurrentOrOfferAnUpdate() async throws {
+        let fixtures: [[String: Any]] = [
+            ["draft": true], ["prerelease": true], ["published_at": NSNull()],
+            ["published_at": "not-a-date"], ["tag_name": "v0.10.0-beta.1"],
+            ["tag_name": "v0.10.0/../../evil"], ["assets": []],
+            ["assets": [["name": "Benzo-0.10.0.dmg", "state": "uploaded", "size": 0]]],
+            ["assets": [["name": "Benzo-0.10.0.dmg", "state": "starter", "size": 5]]],
+        ]
+        for fixture in fixtures {
+            let data = try releaseFixture(fixture)
+            let checker = ReleaseChecker(load: { _ in (data, releaseResponse()) })
+            do {
+                _ = try await checker.check(installed: AppVersion(shortVersion: "0.10.0", buildVersion: "1"))
+                XCTFail("Unpublished/incomplete/invalid release must not be reported current")
+            } catch { XCTAssertEqual(error as? ReleaseCheckError, .unavailable) }
+        }
+    }
+
+    func testHTTPFailuresAndMalformedOrOversizedBodiesRemainUnavailable() async throws {
+        for status in [301, 403, 404, 429, 500] {
+            let checker = ReleaseChecker(load: { _ in (try releaseFixture(), releaseResponse(status: status)) })
+            do {
+                _ = try await checker.check(installed: AppVersion(shortVersion: "0.9.0", buildVersion: "1"))
+                XCTFail("HTTP \(status) must not succeed")
+            } catch { XCTAssertEqual(error as? ReleaseCheckError, .unavailable) }
+        }
+        for data in [Data("not json".utf8), Data(repeating: 32, count: 1_048_577)] {
+            let checker = ReleaseChecker(load: { _ in (data, releaseResponse()) })
+            do {
+                _ = try await checker.check(installed: AppVersion(shortVersion: "0.9.0", buildVersion: "1"))
+                XCTFail("Invalid/oversized body must not succeed")
+            } catch { XCTAssertEqual(error as? ReleaseCheckError, .unavailable) }
+        }
+    }
+
+    func testStreamingBodyStopsAtLimitInsteadOfDrainingTheResponse() async throws {
+        var received = 0
+        let stream = AsyncStream<UInt8>(unfolding: {
+            received += 1
+            return received <= 1_048_600 ? 32 : nil
+        })
+        do {
+            _ = try await ReleaseChecker.collect(stream)
+            XCTFail("Oversized response must stop during receipt")
+        } catch { XCTAssertEqual(error as? ReleaseCheckError, .unavailable) }
+        XCTAssertEqual(received, 1_048_577)
+    }
+
+    func testUnexpectedResponseURLIsRejectedEvenWithValidMetadata() async throws {
+        let response = HTTPURLResponse(url: URL(string: "https://attacker.invalid/releases/latest")!,
+                                       statusCode: 200, httpVersion: nil, headerFields: nil)!
+        let checker = ReleaseChecker(load: { _ in (try releaseFixture(), response) })
+        do {
+            _ = try await checker.check(installed: AppVersion(shortVersion: "0.9.0", buildVersion: "1"))
+            XCTFail("Valid-looking metadata from another URL must not offer an update")
+        } catch { XCTAssertEqual(error as? ReleaseCheckError, .unavailable) }
+    }
+}
+
+extension BenzoCoreTests {
+    @MainActor
+    func testUpdateChecksAreExplicitAndOnlyOpenTheBrowserAfterASeparateAction() async throws {
+        var requests = 0
+        var opened: [URL] = []
+        let model = UpdateViewModel(version: AppVersion(shortVersion: "0.9.0", buildVersion: "1"),
+                                    checker: ReleaseChecker(load: { _ in
+            requests += 1
+            return (try releaseFixture(), releaseResponse())
+        }), openURL: { opened.append($0); return true })
+        XCTAssertEqual(requests, 0)
+        XCTAssertEqual(model.state, .idle)
+        await model.checkForUpdates()?.value
+        XCTAssertEqual(requests, 1)
+        XCTAssertTrue(opened.isEmpty)
+        XCTAssertEqual(model.state, .checked(.available(version: "0.10.0", page: URL(string: "https://github.com/chrisrogers37/benzo/releases/tag/v0.10.0")!)))
+        model.openReleasePage()
+        XCTAssertEqual(opened.map(\.absoluteString), ["https://github.com/chrisrogers37/benzo/releases/tag/v0.10.0"])
+    }
+
+    @MainActor
+    func testLeavingUpdatePanelDiscardsCompletedResultsWithoutCheckingAgain() async throws {
+        for local in ["0.9.0", "0.10.0"] {
+            var requests = 0
+            let model = UpdateViewModel(version: AppVersion(shortVersion: local, buildVersion: "1"),
+                                        checker: ReleaseChecker(load: { _ in
+                requests += 1
+                return (try releaseFixture(), releaseResponse())
+            }), openURL: { _ in false })
+            await model.checkForUpdates()?.value
+            XCTAssertNotNil(model.message)
+            model.openReleasePage()
+            XCTAssertTrue(model.browserOpenFailed)
+            model.cancelCheck()
+            XCTAssertEqual(model.state, .idle)
+            XCTAssertNil(model.message)
+            XCTAssertNil(model.pageURL)
+            XCTAssertFalse(model.browserOpenFailed)
+            XCTAssertEqual(requests, 1)
+        }
+    }
+
+    @MainActor
+    func testCanceledCheckCannotReplaceNewerResultAndDuplicateClicksAreCoalesced() async throws {
+        let started = expectation(description: "first request started")
+        var first: CheckedContinuation<(Data, HTTPURLResponse), Error>?
+        var calls = 0
+        let model = UpdateViewModel(version: AppVersion(shortVersion: "0.10.0", buildVersion: "1"),
+                                    checker: ReleaseChecker(load: { _ in
+            calls += 1
+            if calls == 1 {
+                return try await withCheckedThrowingContinuation { first = $0; started.fulfill() }
+            }
+            throw URLError(.notConnectedToInternet)
+        }), openURL: { _ in XCTFail("Checking must not open a browser"); return false })
+        let abandoned = model.checkForUpdates()
+        await fulfillment(of: [started], timeout: 1)
+        XCTAssertNil(model.checkForUpdates())
+        XCTAssertEqual(calls, 1)
+        model.cancelCheck()
+        await model.checkForUpdates()?.value
+        XCTAssertEqual(model.state, .offline)
+        first?.resume(returning: (try releaseFixture(), releaseResponse()))
+        await abandoned?.value
+        XCTAssertEqual(model.state, .offline)
+        XCTAssertEqual(calls, 2)
+    }
+
+    @MainActor
+    func testTransportCancellationClearsCheckingAndAllowsRetry() async {
+        var calls = 0
+        let model = UpdateViewModel(version: AppVersion(shortVersion: "0.3.0", buildVersion: "1"),
+                                    checker: ReleaseChecker(load: { _ in
+            calls += 1
+            throw CancellationError()
+        }), openURL: { _ in false })
+        await model.checkForUpdates()?.value
+        XCTAssertEqual(model.state, .idle)
+        await model.checkForUpdates()?.value
+        XCTAssertEqual(calls, 2)
+        XCTAssertEqual(model.state, .idle)
+    }
+
+    @MainActor
+    func testUpdateErrorsNeverBecomeCurrentAndBrowserFailureIsVisible() async {
+        for (error, expected) in [(URLError(.timedOut) as Error, UpdateViewModel.State.offline),
+                                  (URLError(.notConnectedToInternet), .offline),
+                                  (ReleaseCheckError.unavailable, .unavailable)] {
+            let model = UpdateViewModel(version: AppVersion(shortVersion: "0.3.0", buildVersion: "1"),
+                                        checker: ReleaseChecker(load: { _ in throw error }), openURL: { _ in false })
+            await model.checkForUpdates()?.value
+            XCTAssertEqual(model.state, expected)
+            XCTAssertEqual(model.pageURL, URL(string: "https://github.com/chrisrogers37/benzo/releases"))
+            model.openReleasePage()
+            XCTAssertTrue(model.browserOpenFailed)
+        }
+    }
 }

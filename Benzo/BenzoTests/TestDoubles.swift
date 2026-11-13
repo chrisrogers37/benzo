@@ -26,10 +26,12 @@ final class FakeHelperSetup: HelperSetupClient {
     var registrationResult: HelperReadiness = .requiresApproval
     var authorizationResult: HelperReadiness = .ready
     var replacementResult: HelperReadiness = .ready
+    var removalResult: HelperReadiness = .notInstalled
     var error: Error?
     var calls: [String] = []
     var refreshHandler: (() async -> HelperReadiness)?
     var replacementHandler: (() async throws -> HelperReadiness)?
+    var removalHandler: (() async throws -> HelperReadiness)?
     func refresh() async -> HelperReadiness {
         calls.append("refresh")
         return await refreshHandler?() ?? readiness
@@ -54,6 +56,16 @@ final class FakeHelperSetup: HelperSetupClient {
             return readiness
         }
         readiness = replacementResult
+        return readiness
+    }
+    func remove() async throws -> HelperReadiness {
+        calls.append("remove")
+        if let error { throw error }
+        if let removalHandler {
+            readiness = try await removalHandler()
+            return readiness
+        }
+        readiness = removalResult
         return readiness
     }
     func openApprovalSettings() { calls.append("openSettings") }
@@ -85,11 +97,13 @@ final class IntegrationRecoveryTransport: RecoveryCommanding {
     var writes: [Write] = []
     var captureCalls = 0
     var captureError: Error?
+    var beforeCapture: (() async throws -> Void)?
     var writeOutcome: RecoveryWriteOutcome = .completed(status: 0)
     var values: [String: Int] = ["hibernatemode": 3, "standby": 1, "autopoweroff": 1,
                                 "powernap": 1, "tcpkeepalive": 1, "proximitywake": 1, "womp": 1]
     func capture() async throws -> ProfileSnapshot {
         captureCalls += 1
+        try await beforeCapture?()
         if let captureError { throw captureError }
         let raw = "AC Power:\n" + values.keys.sorted().map { " \($0) \(values[$0]!)" }.joined(separator: "\n")
         return try ProfileSnapshot(parsing: raw)
@@ -163,4 +177,21 @@ final class FakeReadCommandRunner: ReadCommandRunning {
     var calls: [ReadCommand] = []
     var outcome = CommandOutcome(stdout: Data(), stderr: Data(), termination: .exited(0), outputComplete: true, outputTruncated: false, directChildStopped: true)
     func run(_ command: ReadCommand) async -> CommandOutcome { calls.append(command); return outcome }
+}
+
+/// GitHub metadata only. No network, credentials, app launch or privileged boundaries.
+func releaseFixture(_ overrides: [String: Any] = [:]) throws -> Data {
+    var release: [String: Any] = [
+        "tag_name": "v0.10.0", "draft": false, "prerelease": false,
+        "published_at": "2026-11-04T12:00:00Z",
+        "html_url": "https://attacker.invalid/not-used",
+        "assets": [["name": "Benzo-0.10.0.dmg", "state": "uploaded", "size": 624510]],
+    ]
+    release.merge(overrides) { _, new in new }
+    return try JSONSerialization.data(withJSONObject: release)
+}
+
+func releaseResponse(status: Int = 200) -> HTTPURLResponse {
+    HTTPURLResponse(url: URL(string: "https://api.github.com/repos/chrisrogers37/benzo/releases/latest")!,
+                    statusCode: status, httpVersion: nil, headerFields: nil)!
 }

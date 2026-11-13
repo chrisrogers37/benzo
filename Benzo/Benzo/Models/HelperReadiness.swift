@@ -43,7 +43,7 @@ enum HelperReadiness: Equatable, Sendable {
         case .differentAccount: return "Use the Mac account that completed setup. This account cannot change settings through Benzo."
         case .unavailable(.connection): return "Benzo couldn’t reach its helper. Check setup and try again."
         case .unavailable(.incompatible): return "Benzo’s bundled helper differs from the running helper. Replace it after resolving settings."
-        case .unavailable(.signingUnavailable): return "Helper setup requires a signed, notarized Benzo release."
+        case .unavailable(.signingUnavailable): return "Helper setup requires a Developer ID-signed Benzo build. Development packages cannot change power settings."
         case .unavailable(.executionUncertain): return "A previous settings request has unresolved execution evidence. Keep the recovery record; checking again does not authorize another write."
         }
     }
@@ -54,6 +54,7 @@ protocol HelperSetupClient {
     func refresh() async -> HelperReadiness
     func register() async throws -> HelperReadiness
     func replace() async throws -> HelperReadiness
+    func remove() async throws -> HelperReadiness
     func authorizeCurrentAccount() async throws -> HelperReadiness
     func openApprovalSettings()
 }
