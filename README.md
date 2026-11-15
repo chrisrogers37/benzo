@@ -4,15 +4,15 @@
 
 Benzo adjusts selected `pmset` sleep and wake settings. A configured value does not prove physical hibernation, USB power behavior or battery savings on a particular Mac.
 
-## Current source status
+## Current behavior
 
 The current source implements a manual apply-and-restore workflow. Choices are
 editable only when no unresolved session or recovery evidence exists. Apply
 captures the reported per-profile originals before writing exact selected
-settings; applying freezes the selection. Switching Off, choosing **System
-Defaults**, or quitting attempts to restore those captured values. System
-Defaults does not reset macOS to Apple's factory defaults. Sleep Now remains
-disabled. A successful settings readback confirms reported configuration only;
+settings; applying freezes the selection. Switching Off, choosing **Restore
+Settings**, or quitting attempts to restore those captured values. This restores
+your previous settings rather than macOS factory defaults. Sleep Now and its timer
+remain disabled in v0.4.0. A successful settings readback confirms reported configuration only;
 it does not prove physical sleep, hibernation, USB power behavior or battery
 savings.
 
@@ -24,14 +24,16 @@ restoration. If quit-time restoration fails, the app offers Retry, Stay Open or
 Quit Anyway; Quit Anyway preserves recovery evidence. Legacy flat backups cannot
 prove per-profile originals. Their recovery and any old permission-rule
 retirement require administrator-assisted review outside the app; the app does
-not install or remove that rule. These source changes have not completed native
-acceptance or release, and the latest public release remains v0.3.0. See the
+not install or remove that rule. Account-free setup, apply/restore, apply/quit and
+relaunch were checked on an Apple silicon Mac Mini with macOS 26.1 using source
+`09ce88f` (0.3.0 build 1). That evidence does not cover the final v0.4.0 package or
+every native acceptance case; see the [acceptance record](docs/account-free-acceptance.md),
 [remediation plan](documentation/planning/tech_debt/benzo-remediation_2026-11-02/00_TECH_DEBT.md)
 and [recovery plan](documentation/planning/tech_debt/benzo-remediation_2026-11-02/02_recovery-engine.md).
 
-**Power Access** provides one explicit administrator-approved setup for the Mac
-account using Benzo. It installs a finite, one-shot power command and a rule for
-that account; no daemon or background service is installed. Ordinary On, Off and
+**Manage Power Access**, below the disabled Sleep Now button, opens setup for the
+Mac account using Benzo. **Set Up Power Access** requests one administrator
+approval. It installs a finite, one-shot power command and a rule for that account; no daemon or background service is installed. Ordinary On, Off and
 quit use the retained grant without another administrator prompt. Programs running
 as that account can invoke the same limited commands; this is account-level
 access, not an app-exclusive privilege. The separate legacy-rule observation never
@@ -41,10 +43,13 @@ installs, repairs or retires the old `/private/etc/sudoers.d/benzo` rule.
 
 **Download** the latest `.dmg` from [Releases](https://github.com/chrisrogers37/benzo/releases).
 
-The existing v0.3.0 download predates the current power-access, recovery and
-interface changes. The account-free build below is functional source output and
-has not yet completed native acceptance or publication. No Apple Developer
-membership is needed to build it or use its power controls after setup.
+The v0.4.0 release package is named `Benzo-0.4.0.dmg` and contains **Benzo
+Development.app**. It uses the same bytes as the CI development DMG; the development
+app name is intentional. These instructions target v0.4.0; confirm that version is
+listed on Releases before downloading it. No Apple Developer membership is needed
+to build it or use its power controls after setup.
+Before replacing an older copy, switch it Off, let it restore settings, and quit.
+Do not run the old and new apps together.
 
 An ad-hoc build is unnotarized. After a trusted browser download, copy the app to
 Applications. If macOS blocks opening it and you choose to trust that exact copy,
@@ -68,8 +73,9 @@ approval and names the local account receiving access. The selected power settin
 affect everyone using this Mac. Normal apply, restore, quit and relaunch reuse the
 grant. **Repair / Update Power Access** is an explicit administrative action when
 the installed tool needs attention; ordinary app updates keep working with a
-compatible installed tool. Readback checks reported values; hardware sleep
-behavior is a separate outcome. The latest public release remains v0.3.0.
+compatible installed tool. Repair and removal are under **Manage Power Access →
+Advanced** when access is ready. Readback checks reported values; hardware sleep
+behavior is a separate outcome.
 
 A setting is unavailable when any required key is absent from a reported
 profile. Benzo disables that control and reports the missing profile/key; it
@@ -81,7 +87,7 @@ what Benzo stores on your Mac and what the website does.
 ### Features
 
 - **Manual settings** — choose available settings before applying; selections freeze for the session
-- **Captured originals** — Off, System Defaults and quit attempt to restore the exact pre-Benzo values recorded per profile
+- **Captured originals** — Off, Restore Settings and quit attempt to restore the exact pre-Benzo values recorded per profile
 - **Conflict recovery** — Keep Current, Restore Recorded Original Anyway, or Defer retains explicit recovery choices
 - **Sleep Now unavailable** — sleep commands and timed sleep remain disabled
 - **Diagnostics** — Option-click the menubar icon for existing sleep sessions, wake reasons, USB devices and settings observations; these do not prove recovery or hardware behavior
@@ -125,9 +131,9 @@ evidence stays in `/private/var/db/com.benzo.command` (0700, files 0600). Missin
 corrupt or interrupted evidence fails closed; no administrator credentials are stored.
 
 Open the app from Applications, then complete setup. Before repair, removal or app
-replacement, restore or resolve the settings session. **Power Access → Remove
-Power Access** requires confirmation and resolved Off. It removes only the exact
-recognized rule and installed command, retaining account ownership and recovery
+replacement, restore or resolve the settings session. **Manage Power Access →
+Advanced → Remove Power Access** requires confirmation and resolved Off. It removes
+only the exact recognized rule and installed command, retaining account ownership and recovery
 records. Removal is not restoration or account transfer. Reinstallation requires
 explicit setup and retains the original owner. If revocation or a missing tool
 prevents restoration, preserve the app and records for administrator-assisted
@@ -166,9 +172,10 @@ xcodebuild -project Benzo/Benzo.xcodeproj -scheme BenzoCoreTests -destination 'p
 command and login adapters. Tests use injected commands, clocks and temporary
 storage. The bounded read runner's fixture exception does not exercise privileged
 execution. Full-Xcode Debug/Release builds and unhosted XCTest are required; a
-Command Line Tools-only Swift check is not an XCTest pass. Native acceptance and
-release remain incomplete. Use the [native acceptance checklist](docs/account-free-acceptance.md)
-on an approved test Mac after the code and artifact checks are complete. Never
+Command Line Tools-only Swift check is not an XCTest pass. The
+[native acceptance checklist](docs/account-free-acceptance.md) records the observed
+account-free flow and remaining cases. Run relevant checks on an approved test Mac
+after code and artifact checks are complete. Never
 run privileged acceptance, sleep/reboot or unrelated fleet operations on the
 always-on host without the owner’s explicit authorization. These checks do not
 establish physical sleep or USB behavior.
@@ -186,9 +193,10 @@ Full Xcode is required. The output directory must be new and its parent must
 already exist. The resulting development DMG contains `Benzo Development.app`
 and an Applications shortcut, with checksums and source provenance alongside it.
 It is ad-hoc signed and unnotarized, with power controls available after explicit
-setup. Its filename differs from the public app, but it shares Benzo’s bundle
-identifier and recovery storage; do not run two copies together. CI builds and
-inspects the real DMG without installing, launching or granting power access.
+setup. For v0.4.0, the public `Benzo-0.4.0.dmg` is a byte-identical alias of the
+CI `Benzo-0.4.0-development.dmg`; both contain `Benzo Development.app`. It shares
+Benzo’s bundle identifier and recovery storage with earlier builds; do not run two
+copies together. CI builds and inspects the real DMG without installing, launching or granting power access.
 
 The [release preparation guide](docs/release-preparation.md) covers artifact
 checks and optional Developer ID signing/notarization. The
@@ -197,7 +205,8 @@ remaining user-involved checks. No packaging command publishes a release.
 
 ## Landing page
 
-[benzo.work](https://benzo.work/) — built with React/Vite, includes an interactive demo of unreleased app changes.
+[benzo.work](https://benzo.work/) — built with React/Vite, includes an interactive
+demo of the current native interface. Demo readings are fictional.
 
 Use Node 24 LTS (24.15.0 or newer in the 24.x line); `.nvmrc` pins the version used
 in CI. With nvm installed, run `nvm install` and `nvm use` first.

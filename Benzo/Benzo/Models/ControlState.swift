@@ -33,11 +33,11 @@ enum ControlState: Equatable {
 
     var message: String {
         switch self {
-        case .checking: return "Reading settings and recovery evidence."
-        case .off: return "No unresolved Benzo settings session."
-        case .applying: return "Applying your frozen selection and checking each value."
-        case .activeVerified: return "Selected settings were read back successfully. Physical sleep behavior is not verified."
-        case .restoring: return "Restoring captured pre-Benzo settings and checking each value."
+        case .checking: return "Checking your settings."
+        case .off: return "Benzo is off."
+        case .applying: return "Applying your selected settings."
+        case .activeVerified: return "Your selected settings are applied."
+        case .restoring: return "Restoring your previous settings."
         case .recoveryRequired(let reason): return reason
         }
     }

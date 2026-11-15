@@ -3,12 +3,12 @@ import Foundation
 
 @MainActor
 final class BenzoViewModel: ObservableObject {
-    static let sleepUnavailableReason = "Sleep Now is unavailable for this manual apply-and-restore workflow."
+    static let sleepUnavailableReason = "Sleep Now isn’t available in this version."
     static let selectionEditBlockedReason = "Resolve the current session or recovery before changing settings."
     static let helperAccessRequiredReason = "Power access is needed to change settings. Open Power Access to complete setup."
     static let helperRecoveryReason = "Settings may still be changed. Power access is needed to restore them. Your recovery record is retained."
-    static let helperReplacementBlockedReason = "Restore or resolve the current settings session before repairing or updating power access. If needed, use the previous Benzo release to restore settings."
-    static let helperRemovalBlockedReason = "Restore or resolve the current settings session before removing power access. Your account and recovery records will be retained."
+    static let helperReplacementBlockedReason = "Turn Benzo off and resolve any recovery before updating power access. If this copy cannot restore settings, use the previous Benzo release."
+    static let helperRemovalBlockedReason = "Turn Benzo off and resolve any recovery before removing power access."
     static let helperSetupInProgressReason = "Finish power access setup before changing settings or quitting Benzo."
     static let quitInProgressReason = "Benzo is preparing to quit. Wait for restoration to finish."
 

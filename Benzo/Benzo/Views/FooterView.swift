@@ -67,7 +67,7 @@ struct FooterView: View {
             HStack {
                 Spacer()
 
-                Button("System Defaults") { onRevert() }
+                Button("Restore Settings") { onRevert() }
                     .disabled(!canRestore)
                     .help("Restore captured pre-Benzo settings. This does not reset macOS to Apple defaults.")
                     .font(.system(size: 10))
@@ -80,11 +80,7 @@ struct FooterView: View {
                     .buttonStyle(.plain)
             }
             .padding(.horizontal, 20)
-            Text("System Defaults restores captured pre-Benzo settings.")
-                .font(.system(size: 10))
-                .foregroundColor(BenzoTheme.textMuted)
-                .padding(.horizontal, 20)
-                .padding(.bottom, 10)
+            .padding(.bottom, 10)
         }
         .onDisappear { updates.cancelCheck() }
     }

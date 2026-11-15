@@ -8,7 +8,7 @@ afterEach(cleanup)
 const click = name => fireEvent.click(screen.getByRole('button', { name, exact: true }))
 const switchMaster = () => fireEvent.click(screen.getByRole('switch', { name: /^(Apply selected settings|Restore captured settings)$/ }))
 function completeSetup() {
-  click('Power Access')
+  click('Manage Power Access')
   click('Set Up Power Access')
   click('Done')
 }
@@ -41,9 +41,8 @@ describe('shared page and app state', () => {
 
   it('keeps restore, first launch, sleep, quit, and restart synchronized with the page', () => {
     render(<App />)
-    click('System Defaults'); expectPageState(false)
+    click('Restore Settings'); expectPageState(false)
     expect(screen.getByRole('button', { name: 'Sleep Now' }).disabled).toBe(true)
-    click('Sleep Now'); expectPageState(false)
     click('First launch'); expectPageState(false)
     expect(screen.getByRole('switch', { name: /^(Apply selected settings|Restore captured settings)$/ }).disabled).toBe(true)
     completeSetup(); expectPageState(false)
@@ -66,12 +65,13 @@ describe('shared page and app state', () => {
     expect(document.querySelector('meta[name="robots"]')).toBeNull()
   })
 
-  it('distinguishes the unreleased demo changes from existing downloads', () => {
+  it('distinguishes simulated controls from native setup and unavailable sleep features', () => {
     render(<App />)
-    expect(screen.getByText('Downloads are existing releases; the demo previews unreleased changes.')).toBeTruthy()
-    expect(screen.getByText(/containment changes shown here are unreleased/)).toBeTruthy()
+    expect(screen.getByText('Download the latest release and review its installation notes.')).toBeTruthy()
+    expect(screen.getByText(/Setup asks for administrator approval once for the account/)).toBeTruthy()
     click('About this demo')
-    expect(screen.getByText(/controls follow unreleased source changes, not the downloadable app/)).toBeTruthy()
+    expect(screen.getByText(/controls demonstrate Benzo’s apply-and-restore workflow/)).toBeTruthy()
+    expect(screen.getByText(/Sleep Now and its timer are coming in a later update/)).toBeTruthy()
     expect(screen.queryByText('Check sleep blockers')).toBeNull()
     expect(screen.queryByText(/or set a timer/)).toBeNull()
   })

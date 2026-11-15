@@ -11,10 +11,12 @@ struct MasterToggleView: View {
                 Text(state.title)
                     .font(.system(size: 13, weight: .semibold))
                     .foregroundColor(BenzoTheme.text)
-                Text(state.message)
-                    .font(.system(size: 11))
-                    .foregroundColor(BenzoTheme.textFaint)
-                    .fixedSize(horizontal: false, vertical: true)
+                if state != .off && !state.isActive {
+                    Text(state.message)
+                        .font(.system(size: 11))
+                        .foregroundColor(BenzoTheme.textFaint)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
             }
             Spacer()
             PinkToggle(isOn: state.isActive, action: onToggle,

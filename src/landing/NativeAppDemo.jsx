@@ -29,6 +29,8 @@ function Diagnostics({ onBack, backRef, sleepData, usbDevices, observedSettings 
 
 function Setup({ readiness, error, recoveryMessage, canReplaceHelper, canRemoveHelper, removalConfirmation, setupBusy, actionRef, onBack, dispatch }) {
   const status = app.setup.states[readiness] ?? app.setup.states.connectionUnavailable
+  const [managementOpen, setManagementOpen] = useState(false)
+  const managementId = useId()
   const primaryDisabled = setupBusy || (status.event === 'replaceHelper' && !canReplaceHelper)
   const removalTitleId = useId()
   const removalReasonId = useId()
@@ -49,15 +51,17 @@ function Setup({ readiness, error, recoveryMessage, canReplaceHelper, canRemoveH
     <span className="bn-setup-pill" aria-hidden="true">💊</span><h3>{status.title}</h3><p>{status.message}</p>
     {recoveryMessage && <p>{recoveryMessage}</p>}
     {error && <p className="bn-error" role="alert">{error}</p>}
+    {readiness === 'ready' && <button className="bn-management-toggle" aria-expanded={managementOpen} aria-controls={managementId} onClick={() => setManagementOpen(open => !open)}>{app.setup.manage}</button>}
+    <div className="bn-setup-actions" id={managementId} hidden={readiness === 'ready' && !managementOpen}>
     {status.event === 'replaceHelper' && !canReplaceHelper && !setupBusy && <p>{app.setup.replacementBlocked}</p>}
     {status.action && <button ref={!primaryDisabled && readiness !== 'ready' ? actionRef : undefined} disabled={primaryDisabled} onClick={() => dispatch({ type: status.event })}>{status.action}</button>}
     {['ready', 'incompatible'].includes(readiness) && <>
       {!canRemoveHelper && !setupBusy && <p>{app.setup.removalBlocked}</p>}
       <button ref={removeRef} disabled={!canRemoveHelper} onClick={() => dispatch({ type: 'requestRemoveHelper' })}>{app.setup.remove}</button>
     </>}
+    </div>
     <button ref={(!status.action || primaryDisabled) && readiness !== 'ready' && !setupBusy ? actionRef : undefined} disabled={setupBusy} onClick={() => dispatch({ type: 'refreshHelper' })}>{app.setup.refresh}</button>
     <button ref={readiness === 'ready' || setupBusy ? actionRef : undefined} onClick={onBack}>{readiness === 'ready' ? app.setup.done : app.setup.back}</button>
-    <p className="bn-setup-note">{app.setup.note}</p>
   </div>
 }
 
@@ -97,7 +101,6 @@ export default function NativeAppDemo({ state, dispatch }) {
   const [aboutOpen, setAboutOpen] = useState(false)
   const aboutId = useId()
 
-  const sleepUnavailableId = useId()
   const selectionBlockedId = useId()
   const descriptionId = useId()
   const selectionBlocked = phase !== 'off' || state.legacyUnknown
@@ -154,13 +157,13 @@ export default function NativeAppDemo({ state, dispatch }) {
         }
       }}>
         <div className={view === 'diagnostics' ? 'bn-diagnostic-content' : 'bn-popover-scroll'} role={view === 'diagnostics' ? undefined : 'region'} aria-label={view === 'diagnostics' ? undefined : 'Benzo controls'} tabIndex={view === 'diagnostics' ? undefined : 0}>
-        {view === 'setup' ? <Setup readiness={state.helperReadiness} error={state.helperSetupError} recoveryMessage={state.hasSession ? (helperReady ? statusMessage : app.setup.recoveryBlocked) : null} canReplaceHelper={canReplaceHelper} canRemoveHelper={canRemoveHelper} removalConfirmation={state.helperRemovalConfirmation} setupBusy={state.isPerformingHelperSetup} actionRef={setupActionRef} onBack={backFromSetup} dispatch={dispatch} /> : view === 'diagnostics' ? <Diagnostics backRef={diagnosticBackRef} sleepData={state.sleepData} usbDevices={state.usbDevices} observedSettings={state.observedSettings} onBack={backFromDiagnostics} /> : <>
-          <div className="bn-master"><div><strong>{statusTitle}</strong><p>{statusMessage}</p></div><button className={`bn-toggle${active ? ' bn-on' : ''}`} role="switch" aria-label={active ? app.master.restore : app.master.apply} aria-checked={active} disabled={!canToggleMaster} onClick={() => dispatch({ type: 'active' })}><span /></button></div>
+        {view === 'setup' ? <Setup readiness={state.helperReadiness} error={state.helperSetupError} recoveryMessage={state.hasSession ? (!helperReady ? app.setup.recoveryBlocked : phase === 'recoveryRequired' ? statusMessage : null) : null} canReplaceHelper={canReplaceHelper} canRemoveHelper={canRemoveHelper} removalConfirmation={state.helperRemovalConfirmation} setupBusy={state.isPerformingHelperSetup} actionRef={setupActionRef} onBack={backFromSetup} dispatch={dispatch} /> : view === 'diagnostics' ? <Diagnostics backRef={diagnosticBackRef} sleepData={state.sleepData} usbDevices={state.usbDevices} observedSettings={state.observedSettings} onBack={backFromDiagnostics} /> : <>
+          <div className="bn-master"><div><strong>{statusTitle}</strong>{!['off', 'activeVerified'].includes(phase) && <p>{statusMessage}</p>}</div><button className={`bn-toggle${active ? ' bn-on' : ''}`} role="switch" aria-label={active ? app.master.restore : app.master.apply} aria-checked={active} disabled={!canToggleMaster} onClick={() => dispatch({ type: 'active' })}><span /></button></div>
           {!helperReady && <div className="bn-helper-status"><strong>{helperStatus.title}</strong><p className="bn-control-reason">{state.hasSession ? app.setup.recoveryBlocked : helperStatus.message}</p></div>}
-          <div className="bn-helper-entry"><button ref={setupRef} onClick={() => dispatch({ type: 'setup' })}>{app.setup.entry}</button></div>
           <div className="bn-sleep-wrap"><div className="bn-sleep-capsule">
-            <button className="bn-sleep-now" disabled aria-describedby={sleepUnavailableId}><AppSymbol name="moon" size={11} />{app.sleep.action}</button>
-          </div><p className="bn-control-reason" id={sleepUnavailableId}>{app.sleep.unavailable}</p></div>
+            <button className="bn-sleep-now" disabled title={app.sleep.unavailable}><AppSymbol name="moon" size={11} />{app.sleep.action}</button>
+          </div></div>
+          <div className="bn-helper-entry"><button ref={setupRef} onClick={() => dispatch({ type: 'setup' })}>{app.setup.entry}</button></div>
           <div className="bn-options"><button aria-expanded={options} onClick={() => dispatch({ type: 'options' })}><span>{app.options}</span><span className={options ? 'bn-expanded' : ''}><AppSymbol name="chevron" size={9} /></span></button></div>
           {options && <div className="bn-settings">{selectionBlocked && <p className="bn-control-reason" id={selectionBlockedId}>{app.selectionBlocked}</p>}{settingOptions.map(({ key, label, desc, available, unavailableReason }) => <button className="bn-setting" role="checkbox" aria-checked={settings[key]} aria-label={label} disabled={selectionBlocked || !available} aria-describedby={`${descriptionId}-${key}${!available ? ` ${descriptionId}-${key}-unavailable` : ''}${selectionBlocked ? ` ${selectionBlockedId}` : ''}`} key={key} onClick={() => dispatch({ type: 'setting', key })}><span><strong>{label}</strong><small id={`${descriptionId}-${key}`}>{desc}</small>{!available && <small id={`${descriptionId}-${key}-unavailable`} className="bn-control-reason">{unavailableReason}</small>}</span><span aria-hidden="true" className={`bn-checkbox${settings[key] ? ' bn-checked' : ''}`}>{settings[key] && <AppSymbol name="check" size={8} />}</span></button>)}</div>}
           <div className="bn-diagnostics-entry"><button ref={diagnosticsRef} onClick={() => openDiagnostics('internal')}>{app.diagnostics.title}</button></div>
@@ -178,7 +181,7 @@ export default function NativeAppDemo({ state, dispatch }) {
             <div className="bn-recovery-actions">{state.quitPending && <button disabled={!helperReady} onClick={() => dispatch({ type: 'retry' })}>Retry</button>}{!state.quitPending && <button onClick={() => dispatch({ type: 'refreshRecovery' })}>Refresh Recovery Status</button>}{state.quitPending && <><button onClick={() => dispatch({ type: 'stayOpen' })}>Stay Open</button><button onClick={() => dispatch({ type: 'quitAnyway' })}>Quit Anyway</button></>}</div>
           </>}
           {state.legacyUnknown && <p className="bn-control-reason">{app.recovery.legacyHelp}</p>}
-          <div className="bn-footer"><div className="bn-login"><span>{app.footer.login}</span><button className={`bn-login-toggle${login ? ' bn-on' : ''}`} role="switch" aria-label={app.footer.login} aria-checked={login} onClick={() => dispatch({ type: 'login' })}><span /></button></div><UpdateCheck update={state.update} dispatch={dispatch} /><p className="bn-restore-help bn-control-reason">{app.footer.restoreHelp}</p><div className="bn-footer-actions"><button disabled={!canRestore} onClick={() => dispatch({ type: 'restore' })}>{app.footer.restore}</button><button onClick={() => dispatch({ type: 'quit' })}>{app.footer.quit}</button></div></div>
+          <div className="bn-footer"><div className="bn-login"><span>{app.footer.login}</span><button className={`bn-login-toggle${login ? ' bn-on' : ''}`} role="switch" aria-label={app.footer.login} aria-checked={login} onClick={() => dispatch({ type: 'login' })}><span /></button></div><UpdateCheck update={state.update} dispatch={dispatch} /><div className="bn-footer-actions"><button title={app.footer.restoreHelp} disabled={!canRestore} onClick={() => dispatch({ type: 'restore' })}>{app.footer.restore}</button><button onClick={() => dispatch({ type: 'quit' })}>{app.footer.quit}</button></div></div>
         </>}
         </div>
       </div>}

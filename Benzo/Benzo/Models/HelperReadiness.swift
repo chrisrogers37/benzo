@@ -36,7 +36,7 @@ enum HelperReadiness: Equatable, Sendable {
         case .checking: return "Checking this account’s access to power settings."
         case .notInstalled, .requiresApproval, .needsOwnerAuthorization:
             return "One administrator approval lets this Mac account apply and restore Benzo’s supported power settings. These settings affect everyone using this Mac."
-        case .ready: return "This account can apply and restore settings. Turning Benzo on, off, or quitting needs no further administrator approval."
+        case .ready: return "Power access is set up for this Mac account."
         case .differentAccount: return "Use the Mac account that completed setup. This account cannot change settings through Benzo."
         case .unavailable(.connection): return "Benzo couldn’t verify power access. Check again, or repair access after restoring any active settings."
         case .unavailable(.incompatible): return "The installed power tool needs an update. Restore any active settings before updating power access."

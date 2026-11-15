@@ -10,6 +10,29 @@ All notable changes to Benzo are documented here.
   into `documentation/planning/system-review_2026-07-07/`, with a milestone roadmap to
   a signed, notarized, revenue-generating release.
 
+## [0.4.0] - 2026-11-15
+
+### Added
+- Account-free power access: one administrator setup for the local Mac account, followed by apply, restore, quit and relaunch without repeated approval.
+- Durable per-profile recovery records, verified restores, conflict choices and recovery after interrupted operations.
+- Manual Check for Updates, keyboard-accessible controls, improved text contrast and bounded scrolling.
+- Native XCTest, web interaction tests and universal macOS DMG builds in CI.
+
+### Changed
+- The main panel uses a slim Manage Power Access pill below Sleep Now. Routine status caveats are removed; errors and recovery instructions remain visible when needed.
+- Restore Settings replaces the misleading System Defaults label. It restores captured pre-Benzo values.
+- Repair and removal controls appear under Advanced in the ready power-access screen.
+- The downloadable account-free build is ad-hoc signed and unnotarized; macOS may require its per-app Open Anyway approval. No Apple Developer account is needed.
+
+### Removed
+- Automatic setting reapplication, sleep-blocker termination and launch-time permission changes.
+- Sleep Now and its timer remain unavailable in this release. The Sleep Now button stays disabled; restoring sleep and timer functionality is separate follow-up work.
+
+### Validation
+- The account-free flow was observed on source `09ce88f` (0.3.0 build 1), on an Apple silicon Mac Mini with macOS 26.1: one setup approval, Disable Network Wake apply/restore, apply/quit and relaunch. Both restores matched the full recorded power-settings baseline; no further approval was reported for Off, the second On/Quit cycle or relaunch.
+- That evidence predates the final v0.4.0 UI/package. Other-account isolation, native failure paths, removal/reinstall, upgrade and native VoiceOver checks remain untested; see [the acceptance record](docs/account-free-acceptance.md).
+- Physical sleep and timer behavior are outside this release's validation.
+
 ## [0.3.0] - 2026-06-01
 
 ### Added

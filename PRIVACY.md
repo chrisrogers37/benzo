@@ -1,10 +1,9 @@
 # Privacy and local data
 
-Reviewed November 13, 2026. Native behavior below describes the unreleased
-recovery and account-authorized helper source, not verified behavior of the older
-v0.3.0 download. Helper installation and signed native acceptance remain pending.
-The manual update checker is included in the integrated source; the development
-package does not establish acceptance of signed helper installation.
+Reviewed November 15, 2026 for the v0.4.0 account-free release. These notes describe
+the command-based app and its local data. The earlier public v0.3.0 download uses
+a different permission design. Native observations and remaining checks are
+recorded in the [acceptance checklist](docs/account-free-acceptance.md).
 
 ## Mac app
 
@@ -27,16 +26,19 @@ package does not establish acceptance of signed helper installation.
   macOS manages its own system logs separately.
 - **Permissions and writes:** the source observes metadata at
   `/private/etc/sudoers.d/benzo`; presence does not establish authorization.
-  Guided setup registers an app-bundled background helper, asks for macOS approval,
-  and uses a temporary administrator authorization to enroll the connecting local
-  account. The helper retains a standing grant for that account's UID and local
-  GeneratedUID in `/private/var/db/com.benzo.helper/authority.json`. This root-owned
-  private directory (0700, files 0600) also retains bounded request identity,
-  boot identity, revision, setting/precondition/target and execution evidence.
-  It stores no administrator password or reusable authorization token. Applying
-  and restoring uses authenticated local XPC and exact selected profile/key values
-  system-wide; ordinary operations do not request a new administrator authorization.
-  Recovery reads use `pmset -g custom`. The helper never opens client-supplied paths.
+  Explicit Set Up Power Access requests one administrator approval to install the
+  app-bundled `BenzoCommand` at
+  `/Library/PrivilegedHelperTools/com.chrisrogers37.benzo-command` and its exact,
+  digest-pinned rule at `/private/etc/sudoers.d/benzo-command`. The grant binds the
+  setup account's UID and GeneratedUID; other programs in that account can invoke
+  the same finite commands. Root-owned `/private/var/db/com.benzo.command/`
+  (0700, files 0600) retains account authority, request and boot identities,
+  revisions, setting/precondition/target and execution evidence. It stores no
+  administrator password or reusable authorization token. Apply and restore invoke
+  the one-shot command through noninteractive `sudo`, changing exact selected
+  profile/key values system-wide. No daemon or XPC service is installed. Ordinary
+  operations do not request new administrator approval. Recovery reads use
+  `pmset -g custom`; the command accepts no client-supplied paths.
 - **Network:** the reviewed native source has no analytics, crash reporting or
   diagnostics upload implementation. Only an explicit Check for Updates requests
   the latest stable release metadata from GitHub's API for `chrisrogers37/benzo`.
@@ -52,9 +54,10 @@ package does not establish acceptance of signed helper installation.
 
 Recovery evidence retains unresolved data, required previous generations and a
 resolved receipt; it is not erased just because the app quits. Preferences and
-legacy evidence have no automatic cleanup in this source. App
-removal does not restore settings, transfer the enrolled account, erase helper
-evidence, or retire legacy permissions. Preserve recovery
+legacy evidence have no automatic cleanup. Explicit Remove Power Access removes
+only the recognized command rule and installed binary, retaining account and
+recovery records. Removing the app does not restore settings, transfer account
+ownership, erase command evidence or retire legacy permissions. Preserve recovery
 evidence if the outcome is uncertain; see [recovery and removal](README.md#recovery-and-removal).
 
 ## Security reports

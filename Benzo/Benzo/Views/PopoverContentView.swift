@@ -21,7 +21,7 @@ struct PopoverContentView: View {
                     canReplaceHelper: viewModel.canReplaceHelper,
                     canRemoveHelper: viewModel.canRemoveHelper,
                     error: viewModel.helperSetupError,
-                    recoveryMessage: viewModel.hasSession ? (viewModel.hasHelperAccess ? viewModel.controlState.message : BenzoViewModel.helperRecoveryReason) : nil,
+                    recoveryMessage: setupRecoveryMessage,
                     onRegister: { Task { await viewModel.registerHelper() } },
                     onAuthorize: { Task { await viewModel.authorizeCurrentAccount() } },
                     onReplace: { Task { await viewModel.replaceHelper() } },
@@ -64,25 +64,29 @@ struct PopoverContentView: View {
                 .padding(.horizontal, 20)
             }
 
-            Button("Power Access") {
+            SleepNowButton(onSleep: viewModel.sleepNow)
+                .padding(.horizontal, 20)
+
+            Button("Manage Power Access") {
                 viewModel.showHelperSetup = true
                 Task { await viewModel.refreshHelperReadiness() }
             }
             .buttonStyle(.plain)
+            .font(.system(size: 11, weight: .medium))
             .foregroundColor(BenzoTheme.accentControl)
+            .padding(.horizontal, 12)
+            .padding(.vertical, 4)
+            .background(Capsule().stroke(BenzoTheme.accentControl.opacity(0.5), lineWidth: 1))
             .focused($focusedControl, equals: .helperSetup)
             .accessibilityFocused($accessibilityFocus, equals: .helperSetup)
             .overlay {
-                RoundedRectangle(cornerRadius: 3)
+                Capsule()
                     .stroke(focusedControl == .helperSetup ? BenzoTheme.accentControl : .clear, lineWidth: 2)
                     .padding(-3)
                     .allowsHitTesting(false)
             }
-            .padding(.vertical, 8)
-
-            SleepNowButton(onSleep: viewModel.sleepNow)
-                .padding(.horizontal, 20)
-                .padding(.bottom, 14)
+            .padding(.top, 8)
+            .padding(.bottom, 14)
 
             Divider().opacity(0.5)
 
@@ -185,6 +189,13 @@ struct PopoverContentView: View {
                 accessibilityFocus = returnToControl
             }
         }
+    }
+
+    private var setupRecoveryMessage: String? {
+        guard viewModel.hasSession else { return nil }
+        if !viewModel.hasHelperAccess { return BenzoViewModel.helperRecoveryReason }
+        if case .recoveryRequired = viewModel.controlState { return viewModel.controlState.message }
+        return nil
     }
 
     @ViewBuilder

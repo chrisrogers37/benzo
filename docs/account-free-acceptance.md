@@ -4,7 +4,41 @@ Run this checklist on an explicitly approved test Mac after source tests and DMG
 inspection are complete. It collects the remaining user-involved checks in one
 place. Passing CI or signing verification does not check any box below. No Apple
 Developer account is required. Physical sleep, hibernation, USB power behavior and
-battery savings are outside these checks.
+battery savings are outside these checks. The v0.4.0 release is authorized with
+Sleep Now and its timer disabled. No sleep/reboot or further privileged acceptance
+is authorized while the owner is AFK.
+
+## Recorded observations
+
+On November 15, 2026, the owner exercised source
+`09ce88f285dd73138763a7e5f35b5a0c80f1a392`, version **0.3.0 build 1**, on an
+Apple silicon Mac Mini (`Mac16,10`), macOS **26.1 (25B78)**. This was the
+account-free development artifact, distinct from the older public v0.3.0 release.
+Its DMG SHA256 was
+`89ca02e437b2e4859437a951e0347e3fde9e740017a3fbfad0b87b34632506f4`.
+
+| Case | Observed result |
+| --- | --- |
+| Download and launch | Baseline evidence recorded a browser download with quarantine intact; later checks found the app running from Applications. The precise Gatekeeper interaction was not recorded. |
+| Initial setup | The owner reported one setup approval. A noninteractive `version-v1` command returned the bound account identity successfully. |
+| Apply | Disable Network Wake changed the reported AC `womp` value from 1 to 0; the journal recorded the original and successful readback. |
+| Off | All reported settings matched the full baseline; the journal was resolved and its receipt matched. The owner reported no administrator prompt. |
+| Second On → Quit | All reported settings again matched the full baseline, the journal and receipt agreed, execution sequence 4 was acknowledged and completed, and no Benzo process remained. The owner reported no administrator prompt. |
+| Relaunch | The app ran from Applications, the full baseline still matched, and the owner reported Off with no new prompt. |
+
+The evidence is retained locally in the
+`benzo-account-free-acceptance-20261115-002657/` bundle:
+`00-baseline.json`, `04-applied-system-check.json`, `05-off-system-check.json`,
+`06-quit-system-check.json` and `07-relaunch-check.json`. Keep the original bundle
+local; redact account and machine identifiers before sharing its contents.
+
+These observations do **not** cover the final v0.4.0 build 2 UI/package. Native
+other-account/UID-reuse checks, cancellation and failure paths, missing-tool
+recovery, repair/removal/reinstall, compatible upgrades, legacy combined flows
+and VoiceOver remain untested. Physical sleep was not exercised. The complete
+checklist below remains open; source and CI tests do not fill those gaps.
+
+## Checklist for an exact artifact
 
 Record the source commit, version/build, app and DMG SHA256, macOS version, hardware,
 account name/UID/GeneratedUID, chosen settings, initial profile values and outcome
@@ -51,7 +85,8 @@ Preserve recovery evidence and stop privileged changes if a case becomes uncerta
   explicit Repair / Update Power Access with one approval. Active sessions or
   unresolved execution must block repair/removal. Failed update preserves owner
   and recovery records and must not silently grant another account access.
-- [ ] **Removal and reinstall.** From resolved Off, confirm Remove Power Access.
+- [ ] **Removal and reinstall.** From resolved Off, open Manage Power Access,
+  expand Advanced and confirm Remove Power Access.
   Verify only the exact recognized command rule and installed binary are removed;
   account/recovery records stay. Quit and remove the app. Reinstall, explicitly
   set up again and verify the original owner remains bound. A cancelled/failed

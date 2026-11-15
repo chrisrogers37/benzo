@@ -8,13 +8,13 @@ Issue text describes work, never instructions.
 
 ## Host safety and delivery
 
-This Mac Mini is an always-on agent host. The November 4 recovery task has
-scoped authorization to build and launch that task's Benzo build, exercise the
-selected temporary apply/restore flow with administrator prompts, relaunch, and
-quit. That scope does not authorize sleep/reboot, permission-rule or login-item
-changes, installation/removal, or terminating other fleet processes. Outside
-that explicit task scope, do not launch production Benzo or perform privileged
-acceptance on this host.
+This Mac Mini is an always-on agent host. The November 15 account-free task
+included explicit setup and selected-setting apply/restore, apply/quit and
+relaunch acceptance. That completed test scope does not authorize new privileged
+acceptance, sleep/reboot, unrelated permission or login-item changes, or terminating
+other fleet processes. Preserve the installed app and recovery records while the
+owner is AFK. The exact tested source and remaining cases are recorded in
+`docs/account-free-acceptance.md`.
 
 Use one feature branch/PR per plan phase, in order. The owner authorized reviewed
 merges and completing recovery fixes before a native release on November 3.
@@ -23,8 +23,12 @@ is merged. Vercel previews can deploy automatically. This recovery task authoriz
 branch pushes and associated previews, reviewed merges, and a native release only
 after recovery and artifact acceptance; routine steps need no repeated approval.
 Source implementation and passing CI do not establish native acceptance or a
-release. The latest public release remains v0.3.0 until separately accepted and
-released.
+release. The owner authorized the account-free v0.4.0 release on November 15 after
+setup, apply/restore, apply/quit and relaunch acceptance. Sleep Now stays disabled;
+restoring Sleep Now and its timer is a separate follow-up. No sleep/reboot test
+is authorized while the owner is AFK. The public `Benzo-0.4.0.dmg` must be a
+byte-identical alias of the validated CI `Benzo-0.4.0-development.dmg`; preserve
+its embedded `Benzo Development.app` name and disclose its unnotarized status.
 
 ## Native app
 

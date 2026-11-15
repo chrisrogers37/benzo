@@ -12,6 +12,28 @@ expected settings, durable revisions and execution evidence. It runs only when
 requested and exits; no LaunchDaemon is bundled or registered. This architecture
 supersedes the historical signed-daemon plan and its artifacts.
 
+## v0.4.0 delivery scope
+
+The owner authorized the account-free v0.4.0 release on November 15, 2026 with
+Sleep Now and its timer disabled. The interface uses **Restore Settings**, a
+**Manage Power Access** pill below Sleep Now, and an **Advanced** disclosure for
+repair/removal when access is ready. Routine caveats are hidden; errors and
+recovery instructions remain visible when needed.
+
+The public asset is `Benzo-0.4.0.dmg`, a byte-identical alias of the validated CI
+`Benzo-0.4.0-development.dmg`. Keep **Benzo Development.app** inside the DMG.
+Retain the original artifact and provenance, record matching SHA256 values for
+both names, and use the public asset's checksum in the cask. Renaming the DMG
+does not change its ad-hoc signature or unnotarized status. Publication must
+record the final source commit, version/build, checks and asset checksum; this
+guide is not evidence that publication or final-package acceptance has occurred.
+
+The [native acceptance record](account-free-acceptance.md#recorded-observations)
+covers source `09ce88f` (0.3.0 build 1), including setup and exact restore on Off
+and Quit. It does not establish native acceptance of the final v0.4.0 package,
+other-account isolation, failure paths, removal/reinstall, upgrades or VoiceOver.
+No sleep/reboot or additional privileged test is authorized while the owner is AFK.
+
 ## Build and inspect without credentials
 
 Use macOS with full Xcode and the Node version in `.nvmrc`. Follow the Debug,
@@ -64,8 +86,9 @@ and its exact rule at `/private/etc/sudoers.d/benzo-command`; root-owned account
 execution records live in `/private/var/db/com.benzo.command`. Ordinary app updates
 retain the grant when the installed protocol is compatible. **Repair / Update Power
 Access** is a separate administrator-approved action after resolving settings.
-**Remove Power Access** revokes the exact rule and removes the command while keeping
-account and recovery records. A failure must preserve evidence and remain actionable.
+In the ready screen, **Manage Power Access → Advanced → Remove Power Access**
+revokes the exact rule and removes the command while keeping account and recovery
+records. A failure must preserve evidence and remain actionable.
 
 Historical flat backups, `/private/etc/sudoers.d/benzo`, and old daemon/root state
 need restoration with the prior build or explicit administrator-assisted resolution.
@@ -110,11 +133,14 @@ account-free app’s supported power controls.
 
 ## Delivery evidence and backup
 
-Complete code, fixture and artifact checks before requesting user involvement in
-the [single native checklist](account-free-acceptance.md). Record the exact tested
-commit, version/build and checksums. Changes to the final artifact require relevant
-rechecks. Publication and cask updates use the actually accepted artifact/checksum
-and remain explicit delivery actions; Check for Updates never downloads or installs.
+Complete code, fixture and artifact checks and record the exact tested commit,
+version/build and checksums. Track native observations and untested cases in the
+[single native checklist](account-free-acceptance.md); do not repeat privileged
+acceptance without scope to do so. Changes to the final artifact require relevant
+rechecks. For the authorized v0.4.0 delivery, publish the validated artifact and
+matching cask checksum with the observed native scope stated explicitly. Later
+publication or cask updates remain separate delivery actions; Check for Updates
+never downloads or installs.
 
 Before any planned factory reset, back up source, checksummed artifacts and acceptance
 evidence to the owner’s chosen destination. A push does not back up local Documents
