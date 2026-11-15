@@ -41,7 +41,7 @@ export const siteCopy = {
   },
   featuresLabel: 'What Benzo does',
   features: [
-    { title: 'Review your sleep settings', body: 'Choose supported power settings and restore your previous values when you turn Benzo off or quit. Sleep Now and its timer are coming in a later update.' },
+    { title: 'Review your sleep settings', body: 'Choose supported power settings and restore your previous values when you turn Benzo off or quit. The current v0.4.0 download keeps Sleep Now disabled; this demo previews Sleep Now and its timer for v0.5.0.' },
     { title: 'Explore diagnostics', body: 'Review recent sleep sessions, wake reasons, and reported settings. The demo uses made-up readings.' },
     { title: 'A pill in your menu bar', body: 'Click the pill to open Benzo, review the options, then close the panel when you’re done.' },
   ],
@@ -70,14 +70,15 @@ export const siteCopy = {
   final: { title: 'Get Benzo for your Mac', description: 'Download the app and review the release notes on GitHub.' },
   footer: { tagline: 'Built because I wanted my Mac to sleep when I do.', source: 'Source', help: 'Help & feedback', contact: 'Contact', privacy: 'Privacy' },
   demo: {
-    name: 'Interactive Benzo app demonstration', navigation: 'Demo navigation', title: 'Interactive demo',
+    name: 'Interactive Benzo app demonstration', navigation: 'Demo navigation', title: 'v0.5.0 preview demo',
     firstLaunch: 'First launch', reset: 'Reset demo', restart: 'Restart demo', closed: 'Demo closed.',
     diagnostics: 'View diagnostics',
-    hint: 'Explore the controls with the switch and Options. Use First launch to choose available settings before applying. This demo won’t change your Mac’s settings.',
+    hint: 'Preview Sleep Now or choose a 5, 15, 30 or 60-minute timer. Click the countdown to cancel. The current v0.4.0 download keeps Sleep Now disabled. This demo won’t put your Mac to sleep or change its settings.',
     disclosure: 'About this demo',
-    disclosureBody: 'The controls demonstrate Benzo’s apply-and-restore workflow. Manage Power Access simulates setup, repair and removal; no permission is changed. Check for Updates is simulated, and View Release shows a demo notice without downloading or installing anything. Sleep Now is disabled. Settings can be edited only while resolved Off; applying freezes the selected target until captured pre-Benzo settings are restored and verified. Restore Settings returns to those captured values. This AC-only Mac Mini example leaves Hibernate Mode and Proximity Wake unavailable because required keys are not reported. Diagnostic readings are made-up examples. The demo never changes your Mac. Settings readback does not promise physical hibernation or USB power loss.',
+    disclosureBody: 'The controls demonstrate Benzo’s apply-and-restore workflow and preview Sleep Now and its timer for v0.5.0. The current v0.4.0 download keeps Sleep Now disabled. Manage Power Access simulates setup, repair and removal; no permission is changed. Check for Updates is simulated, and View Release shows a demo notice without downloading or installing anything. Sleep requests are simulated and do not put your Mac to sleep. A timer survives closing the demo panel, but stops when settings are restored, power access or recovery needs attention, the demo quits, or the browser is interrupted. Settings can be edited only while resolved Off; applying freezes the selected target until captured pre-Benzo settings are restored and verified. Restore Settings returns to those captured values. This AC-only Mac Mini example leaves Hibernate Mode and Proximity Wake unavailable because required keys are not reported. Diagnostic readings are made-up examples. The demo never changes your Mac. Settings readback does not promise physical hibernation or USB power loss.',
     resultsLabel: 'Example diagnostic results',
     notices: {
+      sleep: 'Demo only — the sleep request is simulated. Your Mac will not sleep and its settings have not changed.',
       permission: 'Status refresh simulated. No permission was requested or changed.',
       settings: 'Sleep settings changed only in this demo.', applied: 'Selected settings were simulated and verified. Your Mac’s settings haven’t changed.', noChanges: 'No selected settings needed a change. Settings remain Off.', login: 'Login preference changed only in this demo.',
       restored: 'Captured pre-Benzo settings restored in the demo. Settings are editable again; your Mac’s settings haven’t changed.',

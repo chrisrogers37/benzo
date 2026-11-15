@@ -34,7 +34,7 @@ struct BenzoCommandMain {
                    guard try CommandToolIdentity.localOwner(uid: owner.uid) == owner else {
                        throw PowerCommandError.invalid("The authorized local account has changed.")
                    }
-               })
+               }, executeSleep: { expiry in CommandRuntime.executeSleep(expiresAtContinuousTicks: expiry) })
             let reply = await engine.handle(input, caller: caller)
             CommandRuntime.writeReply(try PowerCommandWire.encode(reply))
             withExtendedLifetime(store) {}

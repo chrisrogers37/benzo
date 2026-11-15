@@ -3,7 +3,7 @@ import Foundation
 
 @MainActor
 final class BenzoViewModel: ObservableObject {
-    static let sleepUnavailableReason = "Sleep Now isn’t available in this version."
+    static let sleepUnavailableReason = "Apply your selected settings before using Sleep Now."
     static let selectionEditBlockedReason = "Resolve the current session or recovery before changing settings."
     static let helperAccessRequiredReason = "Power access is needed to change settings. Open Power Access to complete setup."
     static let helperRecoveryReason = "Settings may still be changed. Power access is needed to restore them. Your recovery record is retained."
@@ -39,7 +39,13 @@ final class BenzoViewModel: ObservableObject {
     @Published private(set) var isPerformingHelperSetup = false
     @Published private(set) var isPreparingToQuit = false
     @Published private(set) var helperSetupError: String?
-    @Published var showHelperSetup = false
+    @Published var showHelperSetup = false {
+        didSet { if showHelperSetup { cancelScheduledSleep() } }
+    }
+    @Published private(set) var sleepRemainingSeconds: Int?
+    @Published private(set) var sleepMessage: String?
+    @Published private(set) var sleepRequestInFlight = false
+    @Published private(set) var supportsSleep = false
     @Published var errorMessage: String?
 
     @Published var showDiagnostics = false
@@ -50,17 +56,25 @@ final class BenzoViewModel: ObservableObject {
     private var refreshHelperAgain = false
     private var isInitialized = false
     private let dependencies: BenzoDependencies
+    private let sleepCountdown: SleepCountdown
+    private var sleepGeneration: UInt64 = 0
+    private var sleepAdmissionInProgress = false
+    private var lastCoordinatorSleepMessage: String?
+    private(set) var sleepTask: Task<Void, Never>?
     private(set) var startupTask: Task<Void, Never>?
     var onStateChange: ((ControlState) -> Void)?
 
     init(dependencies: BenzoDependencies, startupPolicy: BenzoStartupPolicy) {
         self.dependencies = dependencies
+        sleepCountdown = SleepCountdown(scheduler: dependencies.sleepScheduler)
         let saved = dependencies.preferences.dictionary(forKey: BenzoPreferenceKey.settingStates) as? [String: Bool]
         settingStates = Dictionary(uniqueKeysWithValues: SleepSetting.allCases.map {
             ($0, saved?[$0.rawValue] ?? $0.defaultEnabled)
         })
         launchAtLogin = dependencies.loginItem.isEnabled
         isInitialized = true
+        sleepCountdown.onChange = { [weak self] in self?.sleepRemainingSeconds = $0 }
+        sleepCountdown.onFire = { [weak self] in self?.sleepNow() }
         dependencies.coordinator.onChange = { [weak self] in self?.publishControlState() }
         publishControlState()
         if startupPolicy == .automatic {
@@ -73,8 +87,8 @@ final class BenzoViewModel: ObservableObject {
     var isSelectionEditBlocked: Bool { controlState != .off || isPreparingToQuit }
     var activeCount: Int { frozenSettings?.count ?? selectedSettings.count }
     var hasHelperAccess: Bool { helperReadiness == .ready && !isPerformingHelperSetup && !isPreparingToQuit }
-    var canToggleMaster: Bool { hasHelperAccess && ((controlState == .off && activeCount > 0) || isActive) }
-    var canRestore: Bool { hasHelperAccess && hasSession && !controlState.isBusy && !executionUncertain && conflicts.isEmpty }
+    var canToggleMaster: Bool { !sleepRequestInFlight && hasHelperAccess && ((controlState == .off && activeCount > 0) || isActive) }
+    var canRestore: Bool { !sleepRequestInFlight && hasHelperAccess && hasSession && !controlState.isBusy && !executionUncertain && conflicts.isEmpty }
     var canReplaceHelper: Bool {
         helperReadiness.supportsRepair && canChangeHelperInstallation
     }
@@ -83,7 +97,67 @@ final class BenzoViewModel: ObservableObject {
     }
     private var canChangeHelperInstallation: Bool {
         controlState == .off && !hasSession &&
-            !executionUncertain && !isPerformingHelperSetup && !isRefreshingHelper && !isPreparingToQuit
+            !executionUncertain && !sleepRequestInFlight && !isPerformingHelperSetup && !isRefreshingHelper && !isPreparingToQuit
+    }
+
+    var needsSleepAccessUpdate: Bool { helperReadiness == .ready && !supportsSleep }
+    private var sleepEligibility: Bool {
+        helperReadiness == .ready && supportsSleep && controlState.isActive && hasSession &&
+            !executionUncertain && conflicts.isEmpty && !isPerformingHelperSetup &&
+            !isRefreshingHelper && !isPreparingToQuit && !showHelperSetup
+    }
+    var canSleep: Bool { sleepEligibility && !sleepRequestInFlight && dependencies.coordinator.canAdmitSleep }
+    var sleepDisabledReason: String? {
+        if sleepRequestInFlight { return "The sleep request is pending. Refresh recovery to check its result." }
+        if isPreparingToQuit { return Self.quitInProgressReason }
+        if isPerformingHelperSetup || showHelperSetup { return Self.helperSetupInProgressReason }
+        if isRefreshingHelper { return "Wait for Power Access to finish checking." }
+        if needsSleepAccessUpdate { return "Turn Benzo off, then use Update Power Access to enable Sleep Now for this Mac account." }
+        if helperReadiness != .ready { return Self.helperAccessRequiredReason }
+        if executionUncertain || !conflicts.isEmpty { return "Resolve recovery before using Sleep Now." }
+        if !controlState.isActive { return Self.sleepUnavailableReason }
+        return nil
+    }
+
+    func scheduleSleep(minutes: Int) {
+        guard canSleep, SleepCountdown.presets.contains(minutes) else { return }
+        sleepGeneration &+= 1
+        sleepMessage = nil
+        sleepCountdown.start(minutes: minutes)
+    }
+
+    func cancelScheduledSleep() {
+        sleepGeneration &+= 1
+        let wasScheduled = sleepRemainingSeconds != nil
+        sleepCountdown.cancel()
+        if wasScheduled { sleepMessage = "Sleep timer canceled." }
+    }
+
+    func sleepNow() {
+        guard canSleep else { errorMessage = sleepDisabledReason; return }
+        cancelScheduledSleep()
+        let generation = sleepGeneration
+        sleepAdmissionInProgress = true
+        sleepRequestInFlight = true
+        sleepMessage = nil
+        sleepTask = Task { [weak self] in
+            guard let self else { return }
+            await self.dependencies.coordinator.requestSleep {
+                self.sleepGeneration == generation && self.sleepEligibility
+            }
+            self.sleepAdmissionInProgress = false
+            self.publishControlState()
+        }
+    }
+
+    func systemWillSleep() { cancelScheduledSleep() }
+    func systemDidWake() {
+        cancelScheduledSleep()
+        Task { [weak self] in
+            guard let self else { return }
+            await self.dependencies.coordinator.waitUntilIdle()
+            await self.reconcile()
+        }
     }
 
     // Eligibility is observed before a session is admitted. Stored choices are not proof of support.
@@ -101,14 +175,19 @@ final class BenzoViewModel: ObservableObject {
             refreshHelperAgain = true
             return
         }
+        sleepGeneration &+= 1
         isRefreshingHelper = true
-        defer { isRefreshingHelper = false }
+        defer {
+            isRefreshingHelper = false
+            if !sleepEligibility { cancelScheduledSleep() }
+        }
         // Keep the previous observation visible while refreshing. The write
         // transport independently checks authority at admission. If an operation
         // settles during the read, check again after the older response arrives.
         repeat {
             refreshHelperAgain = false
             helperReadiness = await dependencies.helperSetup.refresh()
+            supportsSleep = dependencies.helperSetup.supportsSleep
         } while refreshHelperAgain
     }
 
@@ -139,6 +218,7 @@ final class BenzoViewModel: ObservableObject {
 
     private func performHelperSetup(_ action: () async throws -> HelperReadiness) async {
         guard !isPerformingHelperSetup, !isRefreshingHelper, !isPreparingToQuit else { return }
+        cancelScheduledSleep()
         isPerformingHelperSetup = true
         helperSetupError = nil
         defer { isPerformingHelperSetup = false }
@@ -170,8 +250,13 @@ final class BenzoViewModel: ObservableObject {
     }
 
     func toggleMaster() async {
+        cancelScheduledSleep()
         errorMessage = nil
         guard requireHelperAccess() else { return }
+        if sleepAdmissionInProgress || dependencies.coordinator.sleepRequestInFlight {
+            await dependencies.coordinator.waitUntilIdle()
+            guard requireHelperAccess() else { return }
+        }
         if isActive { await dependencies.coordinator.restore() }
         else if controlState == .off { await dependencies.coordinator.apply(settings: selectedSettings) }
         await refreshHelperReadiness()
@@ -194,7 +279,12 @@ final class BenzoViewModel: ObservableObject {
     }
 
     func revertToDefaults() async {
+        cancelScheduledSleep()
         guard !isPreparingToQuit else { errorMessage = Self.quitInProgressReason; return }
+        if sleepAdmissionInProgress || dependencies.coordinator.sleepRequestInFlight {
+            await dependencies.coordinator.waitUntilIdle()
+            guard !isPreparingToQuit else { errorMessage = Self.quitInProgressReason; return }
+        }
         errorMessage = nil
         guard !hasSession || requireHelperAccess() else { return }
         await dependencies.coordinator.restore()
@@ -202,6 +292,7 @@ final class BenzoViewModel: ObservableObject {
     }
 
     func resolveConflict(_ conflict: RecoveryConflict, choice: ConflictChoice) async {
+        cancelScheduledSleep()
         guard !isPreparingToQuit else { errorMessage = Self.quitInProgressReason; return }
         if choice == .restoreOriginal, !requireHelperAccess() { return }
         await dependencies.coordinator.resolveConflict(conflict.cell, choice: choice)
@@ -209,6 +300,7 @@ final class BenzoViewModel: ObservableObject {
     }
 
     func prepareToQuit() async -> Bool {
+        cancelScheduledSleep()
         guard !isPreparingToQuit else { return false }
         guard !isPerformingHelperSetup else {
             errorMessage = Self.helperSetupInProgressReason
@@ -230,7 +322,6 @@ final class BenzoViewModel: ObservableObject {
 
     // AppKit owns the terminateLater / Retry / Stay Open / Quit Anyway decision.
     func quit() { dependencies.terminate() }
-    func sleepNow() { errorMessage = Self.sleepUnavailableReason }
 
     func loadDiagnostics() {
         diagnosticGeneration += 1
@@ -270,6 +361,12 @@ final class BenzoViewModel: ObservableObject {
         hasSession = dependencies.coordinator.hasSession
         frozenSettings = dependencies.coordinator.frozenSettings
         capturedAt = dependencies.coordinator.capturedAt
+        sleepRequestInFlight = sleepAdmissionInProgress || dependencies.coordinator.sleepRequestInFlight
+        if dependencies.coordinator.sleepMessage != lastCoordinatorSleepMessage {
+            lastCoordinatorSleepMessage = dependencies.coordinator.sleepMessage
+            if let message = lastCoordinatorSleepMessage { sleepMessage = message }
+        }
+        if !sleepEligibility && !sleepAdmissionInProgress { cancelScheduledSleep() }
         onStateChange?(controlState)
     }
 

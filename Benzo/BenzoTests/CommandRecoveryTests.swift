@@ -12,6 +12,8 @@ private final class CommandRecoveryLocalStore: RecoveryStoring {
     var journal: RecoveryJournal?
     var fence: ExecutionFence?
     var receipt: RecoveryJournal?
+    var sleepIntent: SleepIntent?
+    var failSleepTerminal = false
     var failIntendedJournal = false
     var failTerminalJournal = false
     var failTerminalAfterPublication = false
@@ -50,6 +52,12 @@ private final class CommandRecoveryLocalStore: RecoveryStoring {
         if value.commandAcknowledged == true, failAckMarkerAfterPublication { throw RecoveryEvidenceError.invalid("Injected post-publication ACK marker failure") }
     }
     func saveResolvedReceipt(_ value: RecoveryJournal) throws { receipt = value; events.append("resolved") }
+    func loadSleepIntent() throws -> SleepIntent? { sleepIntent }
+    func commitSleepIntent(_ intent: SleepIntent) throws {
+        if intent.terminal != nil, failSleepTerminal { throw RecoveryEvidenceError.invalid("Injected sleep terminal failure") }
+        sleepIntent = intent
+        events.append(intent.acknowledged ? "sleep-ack" : (intent.terminal == nil ? "sleep-intent" : "sleep-terminal"))
+    }
     func loadLegacyEvidence() throws -> Data? { nil }
 }
 
@@ -79,6 +87,11 @@ private final class CommandRecoveryTransport: RecoveryCommanding {
     var ackCalls = 0
     var reconcileCalls = 0
     var legacyCalls = 0
+    var sleepExecutions = 0
+    var sleepOutcome: PowerSleepExecution = .completed(exitStatus: 0)
+    var dropSleepBeforeDispatch = false
+    var dropSleepReply = false
+    var beforeSleepAck: (() -> Void)?
     var beforeAck: (() -> Void)?
     lazy var engine = PowerCommandEngine(store: authority, bootID: { self.boot }, capture: { cell in self.values[cell] },
         execute: { cell, value in
@@ -86,7 +99,11 @@ private final class CommandRecoveryTransport: RecoveryCommanding {
             self.executions.append(CellValue(cell: cell, value: value))
             if self.mutateOnExecution { self.values[cell] = value }
             return self.commandOutcome
-        })
+        }, executeSleep: { _ in
+            self.sleepExecutions += 1
+            self.local.events.append("sleep-execute")
+            return self.sleepOutcome
+        }, continuousTicks: { 100 }, maximumSleepLifetime: 30)
 
     init(local: CommandRecoveryLocalStore) { self.local = local }
     func capture() async throws -> ProfileSnapshot {
@@ -133,6 +150,32 @@ private final class CommandRecoveryTransport: RecoveryCommanding {
         guard reply.outcome == .acknowledged else { throw RecoveryEvidenceError.invalid("Fixture ACK rejected") }
         if failAckAfterDelivery { throw RecoveryEvidenceError.invalid("Injected lost ACK reply") }
     }
+    func prepareSleep(operationID: UUID, bootID: String) async throws -> PowerSleepRequest {
+        let state = authority.state
+        guard state.pending == nil, state.pendingSleep == nil else { throw RecoveryEvidenceError.invalid("Occupied receipt slot") }
+        return PowerSleepRequest(grantEpoch: state.grantEpoch, sequence: state.highWaterMark + 1,
+            requestID: UUID(), operationID: operationID, bootID: boot, expiresAtContinuousTicks: 110)
+    }
+    func sendSleep(_ request: PowerSleepRequest) async -> PowerSleepReceipt? {
+        if dropSleepBeforeDispatch { return nil }
+        let reply = await engine.handle(.sleep(request), caller: commandRecoveryOwner)
+        if dropSleepReply { return nil }
+        return try? reply.sleepReceipt(for: request)
+    }
+    func reconcileSleep(_ request: PowerSleepRequest) async -> PowerSleepReceipt? {
+        if unavailable { return nil }
+        let reply = await engine.handle(.status(request.token), caller: commandRecoveryOwner)
+        if let receipt = try? reply.sleepReceipt(for: request), receipt.isTerminal { return receipt }
+        let sealed = await engine.handle(.sealSleep(request), caller: commandRecoveryOwner)
+        return try? sealed.sleepReceipt(for: request)
+    }
+    func acknowledgeSleep(_ request: PowerSleepRequest) async throws {
+        beforeSleepAck?()
+        if failAckBeforeDelivery { throw RecoveryEvidenceError.invalid("Lost sleep ACK before delivery") }
+        let reply = await engine.handle(.ack(request.token), caller: commandRecoveryOwner)
+        guard reply.outcome == .acknowledged else { throw RecoveryEvidenceError.invalid("Rejected sleep ACK") }
+        if failAckAfterDelivery { throw RecoveryEvidenceError.invalid("Lost sleep ACK reply") }
+    }
     func write(cell: ManagedCell, value: Int, expectedValue: Int, operationID: UUID, bootID: String) async -> RecoveryWriteOutcome {
         legacyCalls += 1
         return .uncertain("The command fixture must use its persisted tuple")
@@ -145,6 +188,99 @@ final class CommandRecoveryTests: XCTestCase {
         OperationCoordinator(store: store, transport: transport, uid: 501, hostID: commandRecoveryHost,
             bootID: { transport.boot.uuidString }, now: { Date(timeIntervalSince1970: 1000) },
             legacyActive: { false }, legacyRule: { .noLegacyRule })
+    }
+
+    func testSleepRootReceiptLostThenRestoreDoesNotReplayOrReplaceSuccessfulApply() async {
+        let store = CommandRecoveryLocalStore()
+        let transport = CommandRecoveryTransport(local: store)
+        let subject = coordinator(store, transport)
+        await subject.apply(settings: [.disablePowerNap])
+        let applied = store.journal
+        transport.dropSleepReply = true
+        transport.sleepOutcome = .childStoppedOutcomeUnknown(reason: "Child reaped without physical sleep proof")
+        await subject.requestSleep { true }
+        XCTAssertEqual(store.journal, applied)
+        XCTAssertTrue(subject.executionUncertain)
+        XCTAssertEqual(transport.authority.state.schema, 2)
+        let relaunched = coordinator(store, transport)
+        await relaunched.restore()
+        XCTAssertEqual(relaunched.state, .off)
+        XCTAssertEqual(transport.sleepExecutions, 1)
+        XCTAssertEqual(transport.executions.map(\.value), [0, 1])
+        XCTAssertEqual(transport.authority.state.schema, 1)
+        XCTAssertNil(transport.authority.state.pendingSleep)
+        XCTAssertTrue(relaunched.sleepMessage?.contains("result is unknown") == true)
+    }
+
+    func testUndeliveredSleepIsSealedAndLateDeliveryAfterAckCannotExecute() async throws {
+        let store = CommandRecoveryLocalStore()
+        let transport = CommandRecoveryTransport(local: store)
+        let subject = coordinator(store, transport)
+        await subject.apply(settings: [.disablePowerNap])
+        transport.dropSleepBeforeDispatch = true
+        await subject.requestSleep { true }
+        let request = try XCTUnwrap(store.sleepIntent?.request)
+        await subject.reconcile()
+        XCTAssertTrue(subject.state.isActive)
+        XCTAssertEqual(store.sleepIntent?.acknowledged, true)
+        transport.dropSleepBeforeDispatch = false
+        _ = await transport.sendSleep(request)
+        XCTAssertEqual(transport.sleepExecutions, 0)
+        XCTAssertEqual(transport.authority.state.schema, 1)
+    }
+
+    func testSleepTerminalDurabilityFailureRetainsRootReceiptUntilRetry() async {
+        let store = CommandRecoveryLocalStore()
+        let transport = CommandRecoveryTransport(local: store)
+        let subject = coordinator(store, transport)
+        await subject.apply(settings: [.disablePowerNap])
+        store.failSleepTerminal = true
+        await subject.requestSleep { true }
+        XCTAssertTrue(subject.executionUncertain)
+        XCTAssertNotNil(transport.authority.state.pendingSleep)
+        await subject.restore()
+        XCTAssertEqual(transport.executions.map(\.value), [0])
+        store.failSleepTerminal = false
+        transport.beforeSleepAck = { XCTAssertNotNil(store.sleepIntent?.terminal) }
+        await subject.restore()
+        XCTAssertEqual(subject.state, .off)
+        XCTAssertNil(transport.authority.state.pendingSleep)
+        XCTAssertEqual(transport.sleepExecutions, 1)
+    }
+
+    func testSleepAckLostAfterDeliveryRetriesWithoutRequiringReceiptOrReplay() async {
+        let store = CommandRecoveryLocalStore()
+        let transport = CommandRecoveryTransport(local: store)
+        let subject = coordinator(store, transport)
+        await subject.apply(settings: [.disablePowerNap])
+        transport.failAckAfterDelivery = true
+        await subject.requestSleep { true }
+        XCTAssertFalse(subject.executionUncertain)
+        XCTAssertNil(transport.authority.state.pendingSleep)
+        transport.failAckAfterDelivery = false
+        await coordinator(store, transport).restore()
+        XCTAssertNotNil(store.journal?.resolvedAt)
+        XCTAssertEqual(transport.sleepExecutions, 1)
+        XCTAssertEqual(store.sleepIntent?.acknowledged, true)
+    }
+
+    func testUnprovedSleepChildStaysFencedUntilVerifiedLaterBoot() async {
+        let store = CommandRecoveryLocalStore()
+        let transport = CommandRecoveryTransport(local: store)
+        let subject = coordinator(store, transport)
+        await subject.apply(settings: [.disablePowerNap])
+        let applied = store.journal
+        transport.sleepOutcome = .uncertain(reason: "No exact child quiescence proof")
+        await subject.requestSleep { true }
+        await subject.restore()
+        XCTAssertTrue(subject.executionUncertain)
+        XCTAssertEqual(store.journal, applied)
+        transport.boot = UUID()
+        let relaunched = coordinator(store, transport)
+        await relaunched.restore()
+        XCTAssertEqual(relaunched.state, .off)
+        XCTAssertEqual(transport.sleepExecutions, 1)
+        XCTAssertEqual(transport.authority.state.schema, 1)
     }
 
     func testUnavailableTypedPreparationNeverPersistsIntentOrDispatches() async {

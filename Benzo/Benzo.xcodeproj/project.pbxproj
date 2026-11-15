@@ -126,6 +126,12 @@
 		2C5AA2795B2D74BBF7A7C485 /* CommandToolSetupTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 667DBC5CA39ADDB360FB7C24; };
 		0BC5F95D114EEF03A1CD96ED /* CommandRecoveryTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0E649BC33481868D96A2C53; };
 		818A077C0798B51447ACB992 /* BootIdentityProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = F20000000000000000000006; };
+		7924EDAA56A86A387107C1C7 /* SleepIntent.swift in Sources */ = {isa = PBXBuildFile; fileRef = 422AE811A2AA9270AEB58600; };
+		4A75D414EE49BD8A6E755714 /* SleepIntent.swift in Sources */ = {isa = PBXBuildFile; fileRef = 422AE811A2AA9270AEB58600; };
+		17FC334FBDA0C14AE8DD610F /* SleepCountdown.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4283E00007D3CBB532AB5706; };
+		D099CFAB8ED9A15E13E5E3C7 /* SleepCountdown.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4283E00007D3CBB532AB5706; };
+		3F7C95B1D19F481CB15BFEFC /* SleepAppTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 281C0A954B26D8D07AB543A6; };
+		E34C422455D07D66E8519F85 /* SleepCommandTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2E775471CD40DCC2FE76A8ED; };
 /* End PBXBuildFile section */
 
 /* Begin PBXCopyFilesBuildPhase section */
@@ -217,6 +223,10 @@
 		4D4F69BB198CC844D9A3B85B /* CommandToolStateStoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CommandToolStateStoreTests.swift; sourceTree = "<group>"; };
 		667DBC5CA39ADDB360FB7C24 /* CommandToolSetupTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CommandToolSetupTests.swift; sourceTree = "<group>"; };
 		B0E649BC33481868D96A2C53 /* CommandRecoveryTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CommandRecoveryTests.swift; sourceTree = "<group>"; };
+		422AE811A2AA9270AEB58600 /* SleepIntent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SleepIntent.swift; sourceTree = "<group>"; };
+		4283E00007D3CBB532AB5706 /* SleepCountdown.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SleepCountdown.swift; sourceTree = "<group>"; };
+		281C0A954B26D8D07AB543A6 /* SleepAppTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SleepAppTests.swift; sourceTree = "<group>"; };
+		2E775471CD40DCC2FE76A8ED /* SleepCommandTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SleepCommandTests.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -285,6 +295,7 @@
 		A50000040000000000000004 /* Models */ = {
 			isa = PBXGroup;
 			children = (
+				422AE811A2AA9270AEB58600 /* SleepIntent.swift */,
 				9D0000000000000000000001 /* AppVersion.swift */,
 				9F0000000000000000000003 /* HelperReadiness.swift */,
 				9F0000000000000000000002 /* HelperProtocol.swift */,
@@ -303,6 +314,7 @@
 		A50000050000000000000005 /* Services */ = {
 			isa = PBXGroup;
 			children = (
+				4283E00007D3CBB532AB5706 /* SleepCountdown.swift */,
 				E34A080D8A4A96D54E2C1169 /* CommandToolIdentity.swift */,
 				BC508A06D4A8154A4A5C6FE2 /* CommandToolSetup.swift */,
 				0A96A2AFA30F6ADB6139F66F /* CommandToolClient.swift */,
@@ -372,6 +384,8 @@
 		D50000000000000000000001 /* BenzoTests */ = {
 			isa = PBXGroup;
 			children = (
+				2E775471CD40DCC2FE76A8ED /* SleepCommandTests.swift */,
+				281C0A954B26D8D07AB543A6 /* SleepAppTests.swift */,
 				6C55F139477334C3ABFA15FD /* CommandToolEngineTests.swift */,
 				4D4F69BB198CC844D9A3B85B /* CommandToolStateStoreTests.swift */,
 				667DBC5CA39ADDB360FB7C24 /* CommandToolSetupTests.swift */,
@@ -513,6 +527,8 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				17FC334FBDA0C14AE8DD610F /* SleepCountdown.swift in Sources */,
+				7924EDAA56A86A387107C1C7 /* SleepIntent.swift in Sources */,
 				441B536390B1070121D15EF0 /* CommandProtocol.swift in Sources */,
 				8417D9D86272B717FB53F549 /* CommandToolIdentity.swift in Sources */,
 				865DB7C52EABF2FD9E80616A /* CommandToolSetup.swift in Sources */,
@@ -564,6 +580,10 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				E34C422455D07D66E8519F85 /* SleepCommandTests.swift in Sources */,
+				3F7C95B1D19F481CB15BFEFC /* SleepAppTests.swift in Sources */,
+				D099CFAB8ED9A15E13E5E3C7 /* SleepCountdown.swift in Sources */,
+				4A75D414EE49BD8A6E755714 /* SleepIntent.swift in Sources */,
 				3E88797DD7DEE1F06B71287C /* CommandProtocol.swift in Sources */,
 				460280084AD4B796AAF1812C /* CommandEngine.swift in Sources */,
 				98389A21EB9E114B4EB9727F /* CommandStateStore.swift in Sources */,
@@ -692,7 +712,7 @@
 				ENABLE_HARDENED_RUNTIME = YES;
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 2;
+				CURRENT_PROJECT_VERSION = 3;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = Benzo/Info.plist;
 				INFOPLIST_KEY_LSUIElement = YES;
@@ -702,7 +722,7 @@
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
-				MARKETING_VERSION = 0.4.0;
+				MARKETING_VERSION = 0.5.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.benzo.app;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
@@ -717,7 +737,7 @@
 				ENABLE_HARDENED_RUNTIME = YES;
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 2;
+				CURRENT_PROJECT_VERSION = 3;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = Benzo/Info.plist;
 				INFOPLIST_KEY_LSUIElement = YES;
@@ -727,7 +747,7 @@
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
-				MARKETING_VERSION = 0.4.0;
+				MARKETING_VERSION = 0.5.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.benzo.app;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;

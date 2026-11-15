@@ -6,6 +6,7 @@ import Foundation
 final class CommandToolClient: HelperSetupClient {
     private let runner: CommandRunner
     private let setup: CommandToolSetup
+    private(set) var supportsSleep = false
 
     init(runner: CommandRunner) {
         self.runner = runner
@@ -13,6 +14,7 @@ final class CommandToolClient: HelperSetupClient {
     }
 
     func refresh() async -> HelperReadiness {
+        supportsSleep = false
         do {
             _ = try await version()
             // Recovery owns pending execution; access can be ready while the
@@ -47,6 +49,8 @@ final class CommandToolClient: HelperSetupClient {
             throw CommandToolClientError.unavailable
         }
         try reply.pending?.validate()
+        try reply.pendingSleep?.validate()
+        supportsSleep = reply.capabilities?.contains("sleep-v1") == true
         return reply
     }
 
@@ -58,7 +62,7 @@ final class CommandToolClient: HelperSetupClient {
               boot == UUID(uuidString: bootID) else {
             throw PowerCommandError.invalid("Power access changed. Refresh Benzo before trying again.")
         }
-        guard status.pending == nil else {
+        guard status.pending == nil, status.pendingSleep == nil else {
             throw PowerCommandError.invalid("A previous request needs recovery. Refresh recovery before another change.")
         }
         let request = PowerCommandRequest(grantEpoch: epoch, sequence: watermark + 1,
@@ -95,6 +99,50 @@ final class CommandToolClient: HelperSetupClient {
         }
     }
 
+    func prepareSleep(operationID: UUID, bootID: String) async throws -> PowerSleepRequest {
+        let status = try await version()
+        guard status.capabilities?.contains("sleep-v1") == true else {
+            throw PowerCommandError.invalid("Turn Benzo off, then use Update Power Access to enable Sleep Now for this Mac account.")
+        }
+        guard let epoch = status.grantEpoch, let watermark = status.highWaterMark, watermark < UInt64.max,
+              let boot = status.bootID, boot == UUID(uuidString: bootID),
+              status.pending == nil, status.pendingSleep == nil else {
+            throw PowerCommandError.invalid("Power access changed or a previous request needs recovery.")
+        }
+        let lifetime = PowerSleepClock.ticks(seconds: 10)
+        let expiry = PowerSleepClock.now().addingReportingOverflow(lifetime)
+        guard lifetime > 0, !expiry.overflow else { throw CommandToolClientError.unavailable }
+        let request = PowerSleepRequest(grantEpoch: epoch, sequence: watermark + 1,
+            requestID: UUID(), operationID: operationID, bootID: boot,
+            expiresAtContinuousTicks: expiry.partialValue)
+        try request.validate()
+        return request
+    }
+
+    func sendSleep(_ request: PowerSleepRequest) async -> PowerSleepReceipt? {
+        do {
+            let reply = try await exchange(.sleep, payload: JSONEncoder().encode(request))
+            return try reply.sleepReceipt(for: request)
+        } catch { return nil }
+    }
+
+    func reconcileSleep(_ request: PowerSleepRequest) async -> PowerSleepReceipt? {
+        do {
+            let reply = try await exchange(.status, payload: JSONEncoder().encode(request.token))
+            if let receipt = try? reply.sleepReceipt(for: request), receipt.isTerminal { return receipt }
+            // Sealing never sleeps. It fences a delayed original delivery.
+            let sealed = try await exchange(.sealSleep, payload: JSONEncoder().encode(request))
+            return try sealed.sleepReceipt(for: request)
+        } catch { return nil }
+    }
+
+    func acknowledgeSleep(_ request: PowerSleepRequest) async throws {
+        let reply = try await exchange(.ack, payload: JSONEncoder().encode(request.token))
+        guard reply.token == request.token, reply.outcome == .acknowledged else {
+            throw PowerCommandError.invalid("The saved sleep result could not be acknowledged. Refresh recovery.")
+        }
+    }
+
     private func exchange(_ verb: PowerCommandVerb, payload: Data) async throws -> PowerCommandReply {
         guard payload.count <= PowerCommandWire.maximumInputBytes else { throw CommandToolClientError.incompatible }
         try Self.verifyInstalledExecutable()
@@ -107,7 +155,7 @@ final class CommandToolClient: HelperSetupClient {
         guard result.isSuccess, result.directChildStopped, result.stderr.isEmpty,
               !result.stdout.isEmpty else { throw CommandToolClientError.unavailable }
         let reply = try JSONDecoder().decode(PowerCommandReply.self, from: result.stdout)
-        guard reply.schema == 1, reply.protocolVersion == 1 else { throw CommandToolClientError.incompatible }
+        guard (reply.schema == 1 || reply.schema == 2), reply.protocolVersion == 1 else { throw CommandToolClientError.incompatible }
         if reply.outcome == .differentAccount { throw CommandToolClientError.differentAccount }
         if let returnedOwner = reply.owner, returnedOwner != owner { throw CommandToolClientError.differentAccount }
         guard reply.owner == owner else { throw CommandToolClientError.unavailable }

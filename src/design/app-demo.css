@@ -26,9 +26,18 @@
 .benzo-site .bn-toggle > span { position: absolute; width: var(--native-toggle-thumb); height: var(--native-toggle-thumb); top: 3px; left: 3px; border-radius: 50%; background: var(--white); box-shadow: 0 1px 2px var(--native-thumb-shadow); transition: left var(--motion-normal); }
 .benzo-site .bn-toggle.bn-on > span { left: 21px; }
 .benzo-site .bn-sleep-wrap { padding: 0 20px; }
-.benzo-site .bn-sleep-capsule { display: flex; align-items: center; overflow: hidden; background: var(--pink); color: var(--white); border-radius: var(--radius-pill); opacity: .5; }
+.benzo-site .bn-sleep-capsule { display: flex; align-items: center; background: color-mix(in srgb, var(--pink) 50%, transparent); color: var(--white); border-radius: var(--radius-pill); }
+.benzo-site .bn-sleep-capsule.bn-sleep-enabled { background: var(--native-control-accent); }
+.benzo-site .bn-sleep-capsule:has(> button:focus-visible) { outline: 2px solid var(--native-control-accent); outline-offset: 3px; }
+.benzo-site .bn-sleep-capsule > button:focus-visible { outline: none; }
 .benzo-site .bn-sleep-capsule > button { display: flex; align-items: center; justify-content: center; gap: 8px; padding: 10px 0; color: var(--white); font-size: var(--native-base); font-weight: 600; }
 .benzo-site .bn-sleep-now { flex: 1; }
+.benzo-site .bn-sleep-timer { width: 40px; flex-shrink: 0; }
+.benzo-site .bn-sleep-divider { width: 1px; height: 18px; background: rgb(255 255 255 / 50%); }
+.benzo-site .bn-countdown { font-variant-numeric: tabular-nums; }
+.benzo-site .bn-sleep-presets { display: flex; justify-content: center; gap: 8px; margin-top: 10px; }
+.benzo-site .bn-sleep-presets > button { padding: 6px 10px; border: 1px solid var(--native-control-accent); border-radius: var(--radius-pill); color: var(--native-control-accent); font-size: var(--native-secondary); font-weight: 500; }
+.benzo-site .bn-sleep-wrap > .bn-control-reason:empty { display: none; }
 .benzo-site .bn-control-reason { color: var(--native-muted); font-size: var(--native-small); line-height: 1.4; }
 .benzo-site .bn-sleep-wrap .bn-control-reason { margin-top: 6px; text-align: center; }
 .benzo-site .bn-settings > .bn-control-reason { padding: 0 20px 6px; }

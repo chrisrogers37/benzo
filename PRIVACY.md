@@ -5,6 +5,15 @@ the command-based app and its local data. The earlier public v0.3.0 download use
 a different permission design. Native observations and remaining checks are
 recorded in the [acceptance checklist](docs/account-free-acceptance.md).
 
+The 0.5.0 development source adds an in-memory sleep countdown and an explicitly
+approved finite sleep command. Countdown scheduling is not persisted. Dispatched
+requests retain `sleep-intent.json`, its previous generation and durability markers
+in the same private Benzo directory, plus typed receipts in the existing root
+authority file. They contain operation/session IDs, boot identity, a short dispatch
+expiry and completion evidence; they never store a password. The additional sleep
+authority applies to programs in the setup account, just like settings access.
+The v0.4.0 download does not include this feature.
+
 ## Mac app
 
 - **Preferences:** selected options persist in macOS user defaults. Control state

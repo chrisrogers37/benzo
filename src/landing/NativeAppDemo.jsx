@@ -1,5 +1,6 @@
 import { useEffect, useId, useRef, useState } from 'react'
 import { appPresentation as app, settingOptions, siteCopy, AppSymbol, MenuPill } from '../design'
+import { canSleep, sleepDisabledReason, sleepPresets } from '../demo/useBenzoDemo'
 
 const copy = siteCopy.demo
 
@@ -27,9 +28,9 @@ function Diagnostics({ onBack, backRef, sleepData, usbDevices, observedSettings 
   </>
 }
 
-function Setup({ readiness, error, recoveryMessage, canReplaceHelper, canRemoveHelper, removalConfirmation, setupBusy, actionRef, onBack, dispatch }) {
+function Setup({ readiness, error, recoveryMessage, needsSleepAccessUpdate, canReplaceHelper, canRemoveHelper, removalConfirmation, setupBusy, actionRef, onBack, dispatch }) {
   const status = app.setup.states[readiness] ?? app.setup.states.connectionUnavailable
-  const [managementOpen, setManagementOpen] = useState(false)
+  const [managementOpen, setManagementOpen] = useState(needsSleepAccessUpdate)
   const managementId = useId()
   const primaryDisabled = setupBusy || (status.event === 'replaceHelper' && !canReplaceHelper)
   const removalTitleId = useId()
@@ -50,6 +51,7 @@ function Setup({ readiness, error, recoveryMessage, canReplaceHelper, canRemoveH
   return <div className="bn-setup">
     <span className="bn-setup-pill" aria-hidden="true">💊</span><h3>{status.title}</h3><p>{status.message}</p>
     {recoveryMessage && <p>{recoveryMessage}</p>}
+    {needsSleepAccessUpdate && <p>{app.sleep.requiresUpdate}</p>}
     {error && <p className="bn-error" role="alert">{error}</p>}
     {readiness === 'ready' && <button className="bn-management-toggle" aria-expanded={managementOpen} aria-controls={managementId} onClick={() => setManagementOpen(open => !open)}>{app.setup.manage}</button>}
     <div className="bn-setup-actions" id={managementId} hidden={readiness === 'ready' && !managementOpen}>
@@ -62,6 +64,50 @@ function Setup({ readiness, error, recoveryMessage, canReplaceHelper, canRemoveH
     </div>
     <button ref={(!status.action || primaryDisabled) && readiness !== 'ready' && !setupBusy ? actionRef : undefined} disabled={setupBusy} onClick={() => dispatch({ type: 'refreshHelper' })}>{app.setup.refresh}</button>
     <button ref={readiness === 'ready' || setupBusy ? actionRef : undefined} onClick={onBack}>{readiness === 'ready' ? app.setup.done : app.setup.back}</button>
+  </div>
+}
+
+function SleepControls({ state, dispatch }) {
+  const eligible = canSleep(state)
+  const reason = sleepDisabledReason(state)
+  const remaining = state.sleepTimer?.remainingSeconds
+  const scheduled = remaining != null
+  const countdown = scheduled ? `${Math.floor(remaining / 60)}:${String(remaining % 60).padStart(2, '0')}` : ''
+  const [pickerOpen, setPickerOpen] = useState(false)
+  const pickerId = useId()
+  const sleepRef = useRef(null)
+  const timerRef = useRef(null)
+  const cancelRef = useRef(null)
+  const presetRef = useRef(null)
+  const wasScheduled = useRef(scheduled)
+  useEffect(() => {
+    if (!eligible || scheduled) setPickerOpen(false)
+    if (scheduled && !wasScheduled.current) cancelRef.current?.focus()
+    if (!scheduled && wasScheduled.current && eligible) sleepRef.current?.focus()
+    wasScheduled.current = scheduled
+  }, [eligible, scheduled])
+  useEffect(() => { if (pickerOpen) presetRef.current?.focus() }, [pickerOpen])
+  return <div className="bn-sleep-wrap" onKeyDown={event => {
+    if (event.key === 'Escape' && pickerOpen) {
+      event.stopPropagation()
+      setPickerOpen(false)
+      timerRef.current?.focus()
+    }
+  }}>
+    <div className={`bn-sleep-capsule${eligible || scheduled ? ' bn-sleep-enabled' : ''}`}>
+      {scheduled ? <button ref={cancelRef} className="bn-sleep-now" aria-label={app.sleep.cancel} aria-description={`${countdown} remaining`} title="Cancel the countdown" onClick={() => dispatch({ type: 'cancelScheduledSleep' })}>
+        <AppSymbol name="clock" size={12} /><span>Sleep in <span className="bn-countdown">{countdown}</span></span><span aria-hidden="true">×</span>
+      </button> : <>
+        <button ref={sleepRef} className="bn-sleep-now" disabled={!eligible} title={reason ?? app.sleep.help} onClick={() => dispatch({ type: 'sleep' })}><AppSymbol name="moon" size={11} />{state.sleepRequestInFlight ? app.sleep.requesting : app.sleep.action}</button>
+        <span className="bn-sleep-divider" aria-hidden="true" />
+        <button ref={timerRef} className="bn-sleep-timer" disabled={!eligible} aria-label={app.sleep.timer} aria-expanded={pickerOpen} aria-controls={pickerId} title={reason ?? app.sleep.timerHelp} onClick={() => setPickerOpen(open => !open)}><AppSymbol name="clock" size={13} /></button>
+      </>}
+    </div>
+    {pickerOpen && eligible && !scheduled && <div id={pickerId} className="bn-sleep-presets" role="group" aria-label="Sleep timer duration">
+      {sleepPresets.map((minutes, index) => <button key={minutes} ref={index === 0 ? presetRef : undefined} aria-label={`Sleep in ${minutes} minutes`} onClick={() => { setPickerOpen(false); dispatch({ type: 'scheduleSleep', minutes }) }}>{minutes}m</button>)}
+    </div>}
+    <div className="bn-control-reason" aria-live="polite" aria-atomic="true">{state.sleepMessage}</div>
+    {state.helperReadiness === 'ready' && state.sleepCapability === false && <p className="bn-control-reason">{app.sleep.requiresUpdate}</p>}
   </div>
 }
 
@@ -90,20 +136,20 @@ export default function NativeAppDemo({ state, dispatch }) {
     ? state.error
     : app.recovery.messages[phase] ?? app.recovery.messages.recoveryRequired
   const active = phase === 'activeVerified'
-  const busy = ['checking', 'applying', 'restoring'].includes(phase)
-  const helperReady = state.helperReadiness === 'ready' && !state.isPerformingHelperSetup
+  const busy = ['checking', 'applying', 'restoring'].includes(phase) || state.sleepRequestInFlight
+  const helperReady = state.helperReadiness === 'ready' && !state.isPerformingHelperSetup && !state.sleepRequestInFlight
   const helperStatus = app.setup.states[state.helperReadiness] ?? app.setup.states.connectionUnavailable
   const canToggleMaster = helperReady && (active || (phase === 'off' && settingOptions.some(option => option.available && settings[option.key])))
   const canRestore = helperReady && Boolean(state.hasSession) && !busy && state.operation !== 'uncertain' && !state.conflict
-  const canReplaceHelper = ['ready', 'incompatible', 'connectionUnavailable'].includes(state.helperReadiness) && phase === 'off' && !state.hasSession && state.operation !== 'uncertain' && !state.isPerformingHelperSetup
-  const canRemoveHelper = ['ready', 'incompatible'].includes(state.helperReadiness) && phase === 'off' && !state.hasSession && state.operation !== 'uncertain' && !state.isPerformingHelperSetup
+  const canReplaceHelper = ['ready', 'incompatible', 'connectionUnavailable'].includes(state.helperReadiness) && phase === 'off' && !state.hasSession && state.operation !== 'uncertain' && !state.isPerformingHelperSetup && !state.sleepRequestInFlight
+  const canRemoveHelper = ['ready', 'incompatible'].includes(state.helperReadiness) && phase === 'off' && !state.hasSession && state.operation !== 'uncertain' && !state.isPerformingHelperSetup && !state.sleepRequestInFlight
   const conflictSetting = state.conflict && settingOptions.find(option => option.commands.some(([key]) => key === state.conflict.key))
   const [aboutOpen, setAboutOpen] = useState(false)
   const aboutId = useId()
 
   const selectionBlockedId = useId()
   const descriptionId = useId()
-  const selectionBlocked = phase !== 'off' || state.legacyUnknown
+  const selectionBlocked = phase !== 'off' || state.legacyUnknown || state.sleepRequestInFlight
   const menuRef = useRef(null)
   const diagnosticsRef = useRef(null)
   const externalDiagnosticsRef = useRef(null)
@@ -157,13 +203,11 @@ export default function NativeAppDemo({ state, dispatch }) {
         }
       }}>
         <div className={view === 'diagnostics' ? 'bn-diagnostic-content' : 'bn-popover-scroll'} role={view === 'diagnostics' ? undefined : 'region'} aria-label={view === 'diagnostics' ? undefined : 'Benzo controls'} tabIndex={view === 'diagnostics' ? undefined : 0}>
-        {view === 'setup' ? <Setup readiness={state.helperReadiness} error={state.helperSetupError} recoveryMessage={state.hasSession ? (!helperReady ? app.setup.recoveryBlocked : phase === 'recoveryRequired' ? statusMessage : null) : null} canReplaceHelper={canReplaceHelper} canRemoveHelper={canRemoveHelper} removalConfirmation={state.helperRemovalConfirmation} setupBusy={state.isPerformingHelperSetup} actionRef={setupActionRef} onBack={backFromSetup} dispatch={dispatch} /> : view === 'diagnostics' ? <Diagnostics backRef={diagnosticBackRef} sleepData={state.sleepData} usbDevices={state.usbDevices} observedSettings={state.observedSettings} onBack={backFromDiagnostics} /> : <>
+        {view === 'setup' ? <Setup readiness={state.helperReadiness} error={state.helperSetupError} recoveryMessage={state.hasSession ? (!helperReady ? app.setup.recoveryBlocked : phase === 'recoveryRequired' ? statusMessage : null) : null} needsSleepAccessUpdate={state.helperReadiness === 'ready' && state.sleepCapability === false} canReplaceHelper={canReplaceHelper} canRemoveHelper={canRemoveHelper} removalConfirmation={state.helperRemovalConfirmation} setupBusy={state.isPerformingHelperSetup || state.sleepRequestInFlight} actionRef={setupActionRef} onBack={backFromSetup} dispatch={dispatch} /> : view === 'diagnostics' ? <Diagnostics backRef={diagnosticBackRef} sleepData={state.sleepData} usbDevices={state.usbDevices} observedSettings={state.observedSettings} onBack={backFromDiagnostics} /> : <>
           <div className="bn-master"><div><strong>{statusTitle}</strong>{!['off', 'activeVerified'].includes(phase) && <p>{statusMessage}</p>}</div><button className={`bn-toggle${active ? ' bn-on' : ''}`} role="switch" aria-label={active ? app.master.restore : app.master.apply} aria-checked={active} disabled={!canToggleMaster} onClick={() => dispatch({ type: 'active' })}><span /></button></div>
-          {!helperReady && <div className="bn-helper-status"><strong>{helperStatus.title}</strong><p className="bn-control-reason">{state.hasSession ? app.setup.recoveryBlocked : helperStatus.message}</p></div>}
-          <div className="bn-sleep-wrap"><div className="bn-sleep-capsule">
-            <button className="bn-sleep-now" disabled title={app.sleep.unavailable}><AppSymbol name="moon" size={11} />{app.sleep.action}</button>
-          </div></div>
-          <div className="bn-helper-entry"><button ref={setupRef} onClick={() => dispatch({ type: 'setup' })}>{app.setup.entry}</button></div>
+          {state.helperReadiness !== 'ready' && <div className="bn-helper-status"><strong>{helperStatus.title}</strong><p className="bn-control-reason">{state.hasSession ? app.setup.recoveryBlocked : helperStatus.message}</p></div>}
+          <SleepControls state={state} dispatch={dispatch} />
+          <div className="bn-helper-entry"><button ref={setupRef} disabled={state.sleepRequestInFlight} onClick={() => dispatch({ type: 'setup' })}>{app.setup.entry}</button></div>
           <div className="bn-options"><button aria-expanded={options} onClick={() => dispatch({ type: 'options' })}><span>{app.options}</span><span className={options ? 'bn-expanded' : ''}><AppSymbol name="chevron" size={9} /></span></button></div>
           {options && <div className="bn-settings">{selectionBlocked && <p className="bn-control-reason" id={selectionBlockedId}>{app.selectionBlocked}</p>}{settingOptions.map(({ key, label, desc, available, unavailableReason }) => <button className="bn-setting" role="checkbox" aria-checked={settings[key]} aria-label={label} disabled={selectionBlocked || !available} aria-describedby={`${descriptionId}-${key}${!available ? ` ${descriptionId}-${key}-unavailable` : ''}${selectionBlocked ? ` ${selectionBlockedId}` : ''}`} key={key} onClick={() => dispatch({ type: 'setting', key })}><span><strong>{label}</strong><small id={`${descriptionId}-${key}`}>{desc}</small>{!available && <small id={`${descriptionId}-${key}-unavailable`} className="bn-control-reason">{unavailableReason}</small>}</span><span aria-hidden="true" className={`bn-checkbox${settings[key] ? ' bn-checked' : ''}`}>{settings[key] && <AppSymbol name="check" size={8} />}</span></button>)}</div>}
           <div className="bn-diagnostics-entry"><button ref={diagnosticsRef} onClick={() => openDiagnostics('internal')}>{app.diagnostics.title}</button></div>

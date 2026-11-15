@@ -57,7 +57,7 @@ struct CommandToolSetup {
         let operation = action == .remove ? "Remove" : (action == .replace ? "Replace" : "Install")
         let prompt = "\(operation) Benzo's power command for local account \(accountName) " +
             "(UID \(owner.uid), ID \(owner.generatedUID.uuidString)). " +
-            "This account's programs can use Benzo's limited power-setting commands. " +
+            "This account's programs can use Benzo's limited power-setting commands and request immediate system sleep. " +
             "The administrator approving this does not become the authorized account. " +
             "Tool SHA-256: \(digest)."
         return "do shell script \(appleScriptLiteral(command)) with prompt \(appleScriptLiteral(prompt)) with administrator privileges"

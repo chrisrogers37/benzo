@@ -6,6 +6,12 @@ Benzo adjusts selected `pmset` sleep and wake settings. A configured value does 
 
 ## Current behavior
 
+The published **v0.4.0** release keeps Sleep Now disabled. The **0.5.0 development
+source** restores immediate sleep and the 5/15/30/60-minute countdown after settings
+are applied. Existing power access needs one explicit update to add sleep authority;
+apply and restore continue to work with the earlier tool. See the
+[sleep and timer follow-up](docs/sleep-timer.md) for behavior and validation scope.
+
 The current source implements a manual apply-and-restore workflow. Choices are
 editable only when no unresolved session or recovery evidence exists. Apply
 captures the reported per-profile originals before writing exact selected
@@ -31,7 +37,7 @@ every native acceptance case; see the [acceptance record](docs/account-free-acce
 [remediation plan](documentation/planning/tech_debt/benzo-remediation_2026-11-02/00_TECH_DEBT.md)
 and [recovery plan](documentation/planning/tech_debt/benzo-remediation_2026-11-02/02_recovery-engine.md).
 
-**Manage Power Access**, below the disabled Sleep Now button, opens setup for the
+**Manage Power Access**, below the Sleep Now button, opens setup for the
 Mac account using Benzo. **Set Up Power Access** requests one administrator
 approval. It installs a finite, one-shot power command and a rule for that account; no daemon or background service is installed. Ordinary On, Off and
 quit use the retained grant without another administrator prompt. Programs running
@@ -89,7 +95,7 @@ what Benzo stores on your Mac and what the website does.
 - **Manual settings** — choose available settings before applying; selections freeze for the session
 - **Captured originals** — Off, Restore Settings and quit attempt to restore the exact pre-Benzo values recorded per profile
 - **Conflict recovery** — Keep Current, Restore Recorded Original Anyway, or Defer retains explicit recovery choices
-- **Sleep Now unavailable** — sleep commands and timed sleep remain disabled
+- **Sleep Now and countdown** — available in 0.5.0 development after applying settings and updating power access; disabled in the published v0.4.0 release
 - **Diagnostics** — Option-click the menubar icon for existing sleep sessions, wake reasons, USB devices and settings observations; these do not prove recovery or hardware behavior
 - **Account-specific setup** — the command checks the setup account's UID and persistent local account identity; another account cannot inherit access by reusing a user ID
 - **Manual update check** — Check for Updates contacts GitHub only when requested;

@@ -33,6 +33,7 @@ enum BenzoStartupPolicy {
 /// there is deliberately no live factory or default dependency here.
 struct BenzoDependencies {
     let coordinator: OperationCoordinator
+    let sleepScheduler: any SleepScheduling
     let preferences: any PreferenceStoring
     let loginItem: any LoginItemClient
     let helperSetup: any HelperSetupClient

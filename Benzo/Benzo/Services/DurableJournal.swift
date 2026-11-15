@@ -19,6 +19,10 @@ final class DurableJournal: RecoveryStoring {
     private let journalMarker = "recovery-established"
     private let fenceMarker = "execution-established"
     private let completionMarker = "execution-completion-pending.json"
+    private let sleepName = "sleep-intent.json"
+    private let previousSleepName = "sleep-intent.previous.json"
+    private let sleepMarker = "sleep-established"
+    private let sleepCompletionMarker = "sleep-completion-pending.json"
     private let lockName = "recovery.lock"
     private let legacyName = "original-pmset.json"
     private let maximumBytes = 1_048_576
@@ -66,7 +70,9 @@ final class DurableJournal: RecoveryStoring {
         let pendingCompletion = try readPendingCompletion()
         let hasFence = try readFile(fenceName) != nil || readFile(previousFenceName) != nil || readMarker(fenceMarker) || pendingCompletion != nil
         guard let current else {
-            guard !marker, previous == nil, receipt == nil, !hasFence else {
+            guard !marker, previous == nil, receipt == nil, !hasFence,
+                  try readFile(sleepName) == nil, try readFile(previousSleepName) == nil,
+                  try !readMarker(sleepMarker), try readFile(sleepCompletionMarker) == nil else {
                 throw invalid("Current recovery evidence is missing. Existing evidence was preserved.")
             }
             return nil
@@ -267,6 +273,103 @@ final class DurableJournal: RecoveryStoring {
         } else {
             try write(encode(fence), named: fenceName)
         }
+    }
+
+    func loadSleepIntent() throws -> SleepIntent? {
+        try requireLock()
+        try rejectTemporaryEvidence()
+        let marker = try readMarker(sleepMarker)
+        let current = try readSleep(sleepName)
+        let previous = try readSleep(previousSleepName)
+        let pending = try readSleep(sleepCompletionMarker)
+        guard let current else {
+            guard !marker, previous == nil, pending == nil else { throw invalid("The saved sleep request is missing. Preserve recovery evidence.") }
+            return nil
+        }
+        guard marker, try readMarker(journalMarker), let journal = try readJournal(journalName),
+              current.acknowledged || journal.sessionID == current.sessionID else {
+            throw invalid("The saved sleep request has no matching settings session.")
+        }
+        if let previous, previous.request != current.request, !previous.acknowledged {
+            throw invalid("An unresolved sleep request was replaced.")
+        }
+        if let pending {
+            guard pending.request == current.request, pending.terminal == nil, !pending.acknowledged else {
+                throw invalid("The pending sleep durability marker does not match its request.")
+            }
+            return pending
+        }
+        return current
+    }
+
+    func commitSleepIntent(_ intent: SleepIntent) throws {
+        try commitSleepIntent(intent, verifiedTerminal: false)
+    }
+
+    func commitVerifiedSleepTerminal(_ intent: SleepIntent) throws {
+        guard intent.terminal != nil, !intent.acknowledged else {
+            throw invalid("Verified sleep completion requires a terminal receipt.")
+        }
+        try commitSleepIntent(intent, verifiedTerminal: true)
+    }
+
+    private func commitSleepIntent(_ intent: SleepIntent, verifiedTerminal: Bool) throws {
+        try requireLock()
+        try rejectTemporaryEvidence()
+        try intent.validate(uid: uid, hostID: hostID)
+        guard let journal = try readJournal(journalName), try readMarker(journalMarker),
+              journal.sessionID == intent.sessionID else {
+            throw invalid("Sleep requires a matching durable settings session.")
+        }
+        let old = try loadSleepIntent()
+        let visible = try readSleep(sleepName)
+        if let old {
+            if old.request == intent.request {
+                guard old.uid == intent.uid, old.hostID == intent.hostID, old.sessionID == intent.sessionID,
+                      old.terminal == nil || old.terminal == intent.terminal,
+                      !old.acknowledged || intent.acknowledged else {
+                    throw invalid("Sleep result and acknowledgement cannot regress or change identity.")
+                }
+                // A terminal rename may be visible after its durability failed.
+                // It still requires a fresh authenticated terminal proof.
+                if old.terminal == nil, intent.terminal != nil, !verifiedTerminal {
+                    throw invalid("Sleep completion needs authenticated terminal evidence.")
+                }
+            } else {
+                guard old.acknowledged, intent.terminal == nil, !intent.acknowledged, journal.resolvedAt == nil else {
+                    throw invalid("The previous sleep request must be settled before another request.")
+                }
+            }
+            if old != intent { try write(encode(old), named: previousSleepName, renameBoundary: .previousRename) }
+        } else {
+            guard intent.terminal == nil, !intent.acknowledged, journal.resolvedAt == nil else {
+                throw invalid("A sleep result requires an existing durable intent.")
+            }
+            try write(markerData, named: sleepMarker)
+        }
+        if let old, old.request == intent.request, old.terminal == nil, intent.terminal != nil {
+            if let visible, let terminal = visible.terminal, terminal != intent.terminal {
+                throw invalid("The terminal sleep result cannot be replaced.")
+            }
+            try write(encode(old), named: sleepCompletionMarker)
+            try write(encode(intent), named: sleepName)
+            try beforeBoundary(.completionMarkerRemove)
+            guard unlinkat(directoryFD, sleepCompletionMarker, 0) == 0 else {
+                throw invalid("The terminal sleep durability marker could not be removed.")
+            }
+            try syncDirectory(directoryFD)
+        } else {
+            // Repeat the barrier on identical retries; a visible rename alone
+            // cannot settle an in-process failed durability check.
+            try write(encode(intent), named: sleepName)
+        }
+    }
+
+    private func readSleep(_ name: String) throws -> SleepIntent? {
+        guard let data = try readFile(name) else { return nil }
+        let intent: SleepIntent = try decode(data)
+        try intent.validate(uid: uid, hostID: hostID)
+        return intent
     }
 
     func loadLegacyEvidence() throws -> Data? {

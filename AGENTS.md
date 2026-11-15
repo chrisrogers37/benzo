@@ -30,6 +30,12 @@ is authorized while the owner is AFK. The public `Benzo-0.4.0.dmg` must be a
 byte-identical alias of the validated CI `Benzo-0.4.0-development.dmg`; preserve
 its embedded `Benzo Development.app` name and disclose its unnotarized status.
 
+v0.4.0 was published from `eefc8ed` and its cask update merged in #107. The owner
+then authorized restoring Sleep Now and its timer as separate work. Follow
+`docs/sleep-timer.md`: implement and test with injected dependencies, keep the
+existing settings workflow compatible, and leave physical-sleep/privileged upgrade
+acceptance until the owner returns. This does not authorize sleeping this host.
+
 ## Native app
 
 `Benzo/` is Swift/SwiftUI and requires macOS plus full Xcode. Linux and a Mac with

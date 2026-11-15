@@ -80,7 +80,7 @@ final class CommandToolSetupTests: XCTestCase {
         XCTAssertFalse(persisted.admits(tool: after, policy: oldPolicy, owner: otherOwner, epoch: epoch))
     }
 
-    func testPolicyLimitsGrantToFiveExactDigestBoundVerbs() throws {
+    func testPolicyLimitsGrantToSevenExactDigestBoundVerbs() throws {
         let data = try CommandInstaller.policy(owner: owner, digest: digest)
         let text = try XCTUnwrap(String(data: data, encoding: .utf8))
         XCTAssertTrue(text.contains("#501 ALL=(root) NOPASSWD: NOSETENV:"))
@@ -88,7 +88,7 @@ final class CommandToolSetupTests: XCTestCase {
         for verb in PowerCommandVerb.allCases {
             XCTAssertTrue(text.contains("sha256:\(digest) \(CommandToolIdentity.installedPath) \(verb.rawValue)"))
         }
-        XCTAssertEqual(text.components(separatedBy: "sha256:").count - 1, 5)
+        XCTAssertEqual(text.components(separatedBy: "sha256:").count - 1, 7)
         for forbidden in ["install-v1", "repair-v1", "remove-v1", "%admin", "pmset", "*", "ALL=(ALL)"] {
             XCTAssertFalse(text.contains(forbidden))
         }
@@ -116,5 +116,107 @@ final class CommandToolSetupTests: XCTestCase {
         XCTAssertNil(timeout.exitStatus)
         let missing = CommandRuntime.run(executable: "/does-not-exist/benzo-owned-fixture", arguments: [], timeout: 1, maximumBytes: 100)
         XCTAssertFalse(missing.spawned)
+    }
+}
+
+extension CommandToolSetupTests {
+    func testHistoricalAndSleepPoliciesAreExactFrozenDigestBoundGenerations() throws {
+        let path = CommandToolIdentity.installedPath
+        let verbs = ["write-v1", "status-v1", "ack-v1", "seal-v1", "version-v1"]
+        let commands = verbs.map { "sha256:\(digest) \(path) \($0)" }.joined(separator: ", ")
+        let frozen = Data(("# Benzo account command policy v1\n" +
+            "Defaults!\(path) stay_setuid,env_reset,!setenv\n" +
+            "#501 ALL=(root) NOPASSWD: NOSETENV: \(commands)\n").utf8)
+        XCTAssertEqual(try CommandInstaller.historicalPolicy(owner: owner, digest: digest), frozen)
+        XCTAssertTrue(try CommandInstaller.recognizesPolicy(frozen, owner: owner, digest: digest))
+        let current = try CommandInstaller.policy(owner: owner, digest: digest)
+        XCTAssertTrue(try CommandInstaller.recognizesPolicy(current, owner: owner, digest: digest))
+        for changed in [frozen + Data("\n".utf8),
+                        Data(String(decoding: current, as: UTF8.self).replacingOccurrences(of: "sleep-v1", with: "*").utf8),
+                        Data(String(decoding: current, as: UTF8.self).replacingOccurrences(of: "#501 ALL=", with: "#502 ALL=").utf8)] {
+            XCTAssertFalse(try CommandInstaller.recognizesPolicy(changed, owner: owner, digest: digest))
+        }
+    }
+
+    func testPolicyAdmissionAndRollbackAgreementBothAcceptOldAndNewButRejectForeign() throws {
+        let tool = Data("tool".utf8)
+        let hash = CommandToolIdentity.digest(tool)
+        for policy in [try CommandInstaller.historicalPolicy(owner: owner, digest: hash),
+                       try CommandInstaller.policy(owner: owner, digest: hash)] {
+            XCTAssertTrue(try CommandInstaller.artifactsAgree(tool: tool, policy: policy, owner: owner))
+            XCTAssertFalse(try CommandInstaller.artifactsAgree(tool: Data("different".utf8), policy: policy, owner: owner))
+        }
+        let foreign = Data("#501 ALL=(root) NOPASSWD: ALL\n".utf8)
+        let epoch = UUID()
+        let forged = CommandInstaller.Transaction(owner: owner, grantEpoch: epoch, oldTool: tool,
+            oldPolicy: foreign, newTool: tool, newPolicy: foreign)
+        XCTAssertFalse(forged.admits(tool: tool, policy: foreign, owner: owner, epoch: epoch))
+        XCTAssertFalse(try CommandInstaller.artifactsAgree(tool: tool, policy: foreign, owner: owner))
+    }
+
+    func testUpgradePublicationFailuresRestoreExactFiveVerbPolicyAndRemoveMarker() throws {
+        enum Failure: Error { case injected }
+        let oldTool = Data("old five verb tool".utf8), newTool = Data("new seven verb tool".utf8)
+        let oldPolicy = try CommandInstaller.historicalPolicy(owner: owner, digest: CommandToolIdentity.digest(oldTool))
+        let newPolicy = try CommandInstaller.policy(owner: owner, digest: CommandToolIdentity.digest(newTool))
+        for failure in ["tool", "policy", "validation", "marker-removal"] {
+            var tool: Data? = oldTool, policy: Data? = oldPolicy, marker: Data?
+            var fired = false
+            var events: [String] = []
+            func interrupt(_ boundary: String) throws {
+                events.append(boundary)
+                if boundary == failure, !fired { fired = true; throw Failure.injected }
+            }
+            let transaction = CommandInstaller.Transaction(owner: owner, grantEpoch: UUID(), oldTool: oldTool,
+                oldPolicy: oldPolicy, newTool: newTool, newPolicy: newPolicy)
+            let io = CommandInstaller.Publication(tool: { bytes in tool = bytes; try interrupt("tool") },
+                policy: { bytes in policy = bytes; try interrupt("policy") },
+                marker: { bytes in marker = bytes; try interrupt(bytes == nil ? "marker-removal" : "marker") },
+                validatePolicy: { try interrupt("validation") })
+            XCTAssertThrowsError(try CommandInstaller.publish(transaction: transaction, owner: owner,
+                oldTool: oldTool, oldPolicy: oldPolicy, newTool: newTool, newPolicy: newPolicy, io: io), failure)
+            XCTAssertTrue(fired)
+            XCTAssertEqual(tool, oldTool, failure)
+            XCTAssertEqual(policy, oldPolicy, failure)
+            XCTAssertNil(marker, "Recognized old policy must permit marker cleanup after rollback: \(failure)")
+            XCTAssertEqual(events.first, "marker")
+        }
+    }
+
+    func testFailedUpgradeRollbackRetainsMarkerAndRevokesPolicy() throws {
+        enum Failure: Error { case injected }
+        let oldTool = Data("old".utf8), newTool = Data("new".utf8)
+        let oldPolicy = try CommandInstaller.historicalPolicy(owner: owner, digest: CommandToolIdentity.digest(oldTool))
+        let newPolicy = try CommandInstaller.policy(owner: owner, digest: CommandToolIdentity.digest(newTool))
+        var tool: Data? = oldTool, policy: Data? = oldPolicy, marker: Data?
+        let epoch = UUID()
+        let transaction = CommandInstaller.Transaction(owner: owner, grantEpoch: epoch,
+            oldTool: oldTool, oldPolicy: oldPolicy, newTool: newTool, newPolicy: newPolicy)
+        let io = CommandInstaller.Publication(tool: { bytes in
+            if bytes == oldTool { throw Failure.injected }
+            tool = bytes
+        }, policy: { bytes in
+            policy = bytes
+            if bytes == newPolicy { throw Failure.injected }
+        }, marker: { marker = $0 }, validatePolicy: {})
+        XCTAssertThrowsError(try CommandInstaller.publish(transaction: transaction, owner: owner,
+            oldTool: oldTool, oldPolicy: oldPolicy, newTool: newTool, newPolicy: newPolicy, io: io))
+        XCTAssertNil(policy)
+        let retained = try JSONDecoder().decode(CommandInstaller.Transaction.self, from: XCTUnwrap(marker))
+        XCTAssertTrue(retained.admits(tool: tool, policy: policy, owner: owner, epoch: epoch))
+    }
+
+    func testSleepAuthorityBlocksReplacementAndRemovalUntilTerminalAck() throws {
+        var state = try PowerCommandState.initial(owner: owner)
+        XCTAssertTrue(try CommandInstaller.mayChangeInstallation(state, owner: owner))
+        state.schema = 2; state.highWaterMark = 1
+        state.pendingSleep = PowerSleepReceipt(request: PowerSleepRequest(grantEpoch: state.grantEpoch,
+            sequence: 1, requestID: UUID(), operationID: UUID(), bootID: UUID(), expiresAtContinuousTicks: 1), outcome: .intent)
+        XCTAssertFalse(try CommandInstaller.mayChangeInstallation(state, owner: owner))
+        state.pendingSleep!.outcome = .completed(exitStatus: 0)
+        XCTAssertFalse(try CommandInstaller.mayChangeInstallation(state, owner: owner))
+        state.pendingSleep = nil; state.schema = 1
+        XCTAssertTrue(try CommandInstaller.mayChangeInstallation(state, owner: owner))
+        XCTAssertEqual(state.highWaterMark, 1)
     }
 }

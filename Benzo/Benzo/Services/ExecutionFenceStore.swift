@@ -56,10 +56,19 @@ protocol RecoveryStoring: AnyObject {
     /// Only call after an authenticated command receipt proves completion or
     /// later-boot reconciliation. This can repair an interrupted local barrier.
     func commitVerifiedCommandFence(_ fence: ExecutionFence) throws
+    func loadSleepIntent() throws -> SleepIntent?
+    func commitSleepIntent(_ intent: SleepIntent) throws
+    func commitVerifiedSleepTerminal(_ intent: SleepIntent) throws
     func loadLegacyEvidence() throws -> Data?
 }
 
 extension RecoveryStoring {
+    func loadSleepIntent() throws -> SleepIntent? { nil }
+    func commitSleepIntent(_ intent: SleepIntent) throws {
+        throw RecoveryEvidenceError.invalid("Sleep evidence storage is unavailable.")
+    }
+    func commitVerifiedSleepTerminal(_ intent: SleepIntent) throws { try commitSleepIntent(intent) }
+
     func commitVerifiedCommandFence(_ fence: ExecutionFence) throws { try commitFence(fence) }
 }
 

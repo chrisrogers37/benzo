@@ -1,3 +1,4 @@
+import Darwin
 import Foundation
 
 /// Resolved from the invoking account by the OS adapter, never from JSON input.
@@ -64,12 +65,93 @@ struct PowerCommandRequest: Codable, Equatable {
     }
 }
 
+/// Sleep is a distinct operation, never a setting tuple or a scheduled root job.
+struct PowerSleepRequest: Codable, Equatable {
+    var schema = 1
+    var protocolVersion = 1
+    let grantEpoch: UUID
+    let sequence: UInt64
+    let requestID: UUID
+    let operationID: UUID
+    let bootID: UUID
+    let expiresAtContinuousTicks: UInt64
+
+    enum CodingKeys: String, CodingKey {
+        case schema, protocolVersion = "protocol", grantEpoch, sequence, requestID, operationID, bootID
+        case expiresAtContinuousTicks
+    }
+    var token: PowerCommandToken {
+        PowerCommandToken(schema: schema, protocolVersion: protocolVersion,
+                          grantEpoch: grantEpoch, sequence: sequence, requestID: requestID)
+    }
+    func validate() throws {
+        try token.validate()
+        guard operationID != PowerCommandWire.zeroUUID, bootID != PowerCommandWire.zeroUUID,
+              expiresAtContinuousTicks > 0 else {
+            throw PowerCommandError.invalid("The sleep command identity or expiry is invalid.")
+        }
+    }
+}
+
+enum PowerSleepReceiptOutcome: Codable, Equatable {
+    case intent
+    /// Records only the owned command's exit, never proof of physical sleep.
+    case completed(exitStatus: Int)
+    case notExecuted(reason: String)
+    case childStoppedOutcomeUnknown(reason: String)
+    /// The prior-boot child cannot remain alive. Its sleep result is unknown.
+    case reconciledAfterBoot
+}
+
+struct PowerSleepReceipt: Codable, Equatable {
+    let request: PowerSleepRequest
+    var outcome: PowerSleepReceiptOutcome
+    var isTerminal: Bool { if case .intent = outcome { return false }; return true }
+    func validate() throws {
+        try request.validate()
+        switch outcome {
+        case .intent, .reconciledAfterBoot: break
+        case .completed(let status):
+            guard (0...255).contains(status) else { throw PowerCommandError.invalid("Invalid sleep child exit status.") }
+        case .notExecuted(let reason), .childStoppedOutcomeUnknown(let reason):
+            try PowerCommandWire.validateReason(reason)
+        }
+    }
+}
+
+enum PowerSleepExecution: Equatable {
+    case completed(exitStatus: Int)
+    case notExecuted(reason: String)
+    case childStoppedOutcomeUnknown(reason: String)
+    case uncertain(reason: String)
+}
+
+/// mach_continuous_time includes system sleep. Wall-clock changes cannot revive
+/// a delayed request, and the root command accepts at most thirty seconds ahead.
+enum PowerSleepClock {
+    static func now() -> UInt64 { mach_continuous_time() }
+    static func ticks(seconds: UInt64) -> UInt64 {
+        var info = mach_timebase_info_data_t()
+        guard mach_timebase_info(&info) == KERN_SUCCESS, info.numer > 0, info.denom > 0 else { return 0 }
+        let nanoseconds = seconds.multipliedReportingOverflow(by: 1_000_000_000)
+        guard !nanoseconds.overflow else { return 0 }
+        let product = nanoseconds.partialValue.multipliedReportingOverflow(by: UInt64(info.denom))
+        guard !product.overflow else { return 0 }
+        return product.partialValue / UInt64(info.numer)
+    }
+    static func admits(expiry: UInt64, now: UInt64, maximumLifetime: UInt64) -> Bool {
+        maximumLifetime > 0 && expiry > now && expiry - now <= maximumLifetime
+    }
+}
+
 enum PowerCommandVerb: String, CaseIterable {
     case write = "write-v1", status = "status-v1", ack = "ack-v1", seal = "seal-v1", version = "version-v1"
+    case sleep = "sleep-v1", sealSleep = "seal-sleep-v1"
 }
 
 enum PowerCommandInput: Equatable {
     case write(PowerCommandRequest), seal(PowerCommandRequest)
+    case sleep(PowerSleepRequest), sealSleep(PowerSleepRequest)
     case status(PowerCommandToken), ack(PowerCommandToken)
     case version
 }
@@ -107,13 +189,14 @@ struct PowerCommandState: Codable, Equatable {
     let grantEpoch: UUID
     var highWaterMark: UInt64
     var pending: PowerCommandReceipt?
+    var pendingSleep: PowerSleepReceipt?
 
-    private enum CodingKeys: String, CodingKey { case schema, owner, grantEpoch, highWaterMark, pending }
+    private enum CodingKeys: String, CodingKey { case schema, owner, grantEpoch, highWaterMark, pending, pendingSleep }
 
     init(schema: Int = 1, owner: PowerCommandOwner, grantEpoch: UUID,
-         highWaterMark: UInt64, pending: PowerCommandReceipt?) {
+         highWaterMark: UInt64, pending: PowerCommandReceipt?, pendingSleep: PowerSleepReceipt? = nil) {
         self.schema = schema; self.owner = owner; self.grantEpoch = grantEpoch
-        self.highWaterMark = highWaterMark; self.pending = pending
+        self.highWaterMark = highWaterMark; self.pending = pending; self.pendingSleep = pendingSleep
     }
 
     init(from decoder: Decoder) throws {
@@ -125,6 +208,11 @@ struct PowerCommandState: Codable, Equatable {
         // Missing receipt evidence is different from an explicit acknowledged
         // empty slot. Do not let decodeIfPresent turn missing evidence into ACK.
         pending = try fields.decode(PowerCommandReceipt?.self, forKey: .pending)
+        guard schema == 2 || !fields.contains(.pendingSleep) else {
+            throw PowerCommandError.invalid("Sleep evidence requires authority schema 2.")
+        }
+        pendingSleep = schema == 2 ? try fields.decode(PowerSleepReceipt.self, forKey: .pendingSleep) : nil
+        try validate()
     }
 
     func encode(to encoder: Encoder) throws {
@@ -132,6 +220,7 @@ struct PowerCommandState: Codable, Equatable {
         try fields.encode(schema, forKey: .schema); try fields.encode(owner, forKey: .owner)
         try fields.encode(grantEpoch, forKey: .grantEpoch); try fields.encode(highWaterMark, forKey: .highWaterMark)
         try fields.encode(pending, forKey: .pending)
+        if schema == 2 { try fields.encode(pendingSleep, forKey: .pendingSleep) }
     }
 
     static func initial(owner: PowerCommandOwner, grantEpoch: UUID = UUID()) throws -> Self {
@@ -142,7 +231,8 @@ struct PowerCommandState: Codable, Equatable {
 
     func validate() throws {
         try owner.validate()
-        guard schema == 1, grantEpoch != PowerCommandWire.zeroUUID else {
+        guard (schema == 1 && pendingSleep == nil) || (schema == 2 && pending == nil && pendingSleep != nil),
+              grantEpoch != PowerCommandWire.zeroUUID else {
             throw PowerCommandError.invalid("Unsupported command authority state.")
         }
         if let pending {
@@ -151,27 +241,41 @@ struct PowerCommandState: Codable, Equatable {
                 throw PowerCommandError.invalid("The receipt does not match the command watermark.")
             }
         }
+        if let pendingSleep {
+            try pendingSleep.validate()
+            guard pendingSleep.request.grantEpoch == grantEpoch, pendingSleep.request.sequence == highWaterMark else {
+                throw PowerCommandError.invalid("The sleep receipt does not match the command watermark.")
+            }
+        }
     }
 
     /// Storage also enforces transitions, so callers cannot replace evidence or
     /// release an intent by writing an otherwise structurally valid state.
     func validateTransition(from old: Self) throws {
+        try old.validate()
         try validate()
-        guard owner == old.owner, grantEpoch == old.grantEpoch, schema == old.schema else {
+        guard owner == old.owner, grantEpoch == old.grantEpoch else {
             throw PowerCommandError.invalid("The command grant cannot be replaced.")
         }
         if self == old { return }
         if highWaterMark == old.highWaterMark {
-            if let previous = old.pending, let next = pending,
+            if schema == 1, old.schema == 1 {
+                if let previous = old.pending, let next = pending,
+                   previous.request == next.request, !previous.isTerminal, next.isTerminal { return }
+                if old.pending?.isTerminal == true, pending == nil { return }
+            }
+            if schema == 2, old.schema == 2, let previous = old.pendingSleep, let next = pendingSleep,
                previous.request == next.request, !previous.isTerminal, next.isTerminal { return }
-            if old.pending?.isTerminal == true, pending == nil { return }
+            if old.schema == 2, old.pendingSleep?.isTerminal == true, schema == 1,
+               pending == nil, pendingSleep == nil { return }
         } else if old.highWaterMark < UInt64.max, highWaterMark == old.highWaterMark + 1,
-                  old.pending == nil, let pending {
-            // Admission may publish intent, or a durable no-spawn seal. It may
-            // never fabricate execution completion on a newly admitted request.
-            switch pending.outcome {
-            case .intent, .notExecuted: return
-            default: break
+                  old.schema == 1, old.pending == nil {
+            // New admission may only record intent or a durable no-spawn seal.
+            if let pending {
+                switch pending.outcome { case .intent, .notExecuted: return; default: break }
+            }
+            if let pendingSleep {
+                switch pendingSleep.outcome { case .intent, .notExecuted: return; default: break }
             }
         }
         throw PowerCommandError.invalid("The command transition would replace or discard execution evidence.")
@@ -204,9 +308,13 @@ struct PowerCommandReply: Codable, Equatable {
     let bootID: UUID?
     let pending: PowerCommandReceipt?
     let outcome: PowerCommandDisposition
+    var sleepRequest: PowerSleepRequest? = nil
+    var pendingSleep: PowerSleepReceipt? = nil
+    var capabilities: [String]? = nil
 
     enum CodingKeys: String, CodingKey {
         case schema, protocolVersion = "protocol", token, request, owner, grantEpoch, highWaterMark, bootID, pending, outcome
+        case sleepRequest, pendingSleep, capabilities
     }
 }
 
@@ -238,7 +346,14 @@ enum PowerCommandWire {
         let versionKeys: Set<String> = ["schema", "protocol"]
         let tokenKeys = versionKeys.union(["grantEpoch", "sequence", "requestID"])
         let requestKeys = tokenKeys.union(["operationID", "bootID", "profile", "key", "expectedValue", "target"])
-        let required: Set<String> = verb == .version ? versionKeys : ([.write, .seal].contains(verb) ? requestKeys : tokenKeys)
+        let sleepKeys = tokenKeys.union(["operationID", "bootID", "expiresAtContinuousTicks"])
+        let required: Set<String>
+        switch verb {
+        case .version: required = versionKeys
+        case .write, .seal: required = requestKeys
+        case .sleep, .sealSleep: required = sleepKeys
+        case .status, .ack: required = tokenKeys
+        }
         guard Set(fields.keys) == required,
               fields["schema"] == .integer("1"), fields["protocol"] == .integer("1") else {
             throw PowerCommandError.invalid("Command keys or protocol version are invalid.")
@@ -262,6 +377,17 @@ enum PowerCommandWire {
         try token.validate()
         if verb == .status { return .status(token) }
         if verb == .ack { return .ack(token) }
+        if verb == .sleep || verb == .sealSleep {
+            guard case .integer(let expiryText) = fields["expiresAtContinuousTicks"],
+                  let expiry = UInt64(expiryText) else {
+                throw PowerCommandError.invalid("Sleep expiry must be an unsigned 64-bit integer.")
+            }
+            let request = try PowerSleepRequest(grantEpoch: token.grantEpoch, sequence: token.sequence,
+                requestID: token.requestID, operationID: uuid("operationID"), bootID: uuid("bootID"),
+                expiresAtContinuousTicks: expiry)
+            try request.validate()
+            return verb == .sleep ? .sleep(request) : .sealSleep(request)
+        }
         guard let profile = PowerProfile(rawValue: try string("profile")), let key = ManagedKey(rawValue: try string("key")),
               case .integer(let expected) = fields["expectedValue"], let expectedValue = Int(expected),
               case .integer(let destination) = fields["target"], let target = Int(destination) else {

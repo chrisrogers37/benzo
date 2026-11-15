@@ -1,4 +1,4 @@
-import { useEffect, useReducer } from 'react'
+import { useCallback, useEffect, useReducer } from 'react'
 import { appPresentation, exampleReadings, settingOptions } from '../design/appPresentation'
 import { siteCopy } from '../design/siteCopy'
 
@@ -34,6 +34,8 @@ export const initialDemoState = (active = true) => ({
   currentValues: active ? selectedValues(selectedDefaults) : { ...originals },
   login: false, error: null, notice: '', update: { status: 'idle' }, helperReadiness: 'ready', helperSetupError: null, isPerformingHelperSetup: false,
   helperAccountAuthorized: true, helperRemovalConfirmation: false,
+  sleepCapability: true, sleepTimer: null, sleepGeneration: 0,
+  sleepRequestInFlight: false, sleepRequestGeneration: null, sleepMessage: '',
   operation: null, quitPending: false, resumePhase: null, conflict: null, conflictDeferred: false, conflictResolution: null, legacyUnknown: false,
   sleepData: { status: 'success', value: { sessions: exampleReadings.sleepSessions, lastWakeReason: exampleReadings.wakeReason } },
   usbDevices: { status: 'success', value: exampleReadings.usbDevices },
@@ -44,7 +46,46 @@ function publish(state, phase, notice = '') {
   return { ...state, phase, notice, error: null, operation: null, quitPending: false }
 }
 
+export const sleepPresets = Object.freeze([5, 15, 30, 60])
+// A delayed browser callback cannot establish that a countdown stayed awake.
+// Cancel after a suspension instead of sending an overdue simulated request.
+export const maximumSleepTickGap = 2000
+
+export function sleepDisabledReason(state) {
+  if (state.sleepRequestInFlight) return appPresentation.sleep.pending
+  if (!state.running || state.phase !== 'activeVerified' || !state.hasSession) return appPresentation.sleep.requiresActive
+  if (state.operation || state.quitPending || state.conflict || state.legacyUnknown) return appPresentation.sleep.requiresResolved
+  if (state.helperReadiness !== 'ready' || state.isPerformingHelperSetup || state.view === 'setup') return appPresentation.sleep.requiresReady
+  if (!state.sleepCapability) return appPresentation.sleep.requiresUpdate
+  return null
+}
+
+export const canSleep = state => sleepDisabledReason(state) === null
+
+function cancelTimer(state, message = appPresentation.sleep.cancelled) {
+  return state.sleepTimer ? { ...state, sleepTimer: null, sleepGeneration: state.sleepGeneration + 1, sleepMessage: message } : state
+}
+
+function requestSleep(state) {
+  if (!canSleep(state)) return { ...state, error: sleepDisabledReason(state) }
+  const generation = state.sleepGeneration + 1
+  return { ...state, sleepTimer: null, sleepGeneration: generation, sleepRequestGeneration: generation,
+    sleepRequestInFlight: true, sleepMessage: appPresentation.sleep.requesting, error: null, notice: siteCopy.demo.notices.sleep }
+}
+
 export function benzoDemoReducer(state, action) {
+  if (['active', 'restore', 'quit', 'quitAnyway', 'setup', 'checking', 'refreshRecovery', 'operationFailed', 'conflict', 'legacyUnknown', 'systemSleep', 'systemWake'].includes(action.type)) state = cancelTimer(state)
+  const next = reduceDemo(state, action)
+  return next.sleepTimer && !canSleep(next) ? cancelTimer(next) : next
+}
+
+function reduceDemo(state, action) {
+  if (state.sleepRequestInFlight) {
+    if (action.type === 'quit') return { ...state, quitPending: true, update: { status: 'idle' } }
+    if (['active', 'restore', 'retry', 'restoreRecordedOriginal', 'keepCurrent', 'quitAnyway', 'setting', 'setup', 'registerHelper', 'authorizeCurrentAccount', 'replaceHelper', 'requestRemoveHelper', 'removeHelper'].includes(action.type)) {
+      return { ...state, error: appPresentation.sleep.pending }
+    }
+  }
   if (action.type === 'quit') state = { ...state, update: { status: 'idle' } }
   if (['active', 'restore', 'retry', 'restoreRecordedOriginal', 'quit'].includes(action.type) && state.isPerformingHelperSetup) {
     return { ...state, error: appPresentation.setup.inProgress }
@@ -53,16 +94,16 @@ export function benzoDemoReducer(state, action) {
     return { ...state, error: state.hasSession ? appPresentation.setup.recoveryBlocked : appPresentation.setup.writeBlocked }
   }
   switch (action.type) {
-    case 'reset': return initialDemoState(true)
-    case 'firstLaunch': return { ...initialDemoState(false), options: false, helperReadiness: 'notInstalled', helperAccountAuthorized: false }
+    case 'reset': return { ...initialDemoState(true), sleepGeneration: state.sleepGeneration + 1 }
+    case 'firstLaunch': return { ...initialDemoState(false), sleepGeneration: state.sleepGeneration + 1, options: false, helperReadiness: 'notInstalled', helperAccountAuthorized: false }
     case 'setup': return { ...state, update: { status: 'idle' }, view: 'setup' }
     case 'refreshHelper': return { ...state, notice: 'Setup status refresh simulated. No permission was requested or changed.' }
     case 'registerHelper': return ['notInstalled', 'requiresApproval'].includes(state.helperReadiness) && !state.isPerformingHelperSetup
-      ? { ...state, helperReadiness: 'ready', helperAccountAuthorized: true, helperSetupError: null, notice: 'One administrator approval simulated for this Mac account. No permission was requested or changed.' } : state
+      ? { ...state, helperReadiness: 'ready', sleepCapability: true, helperAccountAuthorized: true, helperSetupError: null, notice: 'One administrator approval simulated for this Mac account. No permission was requested or changed.' } : state
     case 'authorizeCurrentAccount': return state.helperReadiness === 'needsOwnerAuthorization' && !state.isPerformingHelperSetup
-      ? { ...state, helperReadiness: 'ready', helperAccountAuthorized: true, helperSetupError: null, notice: 'One administrator approval simulated for this Mac account. No permission was requested or changed.' } : state
+      ? { ...state, helperReadiness: 'ready', sleepCapability: true, helperAccountAuthorized: true, helperSetupError: null, notice: 'One administrator approval simulated for this Mac account. No permission was requested or changed.' } : state
     case 'replaceHelper': return ['ready', 'incompatible', 'connectionUnavailable'].includes(state.helperReadiness) && state.phase === 'off' && !state.hasSession && state.operation !== 'uncertain' && !state.isPerformingHelperSetup
-      ? { ...state, helperReadiness: 'ready', helperSetupError: null, notice: 'Power access repair simulated. No power tool or permission was changed.' } : state
+      ? { ...state, helperReadiness: 'ready', sleepCapability: true, helperSetupError: null, notice: 'Power access repair simulated. No power tool or permission was changed.' } : state
     case 'requestRemoveHelper': return ['ready', 'incompatible'].includes(state.helperReadiness) && state.phase === 'off' && !state.hasSession && state.operation !== 'uncertain' && !state.isPerformingHelperSetup
       ? { ...state, helperRemovalConfirmation: true } : state
     case 'cancelRemoveHelper': return { ...state, helperRemovalConfirmation: false }
@@ -186,19 +227,47 @@ export function benzoDemoReducer(state, action) {
       : { ...state, phase: 'checking', resumePhase: state.phase, conflictDeferred: false, error: null, notice: appPresentation.recovery.titles.checking }
     case 'legacyUnknown': return { ...state, phase: 'recoveryRequired', legacyUnknown: true, error: appPresentation.recovery.legacyHelp, notice: '', operation: null }
     case 'login': return { ...state, login: !state.login, notice: siteCopy.demo.notices.login }
-    case 'sleep': return { ...state, error: appPresentation.sleep.unavailable }
+    case 'sleepCapabilityChanged': return { ...state, sleepCapability: action.available === true }
+    case 'sleep': return requestSleep(state)
+    case 'scheduleSleep': {
+      if (!canSleep(state)) return { ...state, error: sleepDisabledReason(state) }
+      if (!sleepPresets.includes(action.minutes) || !Number.isFinite(action.now)) return state
+      const generation = state.sleepGeneration + 1
+      return { ...state, sleepGeneration: generation, sleepMessage: '', error: null,
+        sleepTimer: { generation, deadline: action.now + action.minutes * 60_000, lastTick: action.now, remainingSeconds: action.minutes * 60 } }
+    }
+    case 'cancelScheduledSleep': return cancelTimer(state)
+    case 'systemSleep':
+    case 'systemWake': return state
+    case 'sleepTimerTick': {
+      const timer = state.sleepTimer
+      if (!timer || action.generation !== timer.generation) return state
+      if (!canSleep(state)) return cancelTimer(state)
+      if (!Number.isFinite(action.now) || action.now < timer.lastTick || action.now - timer.lastTick > maximumSleepTickGap) return cancelTimer(state, appPresentation.sleep.interrupted)
+      const remainingSeconds = Math.max(0, Math.ceil((timer.deadline - action.now) / 1000))
+      return remainingSeconds === 0 ? requestSleep(state) : { ...state, sleepTimer: { ...timer, lastTick: action.now, remainingSeconds } }
+    }
+    case 'sleepRequestSettled': {
+      if (!state.sleepRequestInFlight || action.generation !== state.sleepRequestGeneration) return state
+      const settled = { ...state, sleepRequestInFlight: false, sleepRequestGeneration: null, error: null, sleepMessage: appPresentation.sleep.sent }
+      return state.quitPending ? benzoDemoReducer(settled, { type: 'quit' }) : settled
+    }
     case 'checkUpdates': return state.update?.status === 'checking' || !state.open || state.view !== 'main' || !state.running
       ? state : { ...state, update: { status: 'checking' }, notice: '' }
     case 'updatesChecked': return state.update?.status !== 'checking' || !state.open || state.view !== 'main' || !state.running
-      ? state : { ...state, update: { status: 'current', version: appPresentation.version.slice(1) } }
+      ? state : { ...state, update: { status: 'ahead' } }
     case 'viewRelease': return !state.open || state.view !== 'main' || !state.running || !state.update || ['idle', 'checking'].includes(state.update.status)
       ? state : { ...state, notice: appPresentation.updates.demoNotice }
     default: return state
   }
 }
 
-export function useBenzoDemo() {
-  const [state, dispatch] = useReducer(benzoDemoReducer, undefined, () => initialDemoState(true))
+const browserClock = { now: () => Date.now() }
+const browserScheduler = { setTimeout: (callback, delay) => setTimeout(callback, delay), clearTimeout: timer => clearTimeout(timer) }
+
+export function useBenzoDemo({ clock = browserClock, scheduler = browserScheduler } = {}) {
+  const [state, reduce] = useReducer(benzoDemoReducer, undefined, () => initialDemoState(true))
+  const dispatch = useCallback(action => reduce(action.type === 'scheduleSleep' ? { ...action, now: clock.now() } : action), [clock])
   useEffect(() => {
     if (state.phase === 'checking') dispatch({ type: 'checkingSucceeded' })
     if (state.phase === 'applying') dispatch({ type: 'applySucceeded' })
@@ -210,5 +279,31 @@ export function useBenzoDemo() {
     const timer = setTimeout(() => dispatch({ type: 'updatesChecked' }), 400)
     return () => clearTimeout(timer)
   }, [state.update])
+  useEffect(() => {
+    if (!state.sleepTimer) return
+    const generation = state.sleepTimer.generation
+    const timer = scheduler.setTimeout(() => reduce({ type: 'sleepTimerTick', generation, now: clock.now() }), 1000)
+    return () => scheduler.clearTimeout(timer)
+  }, [state.sleepTimer, clock, scheduler])
+  useEffect(() => {
+    if (!state.sleepRequestInFlight) return
+    const generation = state.sleepRequestGeneration
+    // Simulation only. The browser never requests system sleep or changes power settings.
+    const timer = scheduler.setTimeout(() => reduce({ type: 'sleepRequestSettled', generation }), 400)
+    return () => scheduler.clearTimeout(timer)
+  }, [state.sleepRequestInFlight, state.sleepRequestGeneration, scheduler])
+  useEffect(() => {
+    const suspend = () => reduce({ type: 'systemSleep' })
+    const resume = () => reduce({ type: 'systemWake' })
+    const visibility = () => { if (document.visibilityState === 'hidden') suspend() }
+    window.addEventListener('pagehide', suspend)
+    window.addEventListener('pageshow', resume)
+    document.addEventListener('visibilitychange', visibility)
+    return () => {
+      window.removeEventListener('pagehide', suspend)
+      window.removeEventListener('pageshow', resume)
+      document.removeEventListener('visibilitychange', visibility)
+    }
+  }, [])
   return [state, dispatch]
 }

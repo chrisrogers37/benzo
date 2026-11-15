@@ -2,7 +2,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { act, cleanup, fireEvent, render, renderHook, screen, within } from '@testing-library/react'
 import NativeAppDemo from './NativeAppDemo'
-import { benzoDemoReducer, initialDemoState, useBenzoDemo } from '../demo/useBenzoDemo'
+import { benzoDemoReducer, initialDemoState, sleepDisabledReason, useBenzoDemo } from '../demo/useBenzoDemo'
 
 function Demo() {
   const [state, dispatch] = useBenzoDemo()
@@ -287,12 +287,11 @@ describe('source-matched browser simulation', () => {
     expect(screen.queryByRole('heading', { name: 'Diagnostics', exact: true })).toBeNull()
   })
 
-  it('keeps sleep disabled with help text and omits timer and blocker controls', () => {
+  it('enables sleep only after applying settings and omits blocker controls', () => {
     render(<Demo />)
-    expect(screen.getByRole('button', { name: 'Sleep Now' }).disabled).toBe(true)
-    expect(screen.getByRole('button', { name: 'Sleep Now' }).title).toBe('Sleep Now isn’t available in this version.')
-    expect(screen.queryByText('Sleep Now isn’t available in this version.')).toBeNull()
-    expect(screen.queryByRole('button', { name: /timer/i })).toBeNull()
+    expect(screen.getByRole('button', { name: 'Sleep Now' }).disabled).toBe(false)
+    expect(screen.getByRole('button', { name: 'Sleep Now' }).title).toBe('Send a sleep request using your applied settings')
+    expect(screen.getByRole('button', { name: 'Sleep timer' }).disabled).toBe(false)
     expect(screen.queryByText('caffeinate')).toBeNull()
     expect(screen.queryByText(/app may prevent sleep/)).toBeNull()
     click('First launch')
@@ -301,7 +300,6 @@ describe('source-matched browser simulation', () => {
   })
 
   it.each([
-    ['active', []],
     ['before activation', ['firstLaunch', 'back']],
     ['after Restore', ['restore']],
   ])('refuses direct sleep actions %s without changing state or queuing work', (_label, actions) => {
@@ -310,10 +308,10 @@ describe('source-matched browser simulation', () => {
     for (const type of actions) act(() => result.current[1]({ type }))
     const before = result.current[0]
     act(() => result.current[1]({ type: 'sleep' }))
-    expect(result.current[0]).toEqual({ ...before, error: 'Sleep Now isn’t available in this version.' })
+    expect(result.current[0]).toEqual({ ...before, error: sleepDisabledReason(before) })
     expect(vi.getTimerCount()).toBe(0)
     act(() => vi.advanceTimersByTime(3600000))
-    expect(result.current[0]).toEqual({ ...before, error: 'Sleep Now isn’t available in this version.' })
+    expect(result.current[0]).toEqual({ ...before, error: sleepDisabledReason(before) })
   })
 
   it('allows only reported target choices while Off and unlocks after captured restore', () => {
@@ -345,7 +343,6 @@ describe('source-matched browser simulation', () => {
   })
 
   it.each([
-    ['active', []],
   ])('refuses direct setting actions %s and preserves the backup', (_label, actions) => {
     const { result } = renderHook(useBenzoDemo)
     for (const type of actions) act(() => result.current[1]({ type }))
@@ -359,7 +356,7 @@ describe('source-matched browser simulation', () => {
     render(<Demo />)
     click('First launch')
     click('Manage Power Access')
-    expect(screen.getByText('One administrator approval lets this Mac account apply and restore Benzo’s supported power settings. These settings affect everyone using this Mac.')).toBeTruthy()
+    expect(screen.getByText('One administrator approval lets this Mac account apply and restore Benzo’s supported power settings and request sleep. These actions affect everyone using this Mac.')).toBeTruthy()
     expect(screen.queryByRole('button', { name: 'Open System Settings' })).toBeNull()
     click('Check Again')
     expect(screen.getByRole('heading', { name: 'Set Up Power Access' })).toBeTruthy()
@@ -754,7 +751,7 @@ describe('source-matched browser simulation', () => {
     click('Quit')
     expect(screen.queryByRole('button', { name: 'Benzo menu' })).toBeNull()
     fireEvent.click(screen.getAllByRole('button', { name: /Restart demo/ })[0])
-    expect(screen.getByRole('button', { name: 'Sleep Now' }).disabled).toBe(true)
+    expect(screen.getByRole('button', { name: 'Sleep Now' }).disabled).toBe(false)
     expect(screen.getByRole('switch', { name: 'Launch at Login' }).getAttribute('aria-checked')).toBe('false')
   })
 })
@@ -768,12 +765,12 @@ describe('manual update check simulation', () => {
       render(<Demo />)
       expect(vi.getTimerCount()).toBe(0)
       const check = screen.getByRole('button', { name: 'Check for Updates…' })
-      expect(screen.queryByText(/latest published release/)).toBeNull()
+      expect(screen.queryByText(/No newer stable release found/)).toBeNull()
       fireEvent.click(check)
       expect(screen.getByRole('button', { name: 'Checking…' }).disabled).toBe(true)
       expect(screen.getByRole('switch', { name: /^(Apply selected settings|Restore captured settings)$/ }).getAttribute('aria-checked')).toBe('true')
       act(() => vi.advanceTimersByTime(400))
-      expect(screen.getByText(/latest published release \(0\.4\.0\)/)).toBeTruthy()
+      expect(screen.getByText(/No newer stable release found/)).toBeTruthy()
       expect(screen.queryByText(/this would open/)).toBeNull()
       click('View Releases')
       expect(screen.getByText(/this would open.*releases/i)).toBeTruthy()
@@ -789,7 +786,7 @@ describe('manual update check simulation', () => {
     click('Benzo menu')
     act(() => vi.advanceTimersByTime(400))
     click('Benzo menu')
-    expect(screen.queryByText(/latest published release/)).toBeNull()
+    expect(screen.queryByText(/No newer stable release found/)).toBeNull()
     expect(screen.getByRole('button', { name: 'Check for Updates…' }).disabled).toBe(false)
     click('First launch')
     click('Manage Power Access')
@@ -809,15 +806,15 @@ describe('manual update check simulation', () => {
     for (const leave of ['Benzo menu', 'View diagnostics', 'Manage Power Access']) {
       click('Check for Updates…')
       act(() => vi.advanceTimersByTime(400))
-      expect(screen.getByText(/latest published release/)).toBeTruthy()
+      expect(screen.getByText(/No newer stable release found/)).toBeTruthy()
       click(leave)
       click(leave === 'Benzo menu' ? 'Benzo menu' : leave === 'Manage Power Access' ? 'Done' : 'Back')
-      expect(screen.queryByText(/latest published release/)).toBeNull()
+      expect(screen.queryByText(/No newer stable release found/)).toBeNull()
       expect(screen.queryByRole('button', { name: 'View Releases' })).toBeNull()
       // Focus changes also schedule DOM work; assert the updater's observable
       // contract rather than counting unrelated browser timers.
       act(() => vi.advanceTimersByTime(60_000))
-      expect(screen.queryByText(/latest published release/)).toBeNull()
+      expect(screen.queryByText(/No newer stable release found/)).toBeNull()
       expect(screen.getByRole('button', { name: 'Check for Updates…' }).disabled).toBe(false)
     }
   })
