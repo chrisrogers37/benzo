@@ -1,20 +1,20 @@
 import SwiftUI
 
 struct SetupView: View {
-    let observation: PermissionObservation
+    let readiness: HelperReadiness
+    let isBusy: Bool
+    let canReplaceHelper: Bool
+    let canRemoveHelper: Bool
+    let error: String?
+    let recoveryMessage: String?
+    let onRegister: () -> Void
+    let onAuthorize: () -> Void
+    let onReplace: () -> Void
+    let onRemove: () -> Void
     let onRefresh: () -> Void
     let onBack: () -> Void
-
-    private var statusText: String {
-        switch observation {
-        case .noLegacyRule:
-            return "No legacy permission rule found"
-        case .legacyRulePresent:
-            return "Legacy permission rule found; authorization is unverified"
-        case .unknown:
-            return "Permission status could not be determined"
-        }
-    }
+    @State private var confirmingRemoval = false
+    @State private var showingManagement = false
 
     var body: some View {
         VStack(spacing: 16) {
@@ -23,41 +23,100 @@ struct SetupView: View {
             Text("💊")
                 .font(.system(size: 36))
 
-            Text("Permission status")
+            Text(readiness.title)
                 .font(.system(size: 15, weight: .semibold))
                 .foregroundColor(BenzoTheme.text)
+                .accessibilityAddTraits(.isHeader)
 
-            Text(statusText)
+            Text(readiness.message)
                 .font(.system(size: 12))
                 .foregroundColor(BenzoTheme.textMuted)
                 .multilineTextAlignment(.center)
                 .padding(.horizontal, 20)
 
-            Button(action: onRefresh) {
-                Text("Refresh status")
-                    .font(.system(size: 12, weight: .semibold))
-                    .foregroundColor(.white)
-                    .padding(.horizontal, 24)
-                    .padding(.vertical, 8)
-                    .background(BenzoTheme.accent)
-                    .cornerRadius(6)
+            if let recoveryMessage {
+                Text(recoveryMessage)
+                    .font(.system(size: 12))
+                    .foregroundColor(BenzoTheme.text)
+                    .multilineTextAlignment(.center)
             }
-            .buttonStyle(.plain)
 
-            Button("Back", action: onBack)
+            if let error {
+                Text(error)
+                    .font(.system(size: 12))
+                    .foregroundColor(BenzoTheme.errorText)
+                    .multilineTextAlignment(.center)
+            }
+
+            if readiness == .ready {
+                DisclosureGroup("Advanced", isExpanded: $showingManagement) {
+                    VStack(spacing: 12) { powerAccessActions }
+                        .padding(.top, 12)
+                }
                 .font(.system(size: 12))
-                .foregroundColor(BenzoTheme.textMuted)
-                .buttonStyle(.plain)
+                .tint(BenzoTheme.accentControl)
+            } else {
+                powerAccessActions
+            }
 
-            Text("This only checks for a legacy rule. It does not verify authorization or change permissions.")
-                .font(.system(size: 10))
-                .foregroundColor(BenzoTheme.textFaint)
-                .multilineTextAlignment(.center)
-                .padding(.horizontal, 20)
+            Button("Check Again", action: onRefresh)
+                .buttonStyle(.plain)
+                .foregroundColor(BenzoTheme.accentControl)
+                .disabled(isBusy)
+            Button(readiness == .ready ? "Done" : "Back", action: onBack)
+                .buttonStyle(.plain)
+                .foregroundColor(BenzoTheme.accentControl)
+
+            if isBusy { ProgressView().controlSize(.small).accessibilityLabel("Checking power access") }
 
             Spacer()
         }
+        .padding(20)
         .frame(width: 320)
         .background(BenzoTheme.surface)
     }
+
+    @ViewBuilder
+    private var powerAccessActions: some View {
+        if readiness.supportsRepair, !canReplaceHelper, !isBusy {
+            Text(BenzoViewModel.helperReplacementBlockedReason)
+                .font(.system(size: 12))
+                .foregroundColor(BenzoTheme.text)
+                .multilineTextAlignment(.center)
+        }
+
+        Group {
+            switch readiness {
+            case .notInstalled, .requiresApproval: Button("Set Up Power Access", action: onRegister)
+            case .needsOwnerAuthorization: Button("Set Up Power Access", action: onAuthorize)
+            case .ready, .unavailable(.incompatible), .unavailable(.connection):
+                Button("Repair / Update Power Access", action: onReplace).disabled(!canReplaceHelper)
+            default: EmptyView()
+            }
+        }
+        .buttonStyle(.borderedProminent)
+        .tint(BenzoTheme.accentControl)
+        .foregroundColor(.white)
+        .disabled(isBusy)
+
+        if readiness == .ready || readiness == .unavailable(.incompatible) {
+            if !canRemoveHelper, !isBusy {
+                Text(BenzoViewModel.helperRemovalBlockedReason)
+                    .font(.system(size: 12))
+                    .foregroundColor(BenzoTheme.text)
+                    .multilineTextAlignment(.center)
+            }
+            Button("Remove Power Access") { confirmingRemoval = true }
+                .buttonStyle(.plain)
+                .foregroundColor(BenzoTheme.accentControl)
+                .disabled(!canRemoveHelper || isBusy)
+                .confirmationDialog("Remove Benzo’s power access?", isPresented: $confirmingRemoval, titleVisibility: .visible) {
+                    Button("Remove Power Access", role: .destructive, action: onRemove)
+                    Button("Cancel", role: .cancel) {}
+                } message: {
+                    Text("This removes Benzo’s power tool and permission to run it. Setup will be needed to change settings again. Your account and recovery records are retained.")
+                }
+        }
+    }
+
 }

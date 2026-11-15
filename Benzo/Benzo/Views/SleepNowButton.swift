@@ -22,11 +22,6 @@ struct SleepNowButton: View {
             .disabled(true)
             .opacity(0.5)
             .help(BenzoViewModel.sleepUnavailableReason)
-
-            Text(BenzoViewModel.sleepUnavailableReason)
-                .font(.system(size: 10))
-                .foregroundColor(BenzoTheme.textMuted)
-                .multilineTextAlignment(.center)
         }
     }
 }

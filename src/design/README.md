@@ -10,7 +10,7 @@
 
 ## One interactive state
 
-`BenzoLanding` owns `useBenzoDemo()` from `src/demo/useBenzoDemo.js`. It passes the same state and dispatch to `NativeAppDemo` and computes the page theme from `state.active && state.running`. Never create a second active flag in either view. Master, restore, first launch, quit and restart use that same state. Sleep Now refuses without activation or backup changes. Settings remain frozen while active or backup evidence remains, including after a simulated restore. First launch without evidence permits choices before activation. The simulation has no timer, blocker panel or native side effects.
+`BenzoLanding` owns the one `useBenzoDemo()` reducer and passes it to `NativeAppDemo`; phase is the source of truth for panel and page theme. Phases are checking, off, applying, activeVerified, restoring and recoveryRequired. Choices are editable only in resolved Off. Apply freezes them; Off/System Defaults and quit simulate verified restoration of immutable captured originals. Quit waits for a busy apply to settle before starting restore. Only cells changed by the selected target become owned. Keep Current releases the conflicting cell by explicit choice, while other owned cells remain in recovery until restored. System Defaults means captured pre-Benzo values, not a factory reset. The AC-only target exposes Power Nap, Network Wake and TCP Keep-Alive; Hibernate Mode and Proximity Wake stay unchecked and unavailable because required keys are not reported. Recovery transitions are exported as pure reducer actions so failure, uncertain execution, conflicts and legacy evidence can be exercised without a scenario harness. The demonstration has deterministic success by default and no timer, blocker panel or native side effects.
 
 ## Native ownership and parity
 
@@ -23,7 +23,7 @@ Diagnostic datasets have separate loading, success and failure states. Empty res
 
 The native Swift sources remain authoritative: `Benzo/Benzo/Views/`, `Models/SleepSetting.swift`, `ViewModels/BenzoViewModel.swift` and `Theme/BenzoTheme.swift`. SwiftUI does not import this JavaScript module. A native design/copy change must be reflected in the active simulation and reviewed together. No generated contract or new framework is required by the containment plan.
 
-The current panel keeps native wording such as “USB ports disabled” so it does not silently advertise a different app UI. The external explanation qualifies physical behavior; correcting those native claims and low contrast belongs to P7, then P8. Web SVGs approximate SF Symbols. Native pixel rendering, macOS prompts, physical sleep, recovery, and hardware behavior remain unobserved on this protected host.
+The panel and external explanation do not promise USB power loss or physical hibernation from settings readback. Web SVGs approximate SF Symbols. Native pixel rendering, macOS prompts, physical sleep, recovery, and hardware behavior remain unobserved on this protected host.
 
 ## Public route
 

@@ -6,7 +6,12 @@ import { siteCopy } from '../design/siteCopy'
 
 afterEach(cleanup)
 const click = name => fireEvent.click(screen.getByRole('button', { name, exact: true }))
-const switchMaster = () => fireEvent.click(screen.getByRole('switch', { name: 'Deep Sleep' }))
+const switchMaster = () => fireEvent.click(screen.getByRole('switch', { name: /^(Apply selected settings|Restore captured settings)$/ }))
+function completeSetup() {
+  click('Manage Power Access')
+  click('Set Up Power Access')
+  click('Done')
+}
 
 function expectPageState(active) {
   const root = document.querySelector('.benzo-site')
@@ -18,31 +23,29 @@ function expectPageState(active) {
 }
 
 describe('shared page and app state', () => {
-  it('connects the actual master switch to the whole page and preserves control preferences', () => {
+  it('connects phase transitions to the whole page and preserves available target choices', () => {
     render(<App />)
     expectPageState(true)
     switchMaster()
     expectPageState(false)
-    expect(screen.getByRole('switch', { name: 'Deep Sleep' }).getAttribute('aria-checked')).toBe('false')
+    expect(screen.getByRole('switch', { name: /^(Apply selected settings|Restore captured settings)$/ }).getAttribute('aria-checked')).toBe('false')
     expect(screen.getByRole('checkbox', { name: 'Hibernate Mode' }).disabled).toBe(true)
-    fireEvent.click(screen.getByRole('checkbox', { name: 'Hibernate Mode' }))
-    expect(screen.getByRole('checkbox', { name: 'Hibernate Mode' }).getAttribute('aria-checked')).toBe('true')
-    click('First launch'); click('Back'); click('Options')
-    expect(screen.getByRole('checkbox', { name: 'Hibernate Mode' }).disabled).toBe(false)
-    fireEvent.click(screen.getByRole('checkbox', { name: 'Hibernate Mode' }))
+    click('First launch'); completeSetup(); click('Options')
+    expect(screen.getByRole('checkbox', { name: 'Disable TCP Keep-Alive' }).disabled).toBe(false)
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Disable TCP Keep-Alive' }))
     expectPageState(false)
     switchMaster()
     expectPageState(true)
-    expect(screen.getByRole('checkbox', { name: 'Hibernate Mode' }).getAttribute('aria-checked')).toBe('false')
+    expect(screen.getByRole('checkbox', { name: 'Disable TCP Keep-Alive' }).getAttribute('aria-checked')).toBe('true')
   })
 
   it('keeps restore, first launch, sleep, quit, and restart synchronized with the page', () => {
     render(<App />)
-    click('Restore System Defaults'); expectPageState(false)
+    click('Restore Settings'); expectPageState(false)
     expect(screen.getByRole('button', { name: 'Sleep Now' }).disabled).toBe(true)
-    click('Sleep Now'); expectPageState(false)
     click('First launch'); expectPageState(false)
-    click('Back'); expectPageState(false)
+    expect(screen.getByRole('switch', { name: /^(Apply selected settings|Restore captured settings)$/ }).disabled).toBe(true)
+    completeSetup(); expectPageState(false)
     switchMaster(); expectPageState(true)
     click('Quit'); expectPageState(false)
     // The toolbar and closed panel each offer a restart.
@@ -62,12 +65,13 @@ describe('shared page and app state', () => {
     expect(document.querySelector('meta[name="robots"]')).toBeNull()
   })
 
-  it('distinguishes the unreleased demo changes from existing downloads', () => {
+  it('distinguishes simulated controls from native setup and unavailable sleep features', () => {
     render(<App />)
-    expect(screen.getByText('Downloads are existing releases; the demo previews unreleased changes.')).toBeTruthy()
-    expect(screen.getByText(/containment changes shown here are unreleased/)).toBeTruthy()
+    expect(screen.getByText('Download the latest release and review its installation notes.')).toBeTruthy()
+    expect(screen.getByText(/Setup asks for administrator approval once for the account/)).toBeTruthy()
     click('About this demo')
-    expect(screen.getByText(/controls follow unreleased source changes, not the downloadable app/)).toBeTruthy()
+    expect(screen.getByText(/controls demonstrate Benzo’s apply-and-restore workflow/)).toBeTruthy()
+    expect(screen.getByText(/Sleep Now and its timer are coming in a later update/)).toBeTruthy()
     expect(screen.queryByText('Check sleep blockers')).toBeNull()
     expect(screen.queryByText(/or set a timer/)).toBeNull()
   })

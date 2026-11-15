@@ -5,11 +5,18 @@
 Reports are welcome about:
 
 - the Benzo macOS menubar app, in the current source and in published releases;
-- the legacy permission rule at `/etc/sudoers.d/benzo`, including how the app observes or relies on it;
+- the account-bound `BenzoCommand` grant, digest-pinned rule at `/private/etc/sudoers.d/benzo-command`, and root-owned authority and execution records;
+- the legacy permission rule at `/etc/sudoers.d/benzo`, including how the app observes it;
 - the recovery boundary, meaning saved original `pmset` values, Restore/Off, quit, and removal behavior;
 - the benzo.work website.
 
-The current source is an unreleased intermediate revision with known recovery limits, documented in the [README](README.md) and the [remediation plan](documentation/planning/tech_debt/benzo-remediation_2026-11-02/00_TECH_DEBT.md). Report new issues even when they relate to those areas.
+The v0.4.0 account-free design grants finite commands to the local setup account,
+bound by UID and GeneratedUID; it is not an app-exclusive privilege. Other programs
+in that account can invoke those commands. Setup, repair and removal are explicit
+administrator-approved actions. Ordinary apply and restore use the retained grant.
+See the [README](README.md) for recovery behavior and the
+[native acceptance record](docs/account-free-acceptance.md) for observed and untested
+cases. Reports are welcome in every area, including these boundaries.
 
 ## How to report
 

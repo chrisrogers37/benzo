@@ -1,11 +1,5 @@
 import Foundation
 
-protocol CommandRunning {
-    @discardableResult
-    func runDirect(_ executable: String, _ arguments: [String]) throws -> String
-    func runDirectWithSudo(_ executable: String, _ arguments: [String]) throws
-}
-
 enum BackupEvidencePresence: Equatable {
     case absent
     case present
@@ -31,23 +25,23 @@ protocol BenzoClock {
 
 enum BenzoStartupPolicy {
     case automatic
-    /// Load injected preferences/login state, but do not inspect or update permissions.
+    /// Load injected preferences/login state without starting reconciliation or observations.
     case manual
 }
 
 /// Every boundary is supplied by the caller. Production composition belongs to AppDelegate;
 /// there is deliberately no live factory or default dependency here.
 struct BenzoDependencies {
-    let commands: any CommandRunning
-    let backup: any BackupStoring
+    let coordinator: OperationCoordinator
     let preferences: any PreferenceStoring
     let loginItem: any LoginItemClient
+    let helperSetup: any HelperSetupClient
     let observePermission: () -> PermissionObservation
     let fetchSleepData: () async -> Result<SleepReadPayload, DiagnosticReadError>
     let fetchUSBDevices: () async -> Result<[USBDevice], DiagnosticReadError>
     let readObservedSettings: () async -> Result<[ObservedSetting], DiagnosticReadError>
     let runInBackground: (@escaping () async -> Void) -> Void
-    let runOnMain: (@escaping () -> Void) -> Void
+    let runOnMain: (@escaping @MainActor () -> Void) -> Void
     let terminate: () -> Void
 }
 
@@ -59,7 +53,6 @@ enum BenzoPreferenceKey {
 
 enum BenzoPaths {
     static let pmset = "/usr/bin/pmset"
-    static let sudo = "/usr/bin/sudo"
     // Canonical spelling of /etc/sudoers.d/benzo avoids following the standard /etc symlink.
     // Used only for metadata observation; no installer or remover consumes this path.
     static let sudoers = "/private/etc/sudoers.d/benzo"
