@@ -39,24 +39,105 @@ enum CommandInstaller {
                 guard [oldToolDigest, newToolDigest].contains(CommandToolIdentity.digest(tool)) else { return false }
             } else if oldToolDigest != nil && newToolDigest != nil { return false }
             if let policy {
-                guard [oldPolicyDigest, newPolicyDigest].contains(CommandToolIdentity.digest(policy)) else { return false }
+                guard [oldPolicyDigest, newPolicyDigest].contains(CommandToolIdentity.digest(policy)),
+                      (try? CommandInstaller.recognizesPolicyBytes(policy, owner: owner)) == true else { return false }
             }
             // A missing policy is valid during rollback's revoke-first step.
             return true
         }
     }
 
+    // Frozen generations: do not derive historical policy bytes from allCases.
+    // Exact comparison rejects wildcard, reordered, broadened and foreign rules.
+    private static let historicalVerbs = ["write-v1", "status-v1", "ack-v1", "seal-v1", "version-v1"]
+    private static let sleepVerbs = historicalVerbs + ["sleep-v1", "seal-sleep-v1"]
+
     static func policy(owner: PowerCommandOwner, digest: String) throws -> Data {
+        try renderPolicy(owner: owner, digest: digest, verbs: sleepVerbs)
+    }
+
+    static func historicalPolicy(owner: PowerCommandOwner, digest: String) throws -> Data {
+        try renderPolicy(owner: owner, digest: digest, verbs: historicalVerbs)
+    }
+
+    private static func renderPolicy(owner: PowerCommandOwner, digest: String, verbs: [String]) throws -> Data {
         try owner.validate()
         guard owner.uid >= 501, owner.uid < UInt32.max,
               CommandToolIdentity.validDigest(digest) else {
             throw PowerCommandError.invalid("The command policy identity is invalid.")
         }
         let path = CommandToolIdentity.installedPath
-        let commands = PowerCommandVerb.allCases.map { "sha256:\(digest) \(path) \($0.rawValue)" }.joined(separator: ", ")
+        let commands = verbs.map { "sha256:\(digest) \(path) \($0)" }.joined(separator: ", ")
         return Data(("# Benzo account command policy v1\n" +
             "Defaults!\(path) stay_setuid,env_reset,!setenv\n" +
             "#\(owner.uid) ALL=(root) NOPASSWD: NOSETENV: \(commands)\n").utf8)
+    }
+
+    static func recognizesPolicy(_ bytes: Data, owner: PowerCommandOwner, digest: String) throws -> Bool {
+        let current = try policy(owner: owner, digest: digest)
+        let historical = try historicalPolicy(owner: owner, digest: digest)
+        return bytes == current || bytes == historical
+    }
+
+    private static func recognizesPolicyBytes(_ bytes: Data, owner: PowerCommandOwner) throws -> Bool {
+        guard let text = String(data: bytes, encoding: .utf8), let start = text.range(of: "sha256:")?.upperBound else { return false }
+        let digest = String(text[start...].prefix(64))
+        guard CommandToolIdentity.validDigest(digest) else { return false }
+        return try recognizesPolicy(bytes, owner: owner, digest: digest)
+    }
+
+    static func artifactsAgree(tool: Data?, policy: Data?, owner: PowerCommandOwner) throws -> Bool {
+        if tool == nil && policy == nil { return true }
+        guard let tool, let policy else { return false }
+        return try recognizesPolicy(policy, owner: owner, digest: CommandToolIdentity.digest(tool))
+    }
+
+    static func mayChangeInstallation(_ state: PowerCommandState, owner: PowerCommandOwner) throws -> Bool {
+        try state.validate()
+        return state.owner == owner && state.schema == 1 && state.pending == nil && state.pendingSleep == nil
+    }
+
+    /// Injectable publication boundaries exercise the real rollback ordering
+    /// without constructing root directories or changing system policy in tests.
+    struct Publication {
+        let tool: (Data?) throws -> Void
+        let policy: (Data?) throws -> Void
+        let marker: (Data?) throws -> Void
+        let validatePolicy: () throws -> Void
+    }
+
+    static func publish(transaction: Transaction, owner: PowerCommandOwner,
+                        oldTool: Data?, oldPolicy: Data?, newTool: Data?, newPolicy: Data?,
+                        io: Publication) throws {
+        let marker = try JSONEncoder().encode(transaction)
+        try io.marker(marker)
+        do {
+            if newTool == nil {
+                try io.policy(nil)
+                try io.validatePolicy()
+                try io.tool(nil)
+            } else {
+                try io.tool(newTool)
+                try io.policy(newPolicy)
+                try io.validatePolicy()
+            }
+            try io.marker(nil)
+        } catch {
+            // Marker removal may have unlinked before its directory sync failed.
+            // Re-establish exact evidence before any rollback mutation.
+            try io.marker(marker)
+            do {
+                try io.policy(nil)
+                try io.tool(oldTool)
+                try io.policy(oldPolicy)
+                try io.validatePolicy()
+            } catch {
+                try? io.policy(nil)
+                throw PowerCommandError.invalid("Setup failed and its previous installation could not be restored completely. Access remains unavailable; administrator recovery is required. Account and recovery records were retained.")
+            }
+            if try artifactsAgree(tool: oldTool, policy: oldPolicy, owner: owner) { try io.marker(nil) }
+            throw error
+        }
     }
 
 #if !BENZO_STORAGE_TESTS
@@ -101,7 +182,7 @@ enum CommandInstaller {
             PowerCommandStore.installInitialState(PowerCommandState.initial(owner: owner))
         defer { withExtendedLifetime(store) {} }
         let state = try store.load()
-        guard state.owner == owner, state.pending == nil else {
+        guard try mayChangeInstallation(state, owner: owner) else {
             throw PowerCommandError.invalid("Resolve this account's retained command receipt before changing installation. Ownership was not transferred.")
         }
         // Capture rollback generations only after acquiring the same stable
@@ -115,7 +196,7 @@ enum CommandInstaller {
                 throw PowerCommandError.invalid("The interrupted setup does not match its approved account and file generations. Administrator recovery is required.")
             }
         } else if let existingTool, let existingPolicy {
-            guard existingPolicy == (try policy(owner: owner, digest: CommandToolIdentity.digest(existingTool))) else {
+            guard try recognizesPolicy(existingPolicy, owner: owner, digest: CommandToolIdentity.digest(existingTool)) else {
                 throw PowerCommandError.invalid("The existing command policy is not Benzo's exact recognized policy. It was not changed.")
             }
         } else if existingTool != nil || existingPolicy != nil {
@@ -147,70 +228,32 @@ enum CommandInstaller {
         try checkPolicy(at: policies.path + "/" + candidateName)
         let transaction = Transaction(owner: owner, grantEpoch: epoch, oldTool: oldTool,
                                       oldPolicy: oldPolicy, newTool: bytes, newPolicy: candidate)
-        try transactions.publish(JSONEncoder().encode(transaction), name: transactionName, mode: 0o600)
-        do {
-            // Binary first means an old hash-pinned rule temporarily denies
-            // execution. The root store lock excludes already admitted writes.
-            try tools.publish(bytes, name: toolName, mode: 0o555)
-            try policies.publish(candidate, name: policyName, mode: 0o440)
-            try checkPolicy() // fragment-only validation is insufficient
-            try transactions.remove(transactionName)
-        } catch {
-            // A failed final directory sync may have already unlinked the
-            // marker. Re-establish it before restoring partial generations.
-            try transactions.publish(JSONEncoder().encode(transaction), name: transactionName, mode: 0o600)
-            try rollback(tools: tools, policies: policies, oldTool: oldTool, oldPolicy: oldPolicy)
-            // If rollback restores an already partial older transaction,
-            // keep this marker so another explicit Repair can recognize it.
-            if try artifactsAgree(tool: oldTool, policy: oldPolicy, owner: owner) {
-                try transactions.remove(transactionName)
-            }
-            throw error
-        }
+        try publish(transaction: transaction, owner: owner, oldTool: oldTool, oldPolicy: oldPolicy,
+                    newTool: bytes, newPolicy: candidate,
+                    io: publication(tools: tools, policies: policies, transactions: transactions))
     }
 
     private static func remove(tools: InstallDirectory, policies: InstallDirectory, transactions: InstallDirectory,
                                owner: PowerCommandOwner, epoch: UUID, oldTool: Data?, oldPolicy: Data?) throws {
         let transaction = Transaction(owner: owner, grantEpoch: epoch, oldTool: oldTool,
                                       oldPolicy: oldPolicy, newTool: nil, newPolicy: nil)
-        try transactions.publish(JSONEncoder().encode(transaction), name: transactionName, mode: 0o600)
-        do {
-            // Revocation precedes executable removal; no other sudoers file is
-            // changed and the stable root authority directory remains intact.
-            try policies.remove(policyName)
-            try checkPolicy()
-            try tools.remove(toolName)
-            try transactions.remove(transactionName)
-        } catch {
-            try transactions.publish(JSONEncoder().encode(transaction), name: transactionName, mode: 0o600)
-            try rollback(tools: tools, policies: policies, oldTool: oldTool, oldPolicy: oldPolicy)
-            if try artifactsAgree(tool: oldTool, policy: oldPolicy, owner: owner) {
-                try transactions.remove(transactionName)
-            }
-            throw error
-        }
+        try publish(transaction: transaction, owner: owner, oldTool: oldTool, oldPolicy: oldPolicy,
+                    newTool: nil, newPolicy: nil,
+                    io: publication(tools: tools, policies: policies, transactions: transactions))
     }
 
-    private static func artifactsAgree(tool: Data?, policy: Data?, owner: PowerCommandOwner) throws -> Bool {
-        if tool == nil && policy == nil { return true }
-        guard let tool, let policy else { return false }
-        return policy == (try Self.policy(owner: owner, digest: CommandToolIdentity.digest(tool)))
-    }
-
-    private static func rollback(tools: InstallDirectory, policies: InstallDirectory,
-                                 oldTool: Data?, oldPolicy: Data?) throws {
-        do {
-            try policies.remove(policyName)
-            if let oldTool { try tools.publish(oldTool, name: toolName, mode: 0o555) }
+    private static func publication(tools: InstallDirectory, policies: InstallDirectory,
+                                    transactions: InstallDirectory) -> Publication {
+        Publication(tool: { bytes in
+            if let bytes { try tools.publish(bytes, name: toolName, mode: 0o555) }
             else { try tools.remove(toolName) }
-            if let oldPolicy { try policies.publish(oldPolicy, name: policyName, mode: 0o440) }
-            try checkPolicy()
-        } catch {
-            // Best effort revocation leaves no broad fallback permission. A
-            // failed restore is reported as unresolved, never successful setup.
-            try? policies.remove(policyName)
-            throw PowerCommandError.invalid("Setup failed and its previous installation could not be restored completely. Access remains unavailable; administrator recovery is required. Account and recovery records were retained.")
-        }
+        }, policy: { bytes in
+            if let bytes { try policies.publish(bytes, name: policyName, mode: 0o440) }
+            else { try policies.remove(policyName) }
+        }, marker: { bytes in
+            if let bytes { try transactions.publish(bytes, name: transactionName, mode: 0o600) }
+            else { try transactions.remove(transactionName) }
+        }, validatePolicy: { try checkPolicy() })
     }
 
     private static func checkPolicy(at path: String? = nil) throws {

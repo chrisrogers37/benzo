@@ -10,10 +10,20 @@ export const settingOptions = [
 ]
 
 export const appPresentation = {
-  version: 'v0.4.0',
+  version: 'v0.5.0',
   menu: { name: 'Benzo menu', hint: 'Click to open or close. Option-click when closed for diagnostics.', finder: 'Finder', wifi: 'Wi-Fi', time: '9:41 AM' },
   master: { apply: 'Apply selected settings', restore: 'Restore captured settings' },
-  sleep: { action: 'Sleep Now', unavailable: 'Sleep Now isn’t available in this version.' },
+  sleep: {
+    action: 'Sleep Now', timer: 'Sleep timer', cancel: 'Cancel sleep timer',
+    requesting: 'Requesting Sleep…', sent: 'Sleep request sent.',
+    pending: 'Wait for the sleep request to finish before changing settings.',
+    requiresActive: 'Apply your selected settings before requesting sleep.',
+    requiresResolved: 'Resolve the current operation or recovery before requesting sleep.',
+    requiresReady: 'Power access must be ready before requesting sleep.',
+    requiresUpdate: 'Update power access to enable Sleep Now and its timer.',
+    cancelled: 'Sleep timer canceled.', interrupted: 'Sleep timer canceled after an interruption.',
+    help: 'Send a sleep request using your applied settings', timerHelp: 'Choose a sleep countdown',
+  },
   recovery: {
     titles: { checking: 'Checking Settings', off: 'Settings Are Off', applying: 'Applying Settings', activeVerified: 'Settings Applied', restoring: 'Restoring Settings', recoveryRequired: 'Recovery Required' },
     messages: { checking: 'Checking your settings.', off: 'Benzo is off.', applying: 'Applying your selected settings.', activeVerified: 'Your selected settings are applied.', restoring: 'Restoring your previous settings.', recoveryRequired: 'Recovery requires review. Existing evidence is preserved.' },
@@ -56,9 +66,9 @@ export const appPresentation = {
     removalConfirmation: 'This removes Benzo’s power tool and permission to run it. Setup will be needed to change settings again. Your account and recovery records are retained.',
     states: {
       checking: { title: 'Checking Power Access', message: 'Checking this account’s access to power settings.' },
-      notInstalled: { title: 'Set Up Power Access', message: 'One administrator approval lets this Mac account apply and restore Benzo’s supported power settings. These settings affect everyone using this Mac.', action: 'Set Up Power Access', event: 'registerHelper' },
-      requiresApproval: { title: 'Set Up Power Access', message: 'One administrator approval lets this Mac account apply and restore Benzo’s supported power settings. These settings affect everyone using this Mac.', action: 'Set Up Power Access', event: 'registerHelper' },
-      needsOwnerAuthorization: { title: 'Set Up Power Access', message: 'One administrator approval lets this Mac account apply and restore Benzo’s supported power settings. These settings affect everyone using this Mac.', action: 'Set Up Power Access', event: 'authorizeCurrentAccount' },
+      notInstalled: { title: 'Set Up Power Access', message: 'One administrator approval lets this Mac account apply and restore Benzo’s supported power settings and request sleep. These actions affect everyone using this Mac.', action: 'Set Up Power Access', event: 'registerHelper' },
+      requiresApproval: { title: 'Set Up Power Access', message: 'One administrator approval lets this Mac account apply and restore Benzo’s supported power settings and request sleep. These actions affect everyone using this Mac.', action: 'Set Up Power Access', event: 'registerHelper' },
+      needsOwnerAuthorization: { title: 'Set Up Power Access', message: 'One administrator approval lets this Mac account apply and restore Benzo’s supported power settings and request sleep. These actions affect everyone using this Mac.', action: 'Set Up Power Access', event: 'authorizeCurrentAccount' },
       ready: { title: 'Benzo Is Ready', message: 'Power access is set up for this Mac account.', action: 'Repair / Update Power Access', event: 'replaceHelper' },
       differentAccount: { title: 'Benzo Is Set Up for Another Account', message: 'Use the Mac account that completed setup. This account cannot change settings through Benzo.' },
       connectionUnavailable: { title: 'Power Access Is Unavailable', message: 'Benzo couldn’t verify power access. Check again, or repair access after restoring any active settings.', action: 'Repair / Update Power Access', event: 'replaceHelper' },

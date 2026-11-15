@@ -22,6 +22,7 @@ struct PopoverContentView: View {
                     canRemoveHelper: viewModel.canRemoveHelper,
                     error: viewModel.helperSetupError,
                     recoveryMessage: setupRecoveryMessage,
+                    needsSleepAccessUpdate: viewModel.needsSleepAccessUpdate,
                     onRegister: { Task { await viewModel.registerHelper() } },
                     onAuthorize: { Task { await viewModel.authorizeCurrentAccount() } },
                     onReplace: { Task { await viewModel.replaceHelper() } },
@@ -64,8 +65,26 @@ struct PopoverContentView: View {
                 .padding(.horizontal, 20)
             }
 
-            SleepNowButton(onSleep: viewModel.sleepNow)
+            SleepNowButton(
+                canSleep: viewModel.canSleep,
+                disabledReason: viewModel.sleepDisabledReason,
+                remainingSeconds: viewModel.sleepRemainingSeconds,
+                isRequesting: viewModel.sleepRequestInFlight,
+                message: viewModel.sleepMessage,
+                onSleep: viewModel.sleepNow,
+                onSchedule: viewModel.scheduleSleep,
+                onCancel: viewModel.cancelScheduledSleep
+            )
                 .padding(.horizontal, 20)
+
+            if viewModel.needsSleepAccessUpdate {
+                Text("Update power access to enable Sleep Now and its timer.")
+                    .font(.system(size: 10))
+                    .foregroundColor(BenzoTheme.textMuted)
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, 20)
+                    .padding(.top, 6)
+            }
 
             Button("Manage Power Access") {
                 viewModel.showHelperSetup = true

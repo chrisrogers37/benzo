@@ -48,6 +48,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
         )
         let dependencies = BenzoDependencies(
             coordinator: coordinator,
+            sleepScheduler: LiveSleepScheduler(),
             preferences: preferences,
             loginItem: LiveLoginItemClient(),
             helperSetup: helper,
@@ -67,6 +68,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
     }
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        NSWorkspace.shared.notificationCenter.addObserver(self, selector: #selector(systemWillSleep(_:)),
+            name: NSWorkspace.willSleepNotification, object: nil)
+        NSWorkspace.shared.notificationCenter.addObserver(self, selector: #selector(systemDidWake(_:)),
+            name: NSWorkspace.didWakeNotification, object: nil)
         statusItem = NSStatusBar.system.statusItem(withLength: 44)
 
         if let button = statusItem.button {
@@ -95,6 +100,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
             self?.updateIcon(state: state)
         }
     }
+
+    @objc private func systemWillSleep(_ notification: Notification) { viewModel.systemWillSleep() }
+    @objc private func systemDidWake(_ notification: Notification) { viewModel.systemDidWake() }
 
     func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
         updateViewModel.cancelCheck()
@@ -280,5 +288,23 @@ private final class NoReleaseRedirects: NSObject, URLSessionTaskDelegate {
                     willPerformHTTPRedirection response: HTTPURLResponse, newRequest request: URLRequest,
                     completionHandler: @escaping (URLRequest?) -> Void) {
         completionHandler(nil)
+    }
+}
+
+/// Only the production composition uses a real clock and scheduled task.
+@MainActor
+private final class LiveSleepScheduler: SleepScheduling {
+    var now: TimeInterval {
+        let perSecond = PowerSleepClock.ticks(seconds: 1)
+        return perSecond > 0 ? Double(PowerSleepClock.now()) / Double(perSecond) : 0
+    }
+    func schedule(after seconds: TimeInterval, _ action: @escaping @MainActor () -> Void) -> SleepCancellation {
+        let task = Task { @MainActor in
+            do { try await Task.sleep(nanoseconds: UInt64(seconds * 1_000_000_000)) }
+            catch { return }
+            guard !Task.isCancelled else { return }
+            action()
+        }
+        return SleepCancellation { task.cancel() }
     }
 }

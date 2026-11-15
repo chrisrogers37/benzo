@@ -81,9 +81,28 @@ enum CommandRuntime {
     }
 #endif
 
+    static let sleepArguments = ["sleepnow"]
+
+    static func executeSleep(expiresAtContinuousTicks: UInt64,
+        runChild: (String, [String], TimeInterval, Int, () -> Bool) -> Result = {
+            run(executable: $0, arguments: $1, timeout: $2, maximumBytes: $3, beforeSpawn: $4)
+        }, continuousTicks: @escaping () -> UInt64 = PowerSleepClock.now,
+        maximumLifetime: UInt64 = PowerSleepClock.ticks(seconds: 30)) -> PowerSleepExecution {
+        let result = runChild("/usr/bin/pmset", sleepArguments, 20, 8_192, {
+            PowerSleepClock.admits(expiry: expiresAtContinuousTicks, now: continuousTicks(), maximumLifetime: maximumLifetime)
+        })
+        if !result.spawned { return .notExecuted(reason: "The sleep command expired or could not be started.") }
+        if result.reaped, result.complete, let status = result.exitStatus { return .completed(exitStatus: status) }
+        if result.reaped {
+            return .childStoppedOutcomeUnknown(reason: "The sleep command child stopped; its sleep outcome is unknown.")
+        }
+        return .uncertain(reason: "Sleep child quiescence is unproved. Execution evidence was retained.")
+    }
+
     /// Internal callers supply only fixed system executables and closed argv.
     /// No command request can supply a path, environment, shell, or argv array.
-    static func run(executable: String, arguments: [String], timeout: TimeInterval, maximumBytes: Int) -> Result {
+    static func run(executable: String, arguments: [String], timeout: TimeInterval, maximumBytes: Int,
+                    beforeSpawn: () -> Bool = { true }) -> Result {
 #if BENZO_STORAGE_TESTS
         // Test composition cannot select pmset, an installer, sudo, or osascript.
         // Only these nonmutating owned-child fixtures are admitted.
@@ -130,6 +149,7 @@ enum CommandRuntime {
         guard words.allSatisfy({ $0 != nil }), environment.allSatisfy({ $0 != nil }) else { return noChild }
         var argv = words + [nil], envp = environment + [nil]
         var pid: pid_t = 0
+        guard beforeSpawn() else { return noChild }
         let spawned = executable.withCString { posix_spawn(&pid, $0, &actions, &attributes, &argv, &envp) }
         guard spawned == 0, pid > 0 else { return noChild }
         _ = Darwin.close(output[1]); output[1] = -1

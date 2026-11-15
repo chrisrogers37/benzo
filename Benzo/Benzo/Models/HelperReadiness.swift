@@ -35,7 +35,7 @@ enum HelperReadiness: Equatable, Sendable {
         switch self {
         case .checking: return "Checking this account’s access to power settings."
         case .notInstalled, .requiresApproval, .needsOwnerAuthorization:
-            return "One administrator approval lets this Mac account apply and restore Benzo’s supported power settings. These settings affect everyone using this Mac."
+            return "One administrator approval lets this Mac account apply and restore Benzo’s supported power settings and request sleep. These actions affect everyone using this Mac."
         case .ready: return "Power access is set up for this Mac account."
         case .differentAccount: return "Use the Mac account that completed setup. This account cannot change settings through Benzo."
         case .unavailable(.connection): return "Benzo couldn’t verify power access. Check again, or repair access after restoring any active settings."
@@ -52,10 +52,15 @@ enum HelperReadiness: Equatable, Sendable {
 
 @MainActor
 protocol HelperSetupClient {
+    var supportsSleep: Bool { get }
     func refresh() async -> HelperReadiness
     func register() async throws -> HelperReadiness
     func replace() async throws -> HelperReadiness
     func remove() async throws -> HelperReadiness
     func authorizeCurrentAccount() async throws -> HelperReadiness
     func openApprovalSettings()
+}
+
+extension HelperSetupClient {
+    var supportsSleep: Bool { false }
 }

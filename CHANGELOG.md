@@ -5,6 +5,9 @@ All notable changes to Benzo are documented here.
 ## [Unreleased]
 
 ### Added
+- **Sleep Now and timer (0.5.0 development)** — request sleep after applying settings, immediately or after 5, 15, 30 or 60 minutes. Cancel a countdown by clicking it; Off, quit, recovery and system sleep/wake cancel it. No timer survives app restart.
+- Explicit power-access update for the additional account-level sleep command. Existing 0.4.0 power access continues to support apply and restore.
+- Durable sleep-request evidence and no-replay recovery, separate from captured settings. A reported request result does not establish physical sleep.
 - **Full system review (2026-07-07)** — Triaged 54 issues (BZ-001–BZ-054) covering the
   settings-restore lifecycle, notarization pipeline, CI gaps, and landing-page fixes
   into `documentation/planning/system-review_2026-07-07/`, with a milestone roadmap to

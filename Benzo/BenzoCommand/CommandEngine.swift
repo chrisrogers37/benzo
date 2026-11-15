@@ -8,6 +8,9 @@ final class PowerCommandEngine {
     private let bootID: () throws -> UUID
     private let capture: (ManagedCell) async throws -> Int?
     private let execute: (ManagedCell, Int) async -> PowerCommandExecution
+    private let executeSleep: (UInt64) async -> PowerSleepExecution
+    private let continuousTicks: () -> UInt64
+    private let maximumSleepLifetime: UInt64
     private let revalidateOwner: (PowerCommandOwner) throws -> Void
     private var admitted = false
     private var poisoned = false
@@ -15,9 +18,14 @@ final class PowerCommandEngine {
     init(store: any PowerCommandStoring, bootID: @escaping () throws -> UUID,
          capture: @escaping (ManagedCell) async throws -> Int?,
          execute: @escaping (ManagedCell, Int) async -> PowerCommandExecution,
-         revalidateOwner: @escaping (PowerCommandOwner) throws -> Void = { _ in }) {
+         revalidateOwner: @escaping (PowerCommandOwner) throws -> Void = { _ in },
+         executeSleep: @escaping (UInt64) async -> PowerSleepExecution = { _ in .notExecuted(reason: "Sleep execution is unavailable.") },
+         continuousTicks: @escaping () -> UInt64 = PowerSleepClock.now,
+         maximumSleepLifetime: UInt64 = PowerSleepClock.ticks(seconds: 30)) {
         self.store = store; self.bootID = bootID; self.capture = capture
         self.execute = execute; self.revalidateOwner = revalidateOwner
+        self.executeSleep = executeSleep; self.continuousTicks = continuousTicks
+        self.maximumSleepLifetime = maximumSleepLifetime
     }
 
     func handle(_ input: PowerCommandInput, caller: PowerCommandOwner) async -> PowerCommandReply {
@@ -47,6 +55,9 @@ final class PowerCommandEngine {
                 if let receipt = state.pending, receipt.request.token == token {
                     return receiptReply(receipt, state, boot)
                 }
+                if let receipt = state.pendingSleep, receipt.request.token == token {
+                    return sleepReceiptReply(receipt, state, boot)
+                }
                 // Even a next-sequence lookup can race a later write invocation.
                 // Only seal may durably establish a no-spawn result.
                 return reply(input, state: state, boot: boot,
@@ -61,9 +72,20 @@ final class PowerCommandEngine {
                     state.pending = nil
                     try commit(state)
                 }
+                if let receipt = state.pendingSleep, receipt.request.sequence == token.sequence {
+                    guard receipt.request.token == token, receipt.isTerminal else {
+                        return denied(input, state, boot, "Only the exact retained terminal sleep receipt may be acknowledged.")
+                    }
+                    state.pendingSleep = nil
+                    state.schema = 1
+                    try commit(state)
+                    return reply(input, state: state, boot: boot, outcome: .acknowledged, sleepSchema: true)
+                }
                 // An already retired token is an idempotent no-op. It never
                 // renews a completion proof, and cannot release a newer receipt.
                 return reply(input, state: state, boot: boot, outcome: .acknowledged)
+            case .sleep(let request), .sealSleep(let request):
+                return try await handleSleep(input, request: request, state: &state, owner: caller, boot: boot)
             case .write(let request), .seal(let request):
                 guard request.grantEpoch == state.grantEpoch else { return denied(input, state, boot, "The grant epoch does not match.") }
                 if let receipt = state.pending,
@@ -96,7 +118,7 @@ final class PowerCommandEngine {
                       request.sequence == state.highWaterMark + 1 else {
                     return denied(input, state, boot, "Only the exact next sequence may be admitted.")
                 }
-                guard state.pending == nil else { return denied(input, state, boot, "The retained receipt must be resolved and acknowledged first.") }
+                guard state.pending == nil, state.pendingSleep == nil else { return denied(input, state, boot, "The retained receipt must be resolved and acknowledged first.") }
                 guard !Task.isCancelled else { return denied(input, state, boot, "Admission was cancelled before intent was committed.") }
                 if case .seal = input {
                     // Seal never spawns. It may also retire an exact-next GUI
@@ -153,9 +175,101 @@ final class PowerCommandEngine {
         }
     }
 
+    private func handleSleep(_ input: PowerCommandInput, request: PowerSleepRequest,
+                             state: inout PowerCommandState, owner: PowerCommandOwner,
+                             boot: UUID) async throws -> PowerCommandReply {
+        guard request.grantEpoch == state.grantEpoch else {
+            return denied(input, state, boot, "The grant epoch does not match.")
+        }
+        if let receipt = state.pendingSleep,
+           receipt.request.sequence == request.sequence || receipt.request.requestID == request.requestID {
+            guard receipt.request == request else {
+                return reply(input, state: state, boot: boot,
+                    outcome: .uncertain(reason: "A retained sleep identifier or sequence has different contents. It was not replayed."))
+            }
+            if case .sealSleep = input, !receipt.isTerminal, request.bootID != boot {
+                // A different verified kernel boot proves only child quiescence.
+                // Expiry never blocks reconciliation, and no setting is read.
+                try requireUnchanged(state, owner: owner, boot: boot)
+                state.pendingSleep!.outcome = .reconciledAfterBoot
+                try commit(state)
+                return sleepReceiptReply(state.pendingSleep!, state, boot)
+            }
+            return sleepReceiptReply(receipt, state, boot)
+        }
+        guard request.sequence > state.highWaterMark else {
+            return reply(input, state: state, boot: boot,
+                outcome: .uncertain(reason: "The sleep sequence is retired and cannot execute again."))
+        }
+        guard state.highWaterMark < UInt64.max, request.sequence == state.highWaterMark + 1 else {
+            return denied(input, state, boot, "Only the exact next sequence may be admitted.")
+        }
+        guard state.pending == nil, state.pendingSleep == nil else {
+            return denied(input, state, boot, "The retained receipt must be resolved and acknowledged first.")
+        }
+        let noSpawnReason: String?
+        if case .sealSleep = input {
+            noSpawnReason = "The sleep request was durably sealed before dispatch."
+        } else {
+            guard request.bootID == boot else { return denied(input, state, boot, "The sleep request belongs to a different system boot.") }
+            if !sleepExpiryAdmits(request) { noSpawnReason = "The sleep request expired or exceeds the allowed delivery window." }
+            else if Task.isCancelled { noSpawnReason = "Sleep admission was cancelled before dispatch." }
+            else { noSpawnReason = nil }
+        }
+        state.schema = 2
+        state.highWaterMark = request.sequence
+        state.pendingSleep = PowerSleepReceipt(request: request,
+            outcome: noSpawnReason.map { .notExecuted(reason: $0) } ?? .intent)
+        try commit(state)
+        if noSpawnReason != nil { return sleepReceiptReply(state.pendingSleep!, state, boot) }
+
+        try requireUnchanged(state, owner: owner, boot: boot)
+        let execution: PowerSleepExecution
+        if !sleepExpiryAdmits(request) || Task.isCancelled {
+            execution = .notExecuted(reason: "The sleep request expired or was cancelled before child creation.")
+        } else {
+            // The production adapter checks this expiry again immediately at
+            // posix_spawn, after preparing the fixed executable and argv.
+            execution = await executeSleep(request.expiresAtContinuousTicks)
+        }
+        try requireUnchanged(state, owner: owner, boot: boot)
+        switch execution {
+        case .completed(let status):
+            guard (0...255).contains(status) else {
+                return reply(input, state: state, boot: boot, outcome: .uncertain(reason: "The sleep child terminal status was invalid."))
+            }
+            state.pendingSleep!.outcome = .completed(exitStatus: status)
+        case .notExecuted(let reason): state.pendingSleep!.outcome = .notExecuted(reason: PowerCommandWire.reason(reason))
+        case .childStoppedOutcomeUnknown(let reason):
+            state.pendingSleep!.outcome = .childStoppedOutcomeUnknown(reason: PowerCommandWire.reason(reason))
+        case .uncertain(let reason):
+            return reply(input, state: state, boot: boot, outcome: .uncertain(reason: PowerCommandWire.reason(reason)))
+        }
+        try commit(state)
+        return sleepReceiptReply(state.pendingSleep!, state, boot)
+    }
+
+    private func sleepExpiryAdmits(_ request: PowerSleepRequest) -> Bool {
+        PowerSleepClock.admits(expiry: request.expiresAtContinuousTicks, now: continuousTicks(),
+                              maximumLifetime: maximumSleepLifetime)
+    }
+
+    private func sleepReceiptReply(_ receipt: PowerSleepReceipt, _ state: PowerCommandState, _ boot: UUID) -> PowerCommandReply {
+        let outcome: PowerCommandDisposition
+        switch receipt.outcome {
+        case .intent: outcome = .uncertain(reason: "Durable sleep intent lacks child quiescence proof. This request will never be replayed.")
+        case .completed(let status): outcome = .completed(exitStatus: status)
+        case .notExecuted(let reason): outcome = .notExecuted(reason: reason)
+        case .childStoppedOutcomeUnknown(let reason): outcome = .uncertain(reason: reason)
+        case .reconciledAfterBoot: outcome = .uncertain(reason: "The prior-boot child has stopped; the sleep outcome is unknown.")
+        }
+        return reply(.sleep(receipt.request), state: state, boot: boot, outcome: outcome)
+    }
+
     private func validate(_ input: PowerCommandInput) throws {
         switch input {
         case .write(let request), .seal(let request): try request.validate()
+        case .sleep(let request), .sealSleep(let request): try request.validate()
         case .status(let token), .ack(let token): try token.validate()
         case .version: break
         }
@@ -196,16 +310,21 @@ final class PowerCommandEngine {
     }
 
     private func reply(_ input: PowerCommandInput, state: PowerCommandState? = nil, boot: UUID? = nil,
-                       outcome: PowerCommandDisposition) -> PowerCommandReply {
+                       outcome: PowerCommandDisposition, sleepSchema: Bool = false) -> PowerCommandReply {
+        let sleepRequest: PowerSleepRequest?
+        switch input { case .sleep(let value), .sealSleep(let value): sleepRequest = value; default: sleepRequest = nil }
         let request: PowerCommandRequest?
         let token: PowerCommandToken?
         switch input {
         case .write(let value), .seal(let value): request = value; token = value.token
         case .status(let value), .ack(let value): request = nil; token = value
+        case .sleep(let value), .sealSleep(let value): request = nil; token = value.token
         case .version: request = nil; token = nil
         }
-        return PowerCommandReply(token: token, request: request, owner: state?.owner,
+        return PowerCommandReply(schema: sleepSchema || sleepRequest != nil || state?.pendingSleep != nil ? 2 : 1,
+            token: token, request: request, owner: state?.owner,
             grantEpoch: state?.grantEpoch, highWaterMark: state?.highWaterMark, bootID: boot,
-            pending: state?.pending, outcome: outcome)
+            pending: state?.pending, outcome: outcome, sleepRequest: sleepRequest,
+            pendingSleep: state?.pendingSleep, capabilities: ["sleep-v1"])
     }
 }

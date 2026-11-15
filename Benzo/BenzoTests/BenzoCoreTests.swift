@@ -614,11 +614,11 @@ final class BenzoCoreTests: XCTestCase {
         XCTAssertEqual(harness.transport.writes, writes)
     }
 
-    func testSleepNowRemainsDisabledWithoutCaptureWriteOrContinuation() {
+    func testSleepNowRequiresReadinessAndActiveSessionWithoutStartingAnyWork() {
         let harness = FakeDependencies()
         let viewModel = harness.makeViewModel()
         viewModel.sleepNow()
-        XCTAssertEqual(viewModel.errorMessage, BenzoViewModel.sleepUnavailableReason)
+        XCTAssertEqual(viewModel.errorMessage, viewModel.sleepDisabledReason)
         XCTAssertEqual(harness.transport.captureCalls, 0)
         XCTAssertTrue(harness.transport.writes.isEmpty)
         XCTAssertTrue(harness.preferences.writes.isEmpty)

@@ -7,6 +7,7 @@ struct SetupView: View {
     let canRemoveHelper: Bool
     let error: String?
     let recoveryMessage: String?
+    var needsSleepAccessUpdate = false
     let onRegister: () -> Void
     let onAuthorize: () -> Void
     let onReplace: () -> Void
@@ -36,6 +37,13 @@ struct SetupView: View {
 
             if let recoveryMessage {
                 Text(recoveryMessage)
+                    .font(.system(size: 12))
+                    .foregroundColor(BenzoTheme.text)
+                    .multilineTextAlignment(.center)
+            }
+
+            if needsSleepAccessUpdate {
+                Text("Update power access to enable Sleep Now and its timer.")
                     .font(.system(size: 12))
                     .foregroundColor(BenzoTheme.text)
                     .multilineTextAlignment(.center)
@@ -74,6 +82,7 @@ struct SetupView: View {
         .padding(20)
         .frame(width: 320)
         .background(BenzoTheme.surface)
+        .onAppear { if needsSleepAccessUpdate { showingManagement = true } }
     }
 
     @ViewBuilder

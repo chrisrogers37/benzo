@@ -26,6 +26,13 @@ struct RecoveryTransport: RecoveryCommanding {
     func reconcileWrite(_ request: PowerCommandRequest) async -> RecoveryFenceResolution? { await tool.reconcile(request) }
     func acknowledgeWrite(_ request: PowerCommandRequest) async throws { try await tool.acknowledge(request) }
 
+    func prepareSleep(operationID: UUID, bootID: String) async throws -> PowerSleepRequest {
+        try await tool.prepareSleep(operationID: operationID, bootID: bootID)
+    }
+    func sendSleep(_ request: PowerSleepRequest) async -> PowerSleepReceipt? { await tool.sendSleep(request) }
+    func reconcileSleep(_ request: PowerSleepRequest) async -> PowerSleepReceipt? { await tool.reconcileSleep(request) }
+    func acknowledgeSleep(_ request: PowerSleepRequest) async throws { try await tool.acknowledgeSleep(request) }
+
     func write(cell: ManagedCell, value: Int, expectedValue: Int,
                operationID: UUID, bootID: String) async -> RecoveryWriteOutcome {
         .notExecuted("A durable power request is required before dispatch.")

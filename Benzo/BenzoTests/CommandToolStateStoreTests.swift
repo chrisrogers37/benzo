@@ -86,6 +86,32 @@ final class CommandToolStateStoreTests: XCTestCase {
         XCTAssertEqual(try f.store!.load().highWaterMark, 1)
     }
 
+    func testSleepSharesAuthorityFileAndLockUntilTerminalAckRestoresSchemaOne() throws {
+        let f = try CommandStorageFixture()
+        try f.open(create: true)
+        var sleep = f.initial
+        sleep.schema = 2; sleep.highWaterMark = 1
+        sleep.pendingSleep = PowerSleepReceipt(request: PowerSleepRequest(grantEpoch: sleep.grantEpoch,
+            sequence: 1, requestID: UUID(), operationID: UUID(), bootID: UUID(), expiresAtContinuousTicks: 1), outcome: .intent)
+        try f.store!.commit(sleep)
+        XCTAssertThrowsError(try PowerCommandStore(testingParentDirectory: f.parent))
+        f.store = nil; try f.open()
+        XCTAssertEqual(try f.store!.load(), sleep)
+        XCTAssertThrowsError(try f.store!.commit(f.intent(sequence: 2)))
+        sleep.pendingSleep!.outcome = .childStoppedOutcomeUnknown(reason: "Child reaped; sleep unknown")
+        try f.store!.commit(sleep)
+        f.store = nil; try f.open()
+        XCTAssertEqual(try f.store!.load(), sleep)
+        sleep.schema = 1; sleep.pendingSleep = nil
+        try f.store!.commit(sleep)
+        f.store = nil; try f.open()
+        XCTAssertEqual(try f.store!.load(), sleep)
+        XCTAssertEqual(sleep.grantEpoch, f.initial.grantEpoch)
+        XCTAssertEqual(sleep.owner, f.initial.owner)
+        XCTAssertEqual(sleep.highWaterMark, 1)
+        XCTAssertFalse(try String(contentsOf: f.authority, encoding: .utf8).contains("pendingSleep"))
+    }
+
     func testMissingEstablishedAuthorityOrLockNeverBecomesFreshState() throws {
         for removeLock in [false, true] {
             let f = try CommandStorageFixture()

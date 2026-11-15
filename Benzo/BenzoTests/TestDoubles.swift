@@ -23,6 +23,7 @@ final class FakeLoginItem: LoginItemClient {
 @MainActor
 final class FakeHelperSetup: HelperSetupClient {
     var readiness: HelperReadiness = .ready
+    var supportsSleep = true
     var registrationResult: HelperReadiness = .requiresApproval
     var authorizationResult: HelperReadiness = .ready
     var replacementResult: HelperReadiness = .ready
@@ -73,6 +74,9 @@ final class FakeHelperSetup: HelperSetupClient {
 
 final class IntegrationRecoveryStore: RecoveryStoring {
     var journal: RecoveryJournal?
+    var sleepIntent: SleepIntent?
+    var sleepCommitError: Error?
+    var sleepEvents: [String] = []
     var fence: ExecutionFence?
     var receipt: RecoveryJournal?
     var legacy: Data?
@@ -90,9 +94,43 @@ final class IntegrationRecoveryStore: RecoveryStoring {
     func loadFence() throws -> ExecutionFence? { if let error { throw error }; return fence }
     func commitFence(_ fence: ExecutionFence) throws { if let error { throw error }; self.fence = fence }
     func loadLegacyEvidence() throws -> Data? { if let error { throw error }; return legacy }
+    func loadSleepIntent() throws -> SleepIntent? { if let error { throw error }; return sleepIntent }
+    func commitSleepIntent(_ intent: SleepIntent) throws {
+        if let sleepCommitError { throw sleepCommitError }
+        sleepIntent = intent
+        sleepEvents.append(intent.acknowledged ? "ack" : (intent.terminal == nil ? "intent" : "terminal"))
+    }
 }
 
 final class IntegrationRecoveryTransport: RecoveryCommanding {
+    var sleepRequests: [PowerSleepRequest] = []
+    var sleepReconciliations = 0
+    var sleepAcks = 0
+    var sleepOutcome: PowerSleepReceiptOutcome? = .completed(exitStatus: 0)
+    var reconciledSleepOutcome: PowerSleepReceiptOutcome? = .completed(exitStatus: 0)
+    var sleepAckError: Error?
+    var beforePrepareSleep: (() async -> Void)?
+    var beforeSendSleep: (() async -> Void)?
+    var beforeSleepAck: (() -> Void)?
+    func prepareSleep(operationID: UUID, bootID: String) async throws -> PowerSleepRequest {
+        await beforePrepareSleep?()
+        return PowerSleepRequest(grantEpoch: UUID(), sequence: 1, requestID: UUID(), operationID: operationID,
+            bootID: UUID(uuidString: bootID)!, expiresAtContinuousTicks: 1000)
+    }
+    func sendSleep(_ request: PowerSleepRequest) async -> PowerSleepReceipt? {
+        sleepRequests.append(request)
+        await beforeSendSleep?()
+        return sleepOutcome.map { PowerSleepReceipt(request: request, outcome: $0) }
+    }
+    func reconcileSleep(_ request: PowerSleepRequest) async -> PowerSleepReceipt? {
+        sleepReconciliations += 1
+        return reconciledSleepOutcome.map { PowerSleepReceipt(request: request, outcome: $0) }
+    }
+    func acknowledgeSleep(_ request: PowerSleepRequest) async throws {
+        sleepAcks += 1
+        beforeSleepAck?()
+        if let sleepAckError { throw sleepAckError }
+    }
     struct Write: Equatable { let cell: ManagedCell; let value: Int }
     var writes: [Write] = []
     var captureCalls = 0
@@ -120,6 +158,7 @@ final class IntegrationRecoveryTransport: RecoveryCommanding {
 /// process execution, ServiceManagement, or actual application termination.
 @MainActor
 final class FakeDependencies {
+    let scheduler = FakeSleepScheduler()
     let store = IntegrationRecoveryStore()
     let transport = IntegrationRecoveryTransport()
     let preferences = FakePreferences()
@@ -147,6 +186,7 @@ final class FakeDependencies {
         )
         let dependencies = BenzoDependencies(
             coordinator: coordinator,
+            sleepScheduler: scheduler,
             preferences: preferences,
             loginItem: login,
             helperSetup: helperSetup,
@@ -194,4 +234,27 @@ func releaseFixture(_ overrides: [String: Any] = [:]) throws -> Data {
 func releaseResponse(status: Int = 200) -> HTTPURLResponse {
     HTTPURLResponse(url: URL(string: "https://api.github.com/repos/chrisrogers37/benzo/releases/latest")!,
                     statusCode: status, httpVersion: nil, headerFields: nil)!
+}
+
+@MainActor
+final class FakeSleepScheduler: SleepScheduling {
+    struct Scheduled {
+        let date: TimeInterval
+        let action: @MainActor () -> Void
+        var canceled = false
+    }
+    var now: TimeInterval = 1000
+    var callbacks: [Scheduled] = []
+    func schedule(after seconds: TimeInterval, _ action: @escaping @MainActor () -> Void) -> SleepCancellation {
+        let index = callbacks.count
+        callbacks.append(Scheduled(date: now + seconds, action: action))
+        return SleepCancellation { self.callbacks[index].canceled = true }
+    }
+    func advance(seconds: Int) {
+        for _ in 0..<seconds {
+            now += 1
+            let due = callbacks.indices.filter { !callbacks[$0].canceled && callbacks[$0].date <= now }
+            for index in due { callbacks[index].canceled = true; callbacks[index].action() }
+        }
+    }
 }

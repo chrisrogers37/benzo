@@ -27,9 +27,22 @@ protocol RecoveryCommanding {
     func writePrepared(_ request: PowerCommandRequest) async -> RecoveryWriteOutcome
     func reconcileWrite(_ request: PowerCommandRequest) async -> RecoveryFenceResolution?
     func acknowledgeWrite(_ request: PowerCommandRequest) async throws
+    func prepareSleep(operationID: UUID, bootID: String) async throws -> PowerSleepRequest
+    func sendSleep(_ request: PowerSleepRequest) async -> PowerSleepReceipt?
+    func reconcileSleep(_ request: PowerSleepRequest) async -> PowerSleepReceipt?
+    func acknowledgeSleep(_ request: PowerSleepRequest) async throws
 }
 
 extension RecoveryCommanding {
+    func prepareSleep(operationID: UUID, bootID: String) async throws -> PowerSleepRequest {
+        throw RecoveryEvidenceError.invalid("Update Power Access while Benzo is off to enable Sleep Now.")
+    }
+    func sendSleep(_ request: PowerSleepRequest) async -> PowerSleepReceipt? { nil }
+    func reconcileSleep(_ request: PowerSleepRequest) async -> PowerSleepReceipt? { nil }
+    func acknowledgeSleep(_ request: PowerSleepRequest) async throws {
+        throw RecoveryEvidenceError.invalid("The saved sleep result cannot be acknowledged by this transport.")
+    }
+
     // Old/injected transports retain conservative fencing rather than inventing
     // command-tool receipts for evidence created before this protocol existed.
     func prepareWrite(cell: ManagedCell, value: Int, expectedValue: Int,

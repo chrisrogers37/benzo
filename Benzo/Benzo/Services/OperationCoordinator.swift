@@ -16,6 +16,17 @@ final class OperationCoordinator {
     }
     var capturedAt: Date? { hasSession ? journal?.capturedAt : nil }
     var onChange: (() -> Void)?
+    private(set) var sleepMessage: String?
+    private var sleepIntent: SleepIntent?
+    private var sleepAdmissionActive = false
+    private var sleepTerminalCommitFailed = false
+    private var sleepAcknowledgementPending = false
+    var sleepRequestInFlight: Bool { sleepAdmissionActive || sleepIntent.map { !$0.acknowledged } == true }
+    var activeSessionID: UUID? { state.isActive ? journal?.sessionID : nil }
+    var canAdmitSleep: Bool {
+        state.isActive && hasSession && conflicts.isEmpty && !executionUncertain && !admitted &&
+            !quitRequested && !acknowledgementPending && !sleepRequestInFlight
+    }
 
     private let store: any RecoveryStoring
     private let transport: any RecoveryCommanding
@@ -158,15 +169,130 @@ final class OperationCoordinator {
         } catch { fail(error) }
     }
 
+    /// Immediate and timed actions share this admission token. The caller's
+    /// generation/readiness predicate is checked after every suspending boundary
+    /// before dispatch. Cancellation after send is never reported as recall.
+    func requestSleep(isStillEligible: () -> Bool) async {
+        guard canAdmitSleep, isStillEligible(), let sessionID = activeSessionID, begin() else { return }
+        sleepAdmissionActive = true
+        sleepMessage = nil
+        onChange?()
+        defer { sleepAdmissionActive = false; end() }
+        func valid() -> Bool {
+            !quitRequested && isStillEligible() && state.isActive && journal?.sessionID == sessionID &&
+                !executionUncertain && conflicts.isEmpty && !acknowledgementPending
+        }
+        do {
+            try await reconcileAdmitted()
+            guard valid() else { return }
+            let boot = try currentBoot()
+            let operationID = UUID()
+            let request = try await transport.prepareSleep(operationID: operationID, bootID: boot)
+            guard valid(), sameBoot(try currentBoot(), boot) else { return }
+            try request.validate()
+            guard request.operationID == operationID, request.bootID == UUID(uuidString: boot),
+                  let current = journal, current.sessionID == sessionID else {
+                throw invalid("The prepared sleep request does not match the active session.")
+            }
+            // Preparation may have suspended for access checks. Verify the exact
+            // active selection again before persisting this distinct intent.
+            let observed = try await transport.capture()
+            guard valid(), sameBoot(try currentBoot(), boot) else { return }
+            let targets = try targetValues(current.selectedSettings.compactMap(SleepSetting.init(rawValue:)), profiles: current.profiles)
+            guard targets.allSatisfy({ observed.value(for: $0.cell) == $0.value }) else {
+                throw invalid("Settings changed before sleep. Refresh recovery before trying again.")
+            }
+            let intent = SleepIntent(uid: uid, hostID: hostID, sessionID: sessionID, request: request)
+            sleepIntent = intent
+            executionUncertain = true
+            try store.commitSleepIntent(intent)
+            sleepMessage = "The sleep request is pending. It cannot be recalled after sending."
+            onChange?()
+            let receipt = await transport.sendSleep(request)
+            // No cancellation check here: from this point only authenticated
+            // terminal evidence can release the execution fence.
+            guard let receipt, receipt.isTerminal else {
+                throw invalid("The sleep request has no terminal result. Refresh recovery; it will not be sent again.")
+            }
+            try await persistSleepTerminal(receipt, intent: intent)
+            try await reconcileAdmitted()
+        } catch {
+            sleepMessage = error.localizedDescription
+            fail(error)
+        }
+    }
+
+    private func reconcileSleepAdmitted() async throws {
+        let loaded = try store.loadSleepIntent()
+        if let loaded { sleepIntent = loaded }
+        guard let intent = sleepIntent else { return }
+        try intent.validate(uid: uid, hostID: hostID)
+        if intent.acknowledged, !sleepAcknowledgementPending, !sleepTerminalCommitFailed {
+            sleepMessage = intent.terminal?.message
+            return
+        }
+        guard journal?.sessionID == intent.sessionID else {
+            throw invalid("The saved sleep request has no matching settings session. Preserve its evidence.")
+        }
+        if intent.terminal != nil, !sleepTerminalCommitFailed {
+            executionUncertain = false
+            try await acknowledgeSleep(intent)
+            return
+        }
+        executionUncertain = true
+        guard let receipt = await transport.reconcileSleep(intent.request), receipt.isTerminal else {
+            sleepMessage = "The sleep request is unresolved. Its command may still be running; refresh recovery before changing settings."
+            throw invalid(sleepMessage!)
+        }
+        try await persistSleepTerminal(receipt, intent: intent)
+    }
+
+    private func persistSleepTerminal(_ receipt: PowerSleepReceipt, intent: SleepIntent) async throws {
+        try receipt.validate()
+        guard receipt.request == intent.request, receipt.isTerminal else {
+            throw invalid("The sleep result does not match its saved request.")
+        }
+        if case .reconciledAfterBoot = receipt.outcome {
+            guard UUID(uuidString: try currentBoot()) != receipt.request.bootID else {
+                throw invalid("The sleep command has not stopped on a verified later boot.")
+            }
+        }
+        var completed = intent
+        completed.terminal = receipt
+        completed.acknowledged = false
+        sleepTerminalCommitFailed = true
+        executionUncertain = true
+        try store.commitVerifiedSleepTerminal(completed)
+        sleepTerminalCommitFailed = false
+        sleepIntent = completed
+        executionUncertain = false
+        sleepMessage = receipt.message
+        // Terminal evidence must be durable before the root receipt is removed.
+        try await acknowledgeSleep(completed)
+    }
+
+    private func acknowledgeSleep(_ intent: SleepIntent) async throws {
+        guard intent.terminal != nil else { throw invalid("Only a terminal sleep result can be acknowledged.") }
+        sleepAcknowledgementPending = true
+        try await transport.acknowledgeSleep(intent.request)
+        var acknowledged = intent
+        acknowledged.acknowledged = true
+        try store.commitSleepIntent(acknowledged)
+        sleepIntent = acknowledged
+        sleepAcknowledgementPending = false
+        sleepMessage = intent.terminal?.message
+    }
+
     func mayEditSelections() -> Bool {
-        guard !admitted, !quitRequested, state == .off, !executionUncertain, !acknowledgementPending else { return false }
+        guard !admitted, !quitRequested, state == .off, !executionUncertain, !acknowledgementPending, !sleepRequestInFlight else { return false }
         guard begin() else { return false }
         defer { end() }
         do {
             try store.acquireLock()
             let loaded = try store.loadJournal()
             try checkLegacy(loaded)
-            guard loaded == journal, loaded?.resolvedAt != nil || loaded == nil,
+            guard try store.loadSleepIntent().map({ $0.acknowledged }) ?? true,
+                  loaded == journal, loaded?.resolvedAt != nil || loaded == nil,
                   try isQuiescent(loaded, fence: store.loadFence(), boot: currentBoot()) else {
                 throw invalid("Recovery evidence changed. Refresh before editing selections.")
             }
@@ -251,6 +377,7 @@ final class OperationCoordinator {
         journal = loaded
         try checkLegacy(loaded)
         let boot = try currentBoot()
+        try await reconcileSleepAdmitted()
         var fence = try store.loadFence()
         if let commandFence = fence, commandFence.commandRequest != nil {
             if !commandFence.completed { executionUncertain = true }
