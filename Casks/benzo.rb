@@ -1,6 +1,6 @@
 cask "benzo" do
-  version "0.3.0"
-  sha256 "0da25dee8fdc1b260fd8113d5d001b7f556864fef9ac0578146cb0bde62dd6c7"
+  version "0.4.0"
+  sha256 "167333639732a399f3e74d5cf35f5218284d207afe8baf88866e3c45fb2cb8ff"
 
   url "https://github.com/chrisrogers37/benzo/releases/download/v#{version}/Benzo-#{version}.dmg"
   name "Benzo"
@@ -9,7 +9,7 @@ cask "benzo" do
 
   depends_on macos: ">= :ventura"
 
-  app "Benzo.app"
+  app "Benzo Development.app"
 
   # Removing the app does not prove restoration or safe permission retirement.
   # Preserve the existing grant, original-settings backup and preferences.
