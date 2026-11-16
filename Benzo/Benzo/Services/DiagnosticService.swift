@@ -8,7 +8,12 @@ struct DiagnosticService {
     }
 
     func fetchUSBDevices() async -> Result<[USBDevice], DiagnosticReadError> {
-        await read(.usbDevices).flatMap(Self.parseUSBDevices)
+        let discovery = await read(.profilerDataTypes).flatMap(Self.parseUSBReportFormat)
+        switch discovery {
+        case .failure(let error): return .failure(error)
+        case .success(let format):
+            return await read(format.command).flatMap { Self.parseUSBDevices($0, expectedFormat: format) }
+        }
     }
 
     func readObservedSettings() async -> Result<[ObservedSetting], DiagnosticReadError> {
@@ -92,15 +97,33 @@ struct DiagnosticService {
         return .success(SleepReadPayload(sessions: Array(sessions.suffix(5).reversed()), lastWakeReason: lastWakeReason))
     }
 
-    static func parseUSBDevices(_ json: String) -> Result<[USBDevice], DiagnosticReadError> {
+    static func parseUSBReportFormat(_ listing: String) -> Result<USBReportFormat, DiagnosticReadError> {
+        let advertised = Set(listing.components(separatedBy: .newlines).map {
+            $0.trimmingCharacters(in: .whitespacesAndNewlines)
+        })
+        if advertised.contains(USBReportFormat.host.rawValue) { return .success(.host) }
+        if advertised.contains(USBReportFormat.legacy.rawValue) { return .success(.legacy) }
+        return .failure(.unsupportedFormat)
+    }
+
+    static func parseUSBDevices(_ json: String, expectedFormat: USBReportFormat? = nil) -> Result<[USBDevice], DiagnosticReadError> {
         guard let root = try? JSONSerialization.jsonObject(with: Data(json.utf8)) as? [String: Any] else {
             return .failure(.malformedFormat)
         }
-        guard let rawBuses = root["SPUSBDataType"] else { return .failure(.unsupportedFormat) }
-        guard let buses = rawBuses as? [[String: Any]] else { return .failure(.malformedFormat) }
+        let formats = USBReportFormat.allCases.filter { root[$0.rawValue] != nil }
+        // A response must match the requested format, and cannot mix reports.
+        guard formats.count == 1, let format = formats.first,
+              expectedFormat == nil || expectedFormat == format else { return .failure(.unsupportedFormat) }
+        guard let buses = root[format.rawValue] as? [[String: Any]] else { return .failure(.malformedFormat) }
         var devices: [USBDevice] = []
-        for bus in buses {
-            guard collectUSBDevices(from: bus, isBus: true, into: &devices) else { return .failure(.malformedFormat) }
+        do {
+            for bus in buses {
+                try collectUSBDevices(from: bus, format: format, depth: 0, into: &devices)
+            }
+        } catch let error as DiagnosticReadError {
+            return .failure(error)
+        } catch {
+            return .failure(.malformedFormat)
         }
         return .success(devices)
     }
@@ -127,20 +150,56 @@ struct DiagnosticService {
         return reason.isEmpty ? nil : reason
     }
 
-    private static func collectUSBDevices(from node: [String: Any], isBus: Bool, into devices: inout [USBDevice]) -> Bool {
-        guard let name = node["_name"] as? String, !name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return false }
-        for key in ["manufacturer", "vendor_id", "bus_power_used"] where node[key] != nil {
-            guard let value = node[key] as? String, !value.isEmpty else { return false }
+    private static func collectUSBDevices(from node: [String: Any], format: USBReportFormat,
+                                          depth: Int, into devices: inout [USBDevice]) throws {
+        // Bound traversal even for an otherwise valid but deeply nested JSON capture.
+        guard depth <= 64, let name = node["_name"] as? String,
+              !name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+            throw DiagnosticReadError.malformedFormat
         }
-        let hasIdentity = node["manufacturer"] != nil || node["vendor_id"] != nil
-        guard isBus || hasIdentity else { return false }
-        if hasIdentity { devices.append(USBDevice(name: name, busPowerUsed: node["bus_power_used"] as? String)) }
-        if let rawItems = node["_items"] {
-            guard let items = rawItems as? [[String: Any]] else { return false }
-            for item in items {
-                guard collectUSBDevices(from: item, isBus: false, into: &devices) else { return false }
+        let fields: [String]
+        switch format {
+        case .legacy: fields = ["manufacturer", "vendor_id", "product_id", "bus_power_used"]
+        case .host: fields = ["Driver", "USBKeyHardwareType", "USBDeviceKeyVendorID", "USBDeviceKeyVendorName", "USBDeviceKeyProductID", "USBDeviceKeyPowerAllocation"]
+        }
+        for key in fields where node[key] != nil {
+            guard let value = node[key] as? String,
+                  !value.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+                throw DiagnosticReadError.malformedFormat
             }
         }
-        return true
+
+        switch format {
+        case .legacy:
+            let hasIdentity = node["manufacturer"] != nil || node["vendor_id"] != nil || node["product_id"] != nil
+            guard depth == 0 || hasIdentity else { throw DiagnosticReadError.unsupportedFormat }
+            if hasIdentity {
+                let power = (node["bus_power_used"] as? String).map { USBPowerReport.requiredCurrent(milliamps: $0) }
+                devices.append(USBDevice(name: name, power: power))
+            } else if node["bus_power_used"] != nil {
+                throw DiagnosticReadError.malformedFormat
+            }
+        case .host:
+            let hasVendor = node["USBDeviceKeyVendorID"] != nil
+            let hasProduct = node["USBDeviceKeyProductID"] != nil
+            if hasVendor || hasProduct {
+                guard hasVendor && hasProduct else { throw DiagnosticReadError.malformedFormat }
+                let power = (node["USBDeviceKeyPowerAllocation"] as? String).map(USBPowerReport.allocatedPower)
+                devices.append(USBDevice(name: name, power: power))
+            } else {
+                // HardwareType is also Built-in on real hubs, so it alone cannot
+                // identify a bus. Only a root controller without device fields is a bus.
+                guard depth == 0, node["Driver"] != nil, node["USBKeyHardwareType"] != nil,
+                      node["USBDeviceKeyVendorName"] == nil, node["USBDeviceKeyPowerAllocation"] == nil else {
+                    throw DiagnosticReadError.unsupportedFormat
+                }
+            }
+        }
+        if let rawItems = node["_items"] {
+            guard let items = rawItems as? [[String: Any]] else { throw DiagnosticReadError.malformedFormat }
+            for item in items {
+                try collectUSBDevices(from: item, format: format, depth: depth + 1, into: &devices)
+            }
+        }
     }
 }

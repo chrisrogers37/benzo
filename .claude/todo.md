@@ -1,5 +1,28 @@
 # Benzo Open Work
 
+## Diagnostics layout and USB reporting — November 16, 2026
+
+- [x] Refresh origin/main and isolate on `codex/diagnostics-layout-usb` from `5ddfa67`.
+- [x] Align all Diagnostics sections to the full width with a 16-point inset;
+  improve headings, wrapping and observed-setting labels without changing focus.
+- [x] Discover the advertised USB report type and parse legacy/host schemas with
+  bounded reads, truthful failure/empty states and distinct power allocation labels.
+- [x] Mirror the active web demo and add injected native/web regressions.
+- [x] Run local checks, browser inspection and independent source review.
+- [x] Prepare delivery with required final-head full-Xcode/security CI and reviewed
+  merge gates. The associated PR records remote CI and merge evidence.
+
+Review: an independent source reviewer found no actionable findings and reran all
+189 web tests under Node 24.22.1. Local build, moderate audit (zero vulnerabilities)
+and compile-only typechecking of all 42 app-target sources passed. Browser checks
+confirmed aligned sections, wrapped USB details and visible keyboard scroll focus.
+Local CLT validation is not XCTest or native UI acceptance.
+
+The installed app, power access/settings, login items and fleet stay untouched.
+Physical sleep, native pixel/VoiceOver acceptance and the unexplained blue scroll
+strip remain with the original sleep-testing chat. No native release or install.
+
+
 ## Complete engineering before paid enrollment — November 13, 2026
 
 Owner clarified: finish the installable app and all engineering possible without

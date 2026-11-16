@@ -2,7 +2,7 @@ import Foundation
 import Darwin
 
 enum ReadCommand: CaseIterable, Sendable {
-    case currentSettings, sleepLog, usbDevices
+    case currentSettings, sleepLog, profilerDataTypes, usbDevices, usbHostDevices
 
     var request: CommandRequest {
         switch self {
@@ -10,8 +10,12 @@ enum ReadCommand: CaseIterable, Sendable {
             return CommandRequest(executable: "/usr/bin/pmset", arguments: ["-g"], timeout: 10, maximumOutputBytes: 8 * 1_024 * 1_024)
         case .sleepLog:
             return CommandRequest(executable: "/usr/bin/pmset", arguments: ["-g", "log"], timeout: 10, maximumOutputBytes: 8 * 1_024 * 1_024)
+        case .profilerDataTypes:
+            return CommandRequest(executable: "/usr/sbin/system_profiler", arguments: ["-listDataTypes"], timeout: 10, maximumOutputBytes: 64 * 1_024)
         case .usbDevices:
             return CommandRequest(executable: "/usr/sbin/system_profiler", arguments: ["SPUSBDataType", "-json"], timeout: 30, maximumOutputBytes: 16 * 1_024 * 1_024)
+        case .usbHostDevices:
+            return CommandRequest(executable: "/usr/sbin/system_profiler", arguments: ["SPUSBHostDataType", "-json"], timeout: 30, maximumOutputBytes: 16 * 1_024 * 1_024)
         }
     }
 }

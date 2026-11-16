@@ -20,12 +20,13 @@ struct DiagnosticView: View {
                     }
                 }
             ScrollView {
-                VStack(spacing: 0) {
+                VStack(alignment: .leading, spacing: 0) {
                     sleepSessionsPanel
                     wakeReasonPanel
                     usbDevicesPanel
                     observedSettingsPanel
                 }
+                .frame(maxWidth: .infinity, alignment: .leading)
                 .background {
                     DiagnosticScrollMarker(view: scrollMarker)
                         .frame(width: 0, height: 0)
@@ -170,25 +171,25 @@ struct DiagnosticView: View {
             }
             .foregroundColor(BenzoTheme.text)
 
-            HStack(spacing: 8) {
-                Text(session.formattedDuration)
-                    .font(.system(size: 10))
+            Text(session.formattedDuration)
+                .font(.system(size: 11))
+                .foregroundColor(BenzoTheme.textMuted)
+
+            if let s = session.batteryAtSleep, let w = session.batteryAtWake {
+                let delta = session.batteryDelta ?? 0
+                Text("\(s)% → \(w)% (\(delta > 0 ? "+" : "")\(delta)%)")
+                    .font(.system(size: 11, design: .monospaced))
+                    .foregroundColor(delta == 0 ? BenzoTheme.positiveText : BenzoTheme.textMuted)
+            }
+
+            if session.wakeReason != nil {
+                Text(session.humanWakeReason)
+                    .font(.system(size: 11))
                     .foregroundColor(BenzoTheme.textMuted)
-
-                if let s = session.batteryAtSleep, let w = session.batteryAtWake {
-                    let delta = session.batteryDelta ?? 0
-                    Text("\(s)% → \(w)% (\(delta > 0 ? "+" : "")\(delta)%)")
-                        .font(.system(size: 10, design: .monospaced))
-                        .foregroundColor(delta == 0 ? BenzoTheme.positiveText : BenzoTheme.textMuted)
-                }
-
-                if session.wakeReason != nil {
-                    Text(session.humanWakeReason)
-                        .font(.system(size: 10))
-                        .foregroundColor(BenzoTheme.textFaint)
-                }
             }
         }
+        .fixedSize(horizontal: false, vertical: true)
+        .accessibilityElement(children: .combine)
         .padding(.horizontal, 16)
         .padding(.vertical, 6)
     }
@@ -227,28 +228,32 @@ struct DiagnosticView: View {
             switch viewModel.usbDevices {
             case .idle, .loading:
                 loadingRow
-            case .failure:
-                emptyRow("Could not read USB devices")
+            case .failure(let error):
+                emptyRow(usbFailureMessage(error))
             case .success(let devices):
                 if devices.isEmpty {
                     emptyRow("No USB devices reported")
                 } else {
                     ForEach(devices) { device in
-                        HStack(alignment: .top) {
+                        VStack(alignment: .leading, spacing: 3) {
                             Text(device.name)
                                 .font(.system(size: 11, weight: .medium))
                                 .foregroundColor(BenzoTheme.text)
                                 .fixedSize(horizontal: false, vertical: true)
-                            Spacer()
-                            if let power = device.busPowerUsed {
-                                Text("\(power) mA")
-                                    .font(.system(size: 10, design: .monospaced))
+                            if let power = device.power {
+                                Text("\(power.label): \(power.value)")
+                                    .font(.system(size: 11))
                                     .foregroundColor(BenzoTheme.textMuted)
-                                    .fixedSize()
+                                    .fixedSize(horizontal: false, vertical: true)
                             }
                         }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .accessibilityElement(children: .combine)
                         .padding(.horizontal, 16)
-                        .padding(.vertical, 4)
+                        .padding(.vertical, 6)
+                    }
+                    if devices.contains(where: { $0.power != nil }) {
+                        emptyRow("Reported requirements or allocations, not measured power use.")
                     }
                 }
             }
@@ -266,21 +271,29 @@ struct DiagnosticView: View {
                 emptyRow("Could not read settings")
             case .success(let settings):
                 ForEach(settings) { setting in
-                    HStack(spacing: 6) {
-                        Text(setting.key)
-                            .font(.system(size: 11, design: .monospaced))
-                            .foregroundColor(BenzoTheme.text)
-                        Spacer()
-                        Text(setting.actualValue ?? "Not reported")
-                            .font(.system(size: 11, design: .monospaced))
+                    VStack(alignment: .leading, spacing: 3) {
+                        HStack(alignment: .top, spacing: 8) {
+                            Text(setting.displayName)
+                                .foregroundColor(BenzoTheme.text)
+                            Spacer(minLength: 4)
+                            Text(setting.displayValue)
+                                .foregroundColor(BenzoTheme.textMuted)
+                                .multilineTextAlignment(.trailing)
+                        }
+                        .font(.system(size: 11))
+                        Text(setting.rawDetail)
+                            .font(.system(size: 10, design: .monospaced))
                             .foregroundColor(BenzoTheme.textMuted)
                     }
+                    .fixedSize(horizontal: false, vertical: true)
+                    .accessibilityElement(children: .combine)
                     .padding(.horizontal, 16)
-                    .padding(.vertical, 3)
+                    .padding(.vertical, 6)
                 }
-                Text("Reported by pmset. Changes are not verified.")
-                    .font(.system(size: 10))
+                Text("Current values reported by macOS.")
+                    .font(.system(size: 11))
                     .foregroundColor(BenzoTheme.textMuted)
+                    .fixedSize(horizontal: false, vertical: true)
                     .padding(.horizontal, 16)
                     .padding(.vertical, 6)
             }
@@ -291,16 +304,18 @@ struct DiagnosticView: View {
 
     private func panelContainer<Content: View>(title: String, @ViewBuilder content: () -> Content) -> some View {
         VStack(alignment: .leading, spacing: 0) {
-            Text(title.uppercased())
-                .font(.system(size: 9, weight: .bold))
-                .foregroundColor(BenzoTheme.textFaint)
-                .tracking(0.8)
+            Text(title)
+                .font(.system(size: 12, weight: .semibold))
+                .foregroundColor(BenzoTheme.text)
+                .accessibilityAddTraits(.isHeader)
                 .padding(.horizontal, 16)
                 .padding(.top, 12)
                 .padding(.bottom, 6)
 
             content()
         }
+        .padding(.bottom, 6)
+        .frame(maxWidth: .infinity, alignment: .leading)
         .overlay(alignment: .bottom) {
             Divider().opacity(0.3)
         }
@@ -322,9 +337,20 @@ struct DiagnosticView: View {
     private func emptyRow(_ text: String) -> some View {
         Text(text)
             .font(.system(size: 11))
-            .foregroundColor(BenzoTheme.textFaint)
+            .foregroundColor(BenzoTheme.textMuted)
+            .fixedSize(horizontal: false, vertical: true)
+            .frame(maxWidth: .infinity, alignment: .leading)
             .padding(.horizontal, 16)
             .padding(.vertical, 8)
+    }
+
+    private func usbFailureMessage(_ error: DiagnosticReadError) -> String {
+        switch error {
+        case .unsupportedFormat: return "USB reporting is unavailable on this Mac"
+        case .malformedFormat: return "Could not interpret the USB report"
+        case .incompleteCapture: return "The USB report was incomplete"
+        case .commandFailed: return "Could not read USB devices"
+        }
     }
 
     private func formatDate(_ date: Date) -> String {

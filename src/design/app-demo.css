@@ -96,19 +96,25 @@
 .benzo-site .bn-diagnostic-header { flex-shrink: 0; }
 .benzo-site .bn-diagnostic-scroll { min-height: 0; max-height: var(--native-diagnostic-height); overflow-y: auto; border-radius: 0 0 10px 10px; }
 .benzo-site .bn-diagnostic-scroll:focus-visible { outline: 2px solid var(--rose); outline-offset: 3px; }
-.benzo-site .bn-panel { border-bottom: 1px solid var(--native-black-faint); }
-.benzo-site .bn-panel h3 { color: var(--native-faint); font-size: var(--native-tiny); font-weight: 700; text-transform: uppercase; letter-spacing: .8px; padding: 12px 16px 6px; }
+.benzo-site .bn-panel { width: 100%; padding-bottom: 6px; border-bottom: 1px solid var(--native-black-faint); text-align: left; overflow-wrap: anywhere; }
+.benzo-site .bn-panel h3 { color: var(--native-ink); font-size: var(--native-base); font-weight: 600; padding: 12px 16px 6px; }
 .benzo-site .bn-mono { font-family: var(--type-mono); }
 .benzo-site .bn-faint { color: var(--native-faint); }
-.benzo-site .bn-session { padding: 6px 16px; }
+.benzo-site .bn-session { padding: 6px 16px; font-size: var(--native-secondary); }
+.benzo-site .bn-panel .bn-faint { color: var(--native-muted); }
 .benzo-site .bn-session > div:first-child { font-size: var(--native-secondary); font-weight: 500; }
-.benzo-site .bn-session > div:last-child { display: flex; gap: 8px; font-size: var(--native-small); color: var(--native-muted); margin-top: 3px; }
+.benzo-site .bn-session > div:last-child { display: flex; flex-direction: column; gap: 3px; font-size: var(--native-secondary); color: var(--native-muted); margin-top: 3px; }
 .benzo-site .bn-green { color: var(--native-green); }
 .benzo-site .bn-wake { display: flex; align-items: center; gap: 8px; padding: 6px 16px; font-size: var(--native-base); font-weight: 500; }
 .benzo-site .bn-wake svg { color: var(--pink); }
-.benzo-site .bn-usb { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; padding: 4px 16px; font-size: var(--native-secondary); font-weight: 500; }
+.benzo-site .bn-usb { display: flex; flex-direction: column; gap: 3px; padding: 6px 16px; font-size: var(--native-secondary); font-weight: 500; }
 .benzo-site .bn-usb > span:first-child { min-width: 0; overflow-wrap: anywhere; }
-.benzo-site .bn-usb .bn-mono { flex-shrink: 0; white-space: nowrap; color: var(--native-muted); font-size: var(--native-small); font-weight: 400; }
+.benzo-site .bn-usb-power { color: var(--native-muted); font-weight: 400; }
+.benzo-site .bn-observed-setting { padding: 6px 16px; font-size: var(--native-secondary); }
+.benzo-site .bn-observed-setting > div:first-child { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.benzo-site .bn-observed-setting .bn-value { text-align: right; }
+.benzo-site .bn-setting-detail { margin-top: 3px; color: var(--native-muted); font-size: var(--native-small); }
+.benzo-site .bn-diagnostic-note { padding: 6px 16px; color: var(--native-muted); font-size: var(--native-secondary); line-height: 1.4; }
 .benzo-site .bn-verification { display: flex; align-items: center; gap: 6px; padding: 3px 16px; font-size: var(--native-secondary); }
 .benzo-site .bn-result { width: 10px; height: 10px; border-radius: 50%; display: grid; place-items: center; color: var(--white); }
 .benzo-site .bn-success { background: var(--native-green); }

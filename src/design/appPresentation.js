@@ -83,8 +83,38 @@ export const appPresentation = {
     sessions: 'Recent Sleep Sessions', wakeReason: 'Last Wake Reason', usb: 'Connected USB Devices', settings: 'Current Settings',
     loading: 'Loading...', sleepFailure: 'Could not read sleep history', sleepEmpty: 'No sleep sessions reported',
     usbFailure: 'Could not read USB devices', usbEmpty: 'No USB devices reported', settingsFailure: 'Could not read settings',
-    missing: 'Not reported', unknown: 'Unknown', summary: 'Reported by pmset. Changes are not verified.',
+    usbErrors: { unsupportedFormat: 'USB reporting is unavailable on this Mac', malformedFormat: 'Could not interpret the USB report', incompleteCapture: 'The USB report was incomplete' },
+    usbPowerNote: 'Reported requirements or allocations, not measured power use.',
+    missing: 'Not reported', unknown: 'Unknown', summary: 'Current values reported by macOS.',
   },
+}
+
+// Mirror ObservedSetting presentation, retaining unknown/missing values verbatim.
+export function presentObservedSetting({ key, actualValue }) {
+  const names = { hibernatemode: 'Hibernation mode', standby: 'Standby', autopoweroff: 'Automatic power-off', powernap: 'Power Nap', proximitywake: 'Proximity wake', womp: 'Wake for network access', tcpkeepalive: 'TCP keep-alive' }
+  let value = actualValue ?? appPresentation.diagnostics.missing
+  if (actualValue != null) {
+    if (key === 'hibernatemode') value = ({ 0: 'Standard sleep', 3: 'Safe sleep', 25: 'Hibernate' })[actualValue] ?? `Mode ${actualValue}`
+    else if (Object.hasOwn(names, key)) value = ({ 0: 'Off', 1: 'On' })[actualValue] ?? actualValue
+  }
+  return { name: names[key] ?? key, value, rawDetail: actualValue == null ? key : `${key} = ${actualValue}` }
+}
+
+export function usbPowerDetail(power) {
+  if (!power) return null
+  if (power.kind === 'requiredCurrent') return `Current required: ${power.value} mA`
+  if (power.kind === 'allocatedPower') return `Power allocated: ${power.value}`
+  return null
+}
+
+// Active demo fixtures are separate from the frozen historical mockup below.
+export const diagnosticReadings = {
+  sleep: { sessions: [], lastWakeReason: null },
+  usbDevices: [
+    { name: 'USB audio interface', power: { kind: 'allocatedPower', value: '2.5 W (500 mA)' } },
+    { name: 'USB keyboard', power: { kind: 'requiredCurrent', value: '100' } },
+    { name: 'USB hub' },
+  ],
 }
 
 export const exampleReadings = {

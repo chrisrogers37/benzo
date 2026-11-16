@@ -802,13 +802,13 @@ final class BenzoCoreTests: XCTestCase {
         reader.outcome = completeOutcome("2026-11-02 12:00:00 -0500 Assertions PID 42 Created UserIsActive")
         let sleep = try await service.fetchSleepData().get()
         XCTAssertTrue(sleep.sessions.isEmpty)
-        reader.outcome = completeOutcome("{\"SPUSBDataType\":[]}")
+        reader.outcomes = [completeOutcome("Data Types:\n    SPUSBDataType"), completeOutcome("{\"SPUSBDataType\":[]}")]
         let usb = try await service.fetchUSBDevices().get()
         XCTAssertTrue(usb.isEmpty)
         reader.outcome = completeOutcome("hibernatemode 3")
         let settings = try await service.readObservedSettings().get()
         XCTAssertEqual(settings.first?.actualValue, "3")
-        XCTAssertEqual(reader.calls, [.sleepLog, .usbDevices, .currentSettings])
+        XCTAssertEqual(reader.calls, [.sleepLog, .profilerDataTypes, .usbDevices, .currentSettings])
         reader.outcome = CommandOutcome(stdout: Data([0xff]), stderr: Data(), termination: .exited(0), outputComplete: true, outputTruncated: false, directChildStopped: true)
         guard case .failure(.malformedFormat) = await service.readObservedSettings() else { return XCTFail("Invalid encoding is unavailable") }
     }
@@ -824,7 +824,7 @@ final class BenzoCoreTests: XCTestCase {
         ]}]}
         """).get()
         XCTAssertEqual(devices.map(\.name), ["Hub", "Keyboard"])
-        XCTAssertEqual(devices.map(\.busPowerUsed), [nil, "100"])
+        XCTAssertEqual(devices.map(\.power), [nil, .requiredCurrent(milliamps: "100")])
     }
 
     func testUSBMalformedOrAbsentDatatypeNeverBecomesEmptyOrPartialSuccess() {
@@ -841,6 +841,112 @@ final class BenzoCoreTests: XCTestCase {
         {"SPUSBDataType":[{"_name":"USB Bus","_items":[{"_name":"Device","vendor_id":12}]}]}
         """] {
             guard case .failure = DiagnosticService.parseUSBDevices(json) else { return XCTFail("Malformed or unsupported USB capture was accepted: \(json)") }
+        }
+    }
+
+    func testUSBDiscoverySelectsAdvertisedFormatAndDoesNotGuessFromExitZero() async throws {
+        for (listing, format) in [
+            ("Data Types:\n    SPUSBDataType\n    SPHardwareDataType", USBReportFormat.legacy),
+            ("Data Types:\n    SPUSBHostDataType", .host),
+            ("Data Types:\n    SPUSBDataType\n    SPUSBHostDataType", .host),
+        ] {
+            let reader = FakeReadCommandRunner()
+            reader.outcomes = [completeOutcome(listing), completeOutcome("{\"\(format.rawValue)\":[]}")]
+            let devices = try await DiagnosticService(reader: reader).fetchUSBDevices().get()
+            XCTAssertTrue(devices.isEmpty)
+            XCTAssertEqual(reader.calls, [.profilerDataTypes, format.command])
+            XCTAssertTrue(reader.outcomes.isEmpty)
+        }
+        for listing in ["", "Data Types:\n    SPHardwareDataType", "SPUSBDataTypeUnsupported", "SPUSBHostDataType is not supported"] {
+            let reader = FakeReadCommandRunner()
+            reader.outcome = completeOutcome(listing)
+            guard case .failure(.unsupportedFormat) = await DiagnosticService(reader: reader).fetchUSBDevices() else {
+                return XCTFail("Unadvertised USB report must be unavailable, never an empty inventory")
+            }
+            XCTAssertEqual(reader.calls, [.profilerDataTypes])
+        }
+    }
+
+    func testUSBSelectedReportFailureAndPartialCaptureNeverFallBack() async {
+        let goodDiscovery = completeOutcome("Data Types:\n    SPUSBHostDataType\n    SPUSBDataType")
+        let payload = Data("{\"SPUSBHostDataType\":[]}".utf8)
+        let outcomes = [
+            CommandOutcome(stdout: payload, stderr: Data(), termination: .exited(1), outputComplete: true, outputTruncated: false, directChildStopped: true),
+            CommandOutcome(stdout: payload, stderr: Data(), termination: .timedOut, outputComplete: true, outputTruncated: false, directChildStopped: true),
+            CommandOutcome(stdout: payload, stderr: Data(), termination: .exited(0), outputComplete: false, outputTruncated: false, directChildStopped: true),
+            CommandOutcome(stdout: payload, stderr: Data(), termination: .exited(0), outputComplete: true, outputTruncated: true, directChildStopped: true),
+            CommandOutcome(stdout: Data([0xff]), stderr: Data(), termination: .exited(0), outputComplete: true, outputTruncated: false, directChildStopped: true),
+            completeOutcome("{\"SPUSBDataType\":[]}"),
+            completeOutcome("{\"SPUSBHostDataType\":[{}]}"),
+        ]
+        for (index, outcome) in outcomes.enumerated() {
+            let reader = FakeReadCommandRunner()
+            reader.outcomes = [goodDiscovery, outcome]
+            let result = await DiagnosticService(reader: reader).fetchUSBDevices()
+            switch (index, result) {
+            case (0...1, .failure(.commandFailed)), (2...3, .failure(.incompleteCapture)),
+                 (4, .failure(.malformedFormat)), (5, .failure(.unsupportedFormat)), (6, .failure(.malformedFormat)): break
+            default: XCTFail("Selected report failure was changed or discarded at case \(index)")
+            }
+            XCTAssertEqual(reader.calls, [.profilerDataTypes, .usbHostDevices])
+        }
+    }
+
+    func testUSBHostDevicesIncludeBuiltInHubsAndKeepAllocationDistinctFromCurrent() throws {
+        let devices = try DiagnosticService.parseUSBDevices("""
+        {"SPUSBHostDataType":[
+          {"_name":"USB 3.1 Bus","Driver":"FixtureController","USBKeyHardwareType":"Built-in","_items":[
+            {"_name":"Built-in hub","USBKeyHardwareType":"Built-in","USBDeviceKeyVendorID":"0x1234","USBDeviceKeyProductID":"0x0001","_items":[
+              {"_name":"Audio interface","USBKeyHardwareType":"Removable","USBDeviceKeyVendorID":"0x1234","USBDeviceKeyProductID":"0x0002","USBDeviceKeyVendorName":"Fixture","USBDeviceKeyPowerAllocation":"2.5 W (500 mA)","FutureField":{"ignored":true}},
+              {"_name":"Zero allocation","USBKeyHardwareType":"Non-removable","USBDeviceKeyVendorID":"0x1234","USBDeviceKeyProductID":"0x0003","USBDeviceKeyPowerAllocation":"0 W (0 mA)"}
+            ]}
+          ]},
+          {"_name":"Empty bus","Driver":"FixtureController","USBKeyHardwareType":"Built-in","_items":[]}
+        ]}
+        """, expectedFormat: .host).get()
+        XCTAssertEqual(devices.map(\.name), ["Built-in hub", "Audio interface", "Zero allocation"])
+        XCTAssertEqual(devices.map(\.power), [nil, .allocatedPower("2.5 W (500 mA)"), .allocatedPower("0 W (0 mA)")])
+        XCTAssertEqual(devices[1].power?.label, "Power allocated")
+        XCTAssertEqual(devices[1].power?.value, "2.5 W (500 mA)")
+        XCTAssertEqual(USBPowerReport.requiredCurrent(milliamps: "0").label, "Current required")
+        XCTAssertEqual(USBPowerReport.requiredCurrent(milliamps: "0").value, "0 mA")
+        XCTAssertTrue(try DiagnosticService.parseUSBDevices("{\"SPUSBHostDataType\":[]}", expectedFormat: .host).get().isEmpty)
+        XCTAssertTrue(try DiagnosticService.parseUSBDevices("""
+        {"SPUSBHostDataType":[{"_name":"Empty bus","Driver":"FixtureController","USBKeyHardwareType":"Built-in"}]}
+        """).get().isEmpty)
+    }
+
+    func testUSBHostMalformedOrUnknownNodesNeverBecomePartialSuccess() {
+        let goodDevice = "{\"_name\":\"Good device\",\"USBDeviceKeyVendorID\":\"0x1234\",\"USBDeviceKeyProductID\":\"0x0001\"}"
+        let badNodes = [
+            "{}",
+            #"{"_name":" ","USBDeviceKeyVendorID":"0x1234","USBDeviceKeyProductID":"0x0001"}"#,
+            "{\"_name\":\"Device\",\"USBDeviceKeyVendorID\":12,\"USBDeviceKeyProductID\":\"0x0001\"}",
+            "{\"_name\":\"Device\",\"USBDeviceKeyVendorID\":\"0x1234\"}",
+            "{\"_name\":\"Device\",\"USBDeviceKeyProductID\":\"0x0001\"}",
+            "{\"_name\":\"Device\",\"USBDeviceKeyVendorID\":\"0x1234\",\"USBDeviceKeyProductID\":\"0x0001\",\"USBDeviceKeyPowerAllocation\":500}",
+            "{\"_name\":\"Device\",\"USBDeviceKeyVendorID\":\"0x1234\",\"USBDeviceKeyProductID\":\"0x0001\",\"_items\":{}}",
+            "{\"_name\":\"Unknown device\",\"USBKeyHardwareType\":\"Built-in\"}",
+        ]
+        for node in badNodes {
+            guard case .failure = DiagnosticService.parseUSBDevices("{\"SPUSBHostDataType\":[\(goodDevice),\(node)]}") else {
+                return XCTFail("Malformed or unknown host node must reject the whole capture")
+            }
+        }
+        for json in [
+            "{\"SPUSBHostDataType\":{}}",
+            "{\"SPUSBHostDataType\":[],\"SPUSBDataType\":[]}",
+            "{\"SPUSBHostDataType\":[{\"_name\":\"USB bus\",\"USBKeyHardwareType\":\"Built-in\"}]}",
+            "{\"SPUSBHostDataType\":[{\"_name\":\"USB bus\",\"Driver\":\"Fixture\",\"USBKeyHardwareType\":\"Built-in\",\"_items\":[{\"_name\":\"Unknown child\"}]}]}",
+        ] {
+            guard case .failure = DiagnosticService.parseUSBDevices(json) else { return XCTFail("Unsupported host report was accepted") }
+        }
+        var nested = goodDevice
+        for _ in 0..<66 {
+            nested = "{\"_name\":\"Hub\",\"USBDeviceKeyVendorID\":\"0x1234\",\"USBDeviceKeyProductID\":\"0x0001\",\"_items\":[\(nested)]}"
+        }
+        guard case .failure(.malformedFormat) = DiagnosticService.parseUSBDevices("{\"SPUSBHostDataType\":[\(nested)]}") else {
+            return XCTFail("Unbounded host nesting must be rejected")
         }
     }
 
@@ -904,6 +1010,27 @@ final class BenzoCoreTests: XCTestCase {
         XCTAssertEqual(SleepSession.humanReadableReason("User"), "Power Button")
     }
 
+    func testObservedSettingPresentationPreservesMissingAndUnknownValues() {
+        let missing = ObservedSetting(key: "womp", actualValue: nil)
+        XCTAssertEqual(missing.displayName, "Wake for network access")
+        XCTAssertEqual(missing.displayValue, "Not reported")
+        XCTAssertEqual(missing.rawDetail, "womp")
+        for key in ["standby", "autopoweroff", "powernap", "proximitywake", "womp", "tcpkeepalive"] {
+            XCTAssertEqual(ObservedSetting(key: key, actualValue: "0").displayValue, "Off")
+            XCTAssertEqual(ObservedSetting(key: key, actualValue: "1").displayValue, "On")
+            XCTAssertEqual(ObservedSetting(key: key, actualValue: "2").displayValue, "2")
+        }
+        for (raw, label) in [("0", "Standard sleep"), ("3", "Safe sleep"), ("25", "Hibernate"), ("99", "Mode 99")] {
+            let setting = ObservedSetting(key: "hibernatemode", actualValue: raw)
+            XCTAssertEqual(setting.displayValue, label)
+            XCTAssertEqual(setting.rawDetail, "hibernatemode = \(raw)")
+        }
+        let unknown = ObservedSetting(key: "futurekey", actualValue: "1")
+        XCTAssertEqual(unknown.displayName, "futurekey")
+        XCTAssertEqual(unknown.displayValue, "1")
+        XCTAssertEqual(unknown.rawDetail, "futurekey = 1")
+    }
+
     func testObservedSettingsKeepMissingKeysAndRejectUnrecognizedOrMalformedData() throws {
         let settings = try DiagnosticService.parseObservedSettings("""
         System-wide power settings:
@@ -922,7 +1049,7 @@ final class BenzoCoreTests: XCTestCase {
     func testDiagnosticsPublishEachDatasetIndependently() async throws {
         let harness = FakeDependencies()
         harness.sleepResult = .failure(.unsupportedFormat)
-        harness.usbResult = .success([USBDevice(name: "Fixture USB", busPowerUsed: nil)])
+        harness.usbResult = .success([USBDevice(name: "Fixture USB")])
         harness.settingsResult = .success([ObservedSetting(key: "hibernatemode", actualValue: "3")])
         let viewModel = harness.makeViewModel()
         viewModel.loadDiagnostics()
@@ -949,7 +1076,7 @@ final class BenzoCoreTests: XCTestCase {
     func testNewRefreshClearsPriorDataAndRejectsObsoletePublicationIncludingLoading() async {
         let harness = FakeDependencies()
         harness.sleepResult = .success(SleepReadPayload(sessions: [], lastWakeReason: "Old reason"))
-        harness.usbResult = .success([USBDevice(name: "Old USB", busPowerUsed: nil)])
+        harness.usbResult = .success([USBDevice(name: "Old USB")])
         harness.settingsResult = .success([ObservedSetting(key: "hibernatemode", actualValue: "25")])
         let viewModel = harness.makeViewModel()
         viewModel.loadDiagnostics()
