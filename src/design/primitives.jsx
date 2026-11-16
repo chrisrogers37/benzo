@@ -17,6 +17,7 @@ const paths = {
   back: <path d="m15 5-7 7 7 7" />,
   warning: <><path d="m12 3 10 18H2Z" /><path d="M12 9v5m0 3v.2" /></>,
   laptop: <><rect x="4" y="4" width="16" height="12" rx="1" /><path d="M2 20h20l-2-4H4Z" /></>,
+  question: <><circle cx="12" cy="12" r="9" /><path d="M9 9a3 3 0 0 1 6 0c0 2-3 2-3 4m0 3v.2" /></>,
 }
 
 export function Icon({ name, size = 20, ...props }) {

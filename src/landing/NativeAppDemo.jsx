@@ -1,6 +1,7 @@
 import { useEffect, useId, useRef, useState } from 'react'
 import { appPresentation as app, settingOptions, siteCopy, AppSymbol, MenuPill } from '../design'
 import { canSleep, sleepDisabledReason, sleepPresets } from '../demo/useBenzoDemo'
+import { presentObservedSetting, usbPowerDetail } from '../design/appPresentation'
 
 const copy = siteCopy.demo
 
@@ -13,16 +14,22 @@ function Diagnostics({ onBack, backRef, sleepData, usbDevices, observedSettings 
     <div className="bn-diagnostic-header"><button ref={backRef} onClick={onBack}><AppSymbol name="back" size={10} />{app.diagnostics.back}</button><h3>{app.diagnostics.title}</h3><span aria-hidden="true" /></div>
     <div className="bn-diagnostic-scroll" role="region" aria-label={copy.resultsLabel} tabIndex={0}>
       <div className="bn-panel"><h3>{app.diagnostics.sessions}</h3>
-        {sleepData.status !== 'success' ? <ReadStatus result={sleepData} failure={app.diagnostics.sleepFailure} /> : sleepData.value.sessions.length === 0 ? <div className="bn-session bn-faint">{app.diagnostics.sleepEmpty}</div> : sleepData.value.sessions.map(s => <div className="bn-session" key={s.sleep}><div>{s.sleep}{s.wake != null && <><span className="bn-faint"> → </span>{s.wake}</>}</div><div><span>{s.dur}</span>{s.bat && <span className={`bn-mono${s.delta === '0%' ? ' bn-green' : ''}`}>{s.bat}{s.delta && ` (${s.delta})`}</span>}</div></div>)}
+        {sleepData.status !== 'success' ? <ReadStatus result={sleepData} failure={app.diagnostics.sleepFailure} /> : sleepData.value.sessions.length === 0 ? <div className="bn-session bn-faint">{app.diagnostics.sleepEmpty}</div> : sleepData.value.sessions.map(s => <div className="bn-session" key={s.sleep}><div>{s.sleep}{s.wake != null && <><span className="bn-faint"> → </span>{s.wake}</>}</div><div><span>{s.dur}</span>{s.bat && <span className={`bn-mono${s.delta === '0%' ? ' bn-green' : ''}`}>{s.bat}{s.delta && ` (${s.delta})`}</span>}{s.wakeReason && <span>{s.wakeReason}</span>}</div></div>)}
       </div>
       <div className="bn-panel"><h3>{app.diagnostics.wakeReason}</h3>
-        {sleepData.status !== 'success' ? <ReadStatus result={sleepData} failure={app.diagnostics.sleepFailure} /> : <div className="bn-wake"><AppSymbol name="laptop" size={16} /><span>{sleepData.value.lastWakeReason ?? app.diagnostics.unknown}</span></div>}
+        {sleepData.status !== 'success' ? <ReadStatus result={sleepData} failure={app.diagnostics.sleepFailure} /> : <div className="bn-wake"><AppSymbol name={sleepData.value.lastWakeReason == null ? 'question' : 'laptop'} size={16} /><span>{sleepData.value.lastWakeReason ?? app.diagnostics.unknown}</span></div>}
       </div>
       <div className="bn-panel"><h3>{app.diagnostics.usb}</h3>
-        {usbDevices.status !== 'success' ? <ReadStatus result={usbDevices} failure={app.diagnostics.usbFailure} /> : usbDevices.value.length === 0 ? <div className="bn-session bn-faint">{app.diagnostics.usbEmpty}</div> : usbDevices.value.map(d => <div className="bn-usb" key={d.name}><span>{d.name}</span>{d.power != null && <span className="bn-mono">{d.power} mA</span>}</div>)}
+        {usbDevices.status !== 'success' ? <ReadStatus result={usbDevices} failure={app.diagnostics.usbErrors[usbDevices.error] ?? app.diagnostics.usbFailure} /> : usbDevices.value.length === 0 ? <div className="bn-session bn-faint">{app.diagnostics.usbEmpty}</div> : <>
+          {usbDevices.value.map((d, index) => <div className="bn-usb" key={`${index}-${d.name}`}><span>{d.name}</span>{usbPowerDetail(d.power) && <span className="bn-usb-power">{usbPowerDetail(d.power)}</span>}</div>)}
+          {usbDevices.value.some(d => usbPowerDetail(d.power)) && <div className="bn-diagnostic-note">{app.diagnostics.usbPowerNote}</div>}
+        </>}
       </div>
       <div className="bn-panel"><h3>{app.diagnostics.settings}</h3>
-        {observedSettings.status !== 'success' ? <ReadStatus result={observedSettings} failure={app.diagnostics.settingsFailure} /> : <>{observedSettings.value.map(s => <div className="bn-verification" key={s.key}><span className="bn-mono">{s.key}</span><span className="bn-mono bn-value">{s.actualValue ?? app.diagnostics.missing}</span></div>)}<div className="bn-verification-summary bn-faint">{app.diagnostics.summary}</div></>}
+        {observedSettings.status !== 'success' ? <ReadStatus result={observedSettings} failure={app.diagnostics.settingsFailure} /> : <>{observedSettings.value.map(s => {
+          const setting = presentObservedSetting(s)
+          return <div className="bn-observed-setting" key={s.key}><div><span>{setting.name}</span><span className="bn-value">{setting.value}</span></div><div className="bn-mono bn-setting-detail">{setting.rawDetail}</div></div>
+        })}<div className="bn-diagnostic-note">{app.diagnostics.summary}</div></>}
       </div>
     </div>
   </>

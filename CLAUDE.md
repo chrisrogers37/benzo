@@ -60,7 +60,7 @@ Benzo/Benzo/                     — Swift macOS menubar app
 │   ├── RecoveryJournal.swift    — per-profile captured originals and operation evidence
 │   ├── OriginalSettingsBackup.swift — legacy flat-backup decoder
 │   ├── SleepSession.swift       — sleep/wake event with duration, battery delta, wake reason
-│   └── USBDevice.swift          — USB device name and power draw
+│   └── USBDevice.swift          — USB names and reported power requirements/allocations
 ├── Services/
 │   ├── PMSetService.swift       — fixed pmset capture request and target mapping
 │   ├── RecoveryTransport.swift  — unprivileged reads and exact-cell one-shot command writes

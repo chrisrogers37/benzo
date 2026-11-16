@@ -216,7 +216,11 @@ final class FakeDependencies {
 final class FakeReadCommandRunner: ReadCommandRunning {
     var calls: [ReadCommand] = []
     var outcome = CommandOutcome(stdout: Data(), stderr: Data(), termination: .exited(0), outputComplete: true, outputTruncated: false, directChildStopped: true)
-    func run(_ command: ReadCommand) async -> CommandOutcome { calls.append(command); return outcome }
+    var outcomes: [CommandOutcome] = []
+    func run(_ command: ReadCommand) async -> CommandOutcome {
+        calls.append(command)
+        return outcomes.isEmpty ? outcome : outcomes.removeFirst()
+    }
 }
 
 /// GitHub metadata only. No network, credentials, app launch or privileged boundaries.

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useReducer } from 'react'
-import { appPresentation, exampleReadings, settingOptions } from '../design/appPresentation'
+import { appPresentation, diagnosticReadings, settingOptions } from '../design/appPresentation'
 import { siteCopy } from '../design/siteCopy'
 
 const originals = Object.freeze({ powernap: '1', womp: '1', tcpkeepalive: '1' })
@@ -25,6 +25,8 @@ const ownedSelectionValues = (settings, captured) => Object.fromEntries(
   Object.entries(targetValues(settings, captured)).filter(([key, value]) => value !== captured[key]),
 )
 
+const observedSettingsFor = values => ({ status: 'success', value: settingOptions.flatMap(({ commands }) => commands.map(([key]) => ({ key, actualValue: values[key] ?? null }))) })
+
 export const initialDemoState = (active = true) => ({
   running: true, open: true, view: 'main',
   phase: active ? 'activeVerified' : 'off', options: true,
@@ -37,9 +39,9 @@ export const initialDemoState = (active = true) => ({
   sleepCapability: true, sleepTimer: null, sleepGeneration: 0,
   sleepRequestInFlight: false, sleepRequestGeneration: null, sleepMessage: '',
   operation: null, quitPending: false, resumePhase: null, conflict: null, conflictDeferred: false, conflictResolution: null, legacyUnknown: false,
-  sleepData: { status: 'success', value: { sessions: exampleReadings.sleepSessions, lastWakeReason: exampleReadings.wakeReason } },
-  usbDevices: { status: 'success', value: exampleReadings.usbDevices },
-  observedSettings: { status: 'success', value: settingOptions.flatMap(({ commands }) => commands.map(([key]) => ({ key, actualValue: exampleReadings.values[key] }))) },
+  sleepData: { status: 'success', value: diagnosticReadings.sleep },
+  usbDevices: { status: 'success', value: diagnosticReadings.usbDevices },
+  observedSettings: observedSettingsFor(active ? selectedValues(selectedDefaults) : originals),
 })
 
 function publish(state, phase, notice = '') {
@@ -114,8 +116,8 @@ function reduceDemo(state, action) {
     case 'helperSetupFailed': return { ...state, helperSetupError: action.message }
     case 'pill': return state.open
       ? { ...state, open: false, update: { status: 'idle' }, helperRemovalConfirmation: false }
-      : { ...state, open: true, view: action.alt ? 'diagnostics' : 'main' }
-    case 'diagnostics': return { ...state, update: { status: 'idle' }, helperRemovalConfirmation: false, running: true, open: true, view: 'diagnostics', notice: '' }
+      : { ...state, open: true, view: action.alt ? 'diagnostics' : 'main', ...(action.alt ? { observedSettings: observedSettingsFor(state.currentValues) } : {}) }
+    case 'diagnostics': return { ...state, update: { status: 'idle' }, helperRemovalConfirmation: false, running: true, open: true, view: 'diagnostics', observedSettings: observedSettingsFor(state.currentValues), notice: '' }
     case 'back': return { ...state, helperRemovalConfirmation: false, view: 'main' }
     case 'options': return { ...state, options: !state.options }
     case 'setting':
