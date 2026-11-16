@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useReducer } from 'react'
 import { appPresentation, diagnosticReadings, settingOptions } from '../design/appPresentation'
 import { siteCopy } from '../design/siteCopy'
+import { useSleepAssertions } from './useSleepAssertions'
 
 const originals = Object.freeze({ powernap: '1', womp: '1', tcpkeepalive: '1' })
 const exampleCapturedAt = 'Nov 4, 2026 at 9:00 AM (example)'
@@ -267,7 +268,7 @@ function reduceDemo(state, action) {
 const browserClock = { now: () => Date.now() }
 const browserScheduler = { setTimeout: (callback, delay) => setTimeout(callback, delay), clearTimeout: timer => clearTimeout(timer) }
 
-export function useBenzoDemo({ clock = browserClock, scheduler = browserScheduler } = {}) {
+export function useBenzoDemo({ clock = browserClock, scheduler = browserScheduler, assertionRead, assertionNow } = {}) {
   const [state, reduce] = useReducer(benzoDemoReducer, undefined, () => initialDemoState(true))
   const dispatch = useCallback(action => reduce(action.type === 'scheduleSleep' ? { ...action, now: clock.now() } : action), [clock])
   useEffect(() => {
@@ -307,5 +308,9 @@ export function useBenzoDemo({ clock = browserClock, scheduler = browserSchedule
       document.removeEventListener('visibilitychange', visibility)
     }
   }, [])
-  return [state, dispatch]
+  const sleepAssertions = useSleepAssertions({
+    enabled: state.running && state.open && state.view === 'diagnostics' && !state.quitPending,
+    read: assertionRead, now: assertionNow,
+  })
+  return [{ ...state, sleepAssertions }, dispatch]
 }

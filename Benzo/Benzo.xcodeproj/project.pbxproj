@@ -132,6 +132,13 @@
 		D099CFAB8ED9A15E13E5E3C7 /* SleepCountdown.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4283E00007D3CBB532AB5706; };
 		3F7C95B1D19F481CB15BFEFC /* SleepAppTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 281C0A954B26D8D07AB543A6; };
 		E34C422455D07D66E8519F85 /* SleepCommandTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2E775471CD40DCC2FE76A8ED; };
+		E0BB3446BF3AEAAE0E1056B2 /* SleepAssertions.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1FD5130C511F4F1E81DFF9F7; };
+		47739844549569B38E15B165 /* SleepAssertions.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1FD5130C511F4F1E81DFF9F7; };
+		214D0A3D9D798058B1B1E702 /* SleepAssertionsViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = B121EBBA6262417F63B9C73C; };
+		215E1B6E79863EB26209389E /* SleepAssertionsViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = B121EBBA6262417F63B9C73C; };
+		AAA8106D007C28429369967E /* SleepAssertionsPanel.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1DC05326D56CA6237E03F2F; };
+		ED141EADAA2B27641E09A778 /* SleepAssertionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B803BFC19839CDBB99F575DA; };
+		E29459207B8F2AB1765ED258 /* SleepAssertionsLifecycleTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8325137DAE87A4DEFE24341C; };
 /* End PBXBuildFile section */
 
 /* Begin PBXCopyFilesBuildPhase section */
@@ -227,6 +234,11 @@
 		4283E00007D3CBB532AB5706 /* SleepCountdown.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SleepCountdown.swift; sourceTree = "<group>"; };
 		281C0A954B26D8D07AB543A6 /* SleepAppTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SleepAppTests.swift; sourceTree = "<group>"; };
 		2E775471CD40DCC2FE76A8ED /* SleepCommandTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SleepCommandTests.swift; sourceTree = "<group>"; };
+		1FD5130C511F4F1E81DFF9F7 /* SleepAssertions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SleepAssertions.swift; sourceTree = "<group>"; };
+		B121EBBA6262417F63B9C73C /* SleepAssertionsViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SleepAssertionsViewModel.swift; sourceTree = "<group>"; };
+		F1DC05326D56CA6237E03F2F /* SleepAssertionsPanel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SleepAssertionsPanel.swift; sourceTree = "<group>"; };
+		B803BFC19839CDBB99F575DA /* SleepAssertionTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SleepAssertionTests.swift; sourceTree = "<group>"; };
+		8325137DAE87A4DEFE24341C /* SleepAssertionsLifecycleTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SleepAssertionsLifecycleTests.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -295,6 +307,7 @@
 		A50000040000000000000004 /* Models */ = {
 			isa = PBXGroup;
 			children = (
+				1FD5130C511F4F1E81DFF9F7 /* SleepAssertions.swift */,
 				422AE811A2AA9270AEB58600 /* SleepIntent.swift */,
 				9D0000000000000000000001 /* AppVersion.swift */,
 				9F0000000000000000000003 /* HelperReadiness.swift */,
@@ -345,6 +358,7 @@
 		A50000060000000000000006 /* ViewModels */ = {
 			isa = PBXGroup;
 			children = (
+				B121EBBA6262417F63B9C73C /* SleepAssertionsViewModel.swift */,
 				9D0000000000000000000003 /* UpdateViewModel.swift */,
 				A20000090000000000000009 /* BenzoViewModel.swift */,
 			);
@@ -354,6 +368,7 @@
 		A50000070000000000000007 /* Views */ = {
 			isa = PBXGroup;
 			children = (
+				F1DC05326D56CA6237E03F2F /* SleepAssertionsPanel.swift */,
 				A2000010000000000000000A /* PopoverContentView.swift */,
 				A2000011000000000000000B /* MasterToggleView.swift */,
 				A2000012000000000000000C /* SettingRowView.swift */,
@@ -384,6 +399,8 @@
 		D50000000000000000000001 /* BenzoTests */ = {
 			isa = PBXGroup;
 			children = (
+				8325137DAE87A4DEFE24341C /* SleepAssertionsLifecycleTests.swift */,
+				B803BFC19839CDBB99F575DA /* SleepAssertionTests.swift */,
 				2E775471CD40DCC2FE76A8ED /* SleepCommandTests.swift */,
 				281C0A954B26D8D07AB543A6 /* SleepAppTests.swift */,
 				6C55F139477334C3ABFA15FD /* CommandToolEngineTests.swift */,
@@ -527,6 +544,9 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				AAA8106D007C28429369967E /* SleepAssertionsPanel.swift in Sources */,
+				214D0A3D9D798058B1B1E702 /* SleepAssertionsViewModel.swift in Sources */,
+				E0BB3446BF3AEAAE0E1056B2 /* SleepAssertions.swift in Sources */,
 				17FC334FBDA0C14AE8DD610F /* SleepCountdown.swift in Sources */,
 				7924EDAA56A86A387107C1C7 /* SleepIntent.swift in Sources */,
 				441B536390B1070121D15EF0 /* CommandProtocol.swift in Sources */,
@@ -580,6 +600,10 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				E29459207B8F2AB1765ED258 /* SleepAssertionsLifecycleTests.swift in Sources */,
+				ED141EADAA2B27641E09A778 /* SleepAssertionTests.swift in Sources */,
+				215E1B6E79863EB26209389E /* SleepAssertionsViewModel.swift in Sources */,
+				47739844549569B38E15B165 /* SleepAssertions.swift in Sources */,
 				E34C422455D07D66E8519F85 /* SleepCommandTests.swift in Sources */,
 				3F7C95B1D19F481CB15BFEFC /* SleepAppTests.swift in Sources */,
 				D099CFAB8ED9A15E13E5E3C7 /* SleepCountdown.swift in Sources */,

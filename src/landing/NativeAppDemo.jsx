@@ -3,16 +3,19 @@ import { appPresentation as app, settingOptions, siteCopy, AppSymbol, MenuPill }
 import { canSleep, sleepDisabledReason, sleepPresets } from '../demo/useBenzoDemo'
 import { presentObservedSetting, usbPowerDetail } from '../design/appPresentation'
 
+import SleepAssertionsPanel from './SleepAssertionsPanel'
+
 const copy = siteCopy.demo
 
 function ReadStatus({ result, failure }) {
   return <div className="bn-session bn-faint">{result.status === 'failure' ? failure : app.diagnostics.loading}</div>
 }
 
-function Diagnostics({ onBack, backRef, sleepData, usbDevices, observedSettings }) {
+function Diagnostics({ onBack, backRef, sleepData, usbDevices, observedSettings, sleepAssertions }) {
   return <>
     <div className="bn-diagnostic-header"><button ref={backRef} onClick={onBack}><AppSymbol name="back" size={10} />{app.diagnostics.back}</button><h3>{app.diagnostics.title}</h3><span aria-hidden="true" /></div>
     <div className="bn-diagnostic-scroll" role="region" aria-label={copy.resultsLabel} tabIndex={0}>
+      <SleepAssertionsPanel observation={sleepAssertions} />
       <div className="bn-panel"><h3>{app.diagnostics.sessions}</h3>
         {sleepData.status !== 'success' ? <ReadStatus result={sleepData} failure={app.diagnostics.sleepFailure} /> : sleepData.value.sessions.length === 0 ? <div className="bn-session bn-faint">{app.diagnostics.sleepEmpty}</div> : sleepData.value.sessions.map(s => <div className="bn-session" key={s.sleep}><div>{s.sleep}{s.wake != null && <><span className="bn-faint"> → </span>{s.wake}</>}</div><div><span>{s.dur}</span>{s.bat && <span className={`bn-mono${s.delta === '0%' ? ' bn-green' : ''}`}>{s.bat}{s.delta && ` (${s.delta})`}</span>}{s.wakeReason && <span>{s.wakeReason}</span>}</div></div>)}
       </div>
@@ -210,7 +213,7 @@ export default function NativeAppDemo({ state, dispatch }) {
         }
       }}>
         <div className={view === 'diagnostics' ? 'bn-diagnostic-content' : 'bn-popover-scroll'} role={view === 'diagnostics' ? undefined : 'region'} aria-label={view === 'diagnostics' ? undefined : 'Benzo controls'} tabIndex={view === 'diagnostics' ? undefined : 0}>
-        {view === 'setup' ? <Setup readiness={state.helperReadiness} error={state.helperSetupError} recoveryMessage={state.hasSession ? (!helperReady ? app.setup.recoveryBlocked : phase === 'recoveryRequired' ? statusMessage : null) : null} needsSleepAccessUpdate={state.helperReadiness === 'ready' && state.sleepCapability === false} canReplaceHelper={canReplaceHelper} canRemoveHelper={canRemoveHelper} removalConfirmation={state.helperRemovalConfirmation} setupBusy={state.isPerformingHelperSetup || state.sleepRequestInFlight} actionRef={setupActionRef} onBack={backFromSetup} dispatch={dispatch} /> : view === 'diagnostics' ? <Diagnostics backRef={diagnosticBackRef} sleepData={state.sleepData} usbDevices={state.usbDevices} observedSettings={state.observedSettings} onBack={backFromDiagnostics} /> : <>
+        {view === 'setup' ? <Setup readiness={state.helperReadiness} error={state.helperSetupError} recoveryMessage={state.hasSession ? (!helperReady ? app.setup.recoveryBlocked : phase === 'recoveryRequired' ? statusMessage : null) : null} needsSleepAccessUpdate={state.helperReadiness === 'ready' && state.sleepCapability === false} canReplaceHelper={canReplaceHelper} canRemoveHelper={canRemoveHelper} removalConfirmation={state.helperRemovalConfirmation} setupBusy={state.isPerformingHelperSetup || state.sleepRequestInFlight} actionRef={setupActionRef} onBack={backFromSetup} dispatch={dispatch} /> : view === 'diagnostics' ? <Diagnostics sleepAssertions={state.sleepAssertions} backRef={diagnosticBackRef} sleepData={state.sleepData} usbDevices={state.usbDevices} observedSettings={state.observedSettings} onBack={backFromDiagnostics} /> : <>
           <div className="bn-master"><div><strong>{statusTitle}</strong>{!['off', 'activeVerified'].includes(phase) && <p>{statusMessage}</p>}</div><button className={`bn-toggle${active ? ' bn-on' : ''}`} role="switch" aria-label={active ? app.master.restore : app.master.apply} aria-checked={active} disabled={!canToggleMaster} onClick={() => dispatch({ type: 'active' })}><span /></button></div>
           {state.helperReadiness !== 'ready' && <div className="bn-helper-status"><strong>{helperStatus.title}</strong><p className="bn-control-reason">{state.hasSession ? app.setup.recoveryBlocked : helperStatus.message}</p></div>}
           <SleepControls state={state} dispatch={dispatch} />

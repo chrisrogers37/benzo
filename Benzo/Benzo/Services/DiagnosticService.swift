@@ -3,6 +3,15 @@ import Foundation
 struct DiagnosticService {
     let reader: any ReadCommandRunning
 
+    func fetchSleepAssertions() async -> Result<SleepAssertions, DiagnosticReadError> {
+        let outcome = await reader.run(.sleepAssertions)
+        guard outcome.termination == .exited(0), outcome.directChildStopped, outcome.stderr.isEmpty else {
+            return .failure(.commandFailed(outcome))
+        }
+        guard outcome.outputComplete, !outcome.outputTruncated else { return .failure(.incompleteCapture(outcome)) }
+        return SleepAssertions.parse(outcome.stdout)
+    }
+
     func fetchSleepData() async -> Result<SleepReadPayload, DiagnosticReadError> {
         await read(.sleepLog).flatMap(Self.parseSleepLog)
     }

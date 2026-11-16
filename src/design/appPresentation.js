@@ -79,6 +79,23 @@ export const appPresentation = {
   },
   mainName: 'Benzo sleep controls',
   diagnostics: {
+    assertions: {
+      title: 'Keeping Your Mac Awake',
+      refresh: 'Refresh', refreshing: 'Refreshing…', loading: 'Reading sleep activity…', idle: 'Not checked',
+      cadence: 'Updates every 5 seconds while Diagnostics is open.',
+      explanation: 'Automatic idle-sleep prevention does not guarantee that Sleep Now is blocked.',
+      lastUpdated: 'Last updated', stale: 'Last successful observation — stale.',
+      failure: {
+        failed: 'Could not read sleep activity.', unsupported: 'This sleep activity format is not supported.',
+        malformed: 'The sleep activity read could not be understood.', incomplete: 'The sleep activity read was incomplete.',
+        unsettled: 'Live refresh is paused for this app session because the previous read did not stop cleanly.',
+      },
+      idleTitle: 'Automatic idle sleep', systemTitle: 'System sleep', otherTitle: 'Display & other activity',
+      idleEmpty: 'No automatic idle-sleep assertions reported.', systemEmpty: 'No system-sleep assertions reported.',
+      otherExplanation: 'These reports are not classified as preventing system sleep.',
+      details: 'Assertion details', kernelTitle: 'System information', kernelDetails: 'Kernel details',
+      kernelExplanation: 'Kernel reports are separate from app sleep-prevention assertions.',
+    },
     name: 'Benzo diagnostics', title: 'Diagnostics', back: 'Back',
     sessions: 'Recent Sleep Sessions', wakeReason: 'Last Wake Reason', usb: 'Connected USB Devices', settings: 'Current Settings',
     loading: 'Loading...', sleepFailure: 'Could not read sleep history', sleepEmpty: 'No sleep sessions reported',

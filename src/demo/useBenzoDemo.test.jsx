@@ -34,6 +34,48 @@ function Demo({ time }) {
 }
 const click = name => fireEvent.click(screen.getByRole('button', { name, exact: true }))
 
+describe('sleep observations in the active demo', () => {
+  it('owns reads only during Diagnostics and leaves power admission unchanged', async () => {
+    vi.useFakeTimers()
+    const value = { processes: [], kernelSummary: 'No kernel assertions reported', kernelDetails: [], sleepPreventers: [] }
+    const read = vi.fn(async () => ({ status: 'success', value }))
+    const { result, unmount } = renderHook(() => useBenzoDemo({ assertionRead: read }))
+    const before = captured(result.current[0])
+    expect(read).not.toHaveBeenCalled()
+    await act(async () => result.current[1]({ type: 'diagnostics' }))
+    expect(read).toHaveBeenCalledTimes(1)
+    expect(result.current[0].sleepAssertions.status).toBe('success')
+    expect(canSleep(result.current[0])).toBe(true)
+    expect(captured(result.current[0])).toEqual(before)
+    await act(async () => vi.advanceTimersByTimeAsync(5000))
+    expect(read).toHaveBeenCalledTimes(2)
+    await act(async () => result.current[1]({ type: 'back' }))
+    await act(async () => vi.advanceTimersByTimeAsync(10000))
+    expect(read).toHaveBeenCalledTimes(2)
+    expect(result.current[0].sleepAssertions.snapshot).toBeNull()
+    await act(async () => result.current[1]({ type: 'diagnostics' }))
+    expect(read).toHaveBeenCalledTimes(3)
+    await act(async () => result.current[1]({ type: 'quit' }))
+    await act(async () => vi.advanceTimersByTimeAsync(10000))
+    expect(read).toHaveBeenCalledTimes(3)
+    expect(result.current[0].running).toBe(false)
+    unmount()
+    vi.useRealTimers()
+  })
+
+  it('renders the live section and its refresh control inside the keyboard scroll region', async () => {
+    render(<Demo />)
+    await act(async () => click('Diagnostics'))
+    const heading = screen.getByRole('heading', { name: 'Keeping Your Mac Awake' })
+    expect(heading.closest('[role="region"]').getAttribute('tabindex')).toBe('0')
+    expect(screen.getByText('Playing audio')).toBeTruthy()
+    expect(screen.getByText('Backing up files')).toBeTruthy()
+    await act(async () => click('Refresh sleep activity'))
+    click('Back')
+    expect(screen.queryByRole('heading', { name: 'Keeping Your Mac Awake' })).toBeNull()
+  })
+})
+
 describe('sleep admission and countdown reducer', () => {
   it.each([5, 15, 30, 60])('arms the %i minute preset without applying settings or changing originals', minutes => {
     const before = initialDemoState()

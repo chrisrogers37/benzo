@@ -60,6 +60,7 @@ Benzo/Benzo/                     — Swift macOS menubar app
 │   ├── RecoveryJournal.swift    — per-profile captured originals and operation evidence
 │   ├── OriginalSettingsBackup.swift — legacy flat-backup decoder
 │   ├── SleepSession.swift       — sleep/wake event with duration, battery delta, wake reason
+│   ├── SleepAssertions.swift    — strict pmset assertion observation and classification
 │   └── USBDevice.swift          — USB names and reported power requirements/allocations
 ├── Services/
 │   ├── PMSetService.swift       — fixed pmset capture request and target mapping
@@ -76,7 +77,8 @@ Benzo/Benzo/                     — Swift macOS menubar app
 │   ├── BackupService.swift      — legacy flat-backup decoding only
 │   └── DiagnosticService.swift  — bounded injected reads; parses logs/USB and observes settings
 ├── ViewModels/
-│   └── BenzoViewModel.swift     — frozen selection, control/recovery state and diagnostics
+│   ├── BenzoViewModel.swift     — frozen selection, control/recovery state and diagnostics
+│   └── SleepAssertionsViewModel.swift — visible-only, memory-only sleep activity refresh
 ├── Views/
 │   ├── PopoverContentView.swift — main layout, switches between setup/normal/diagnostic views
 │   ├── MasterToggleView.swift   — truthful control/recovery state and gated toggle
@@ -102,6 +104,8 @@ Casks/benzo.rb                   — Homebrew cask formula
 ```
 
 ### Key Principles
+
+- **Sleep observations**: Diagnostics polls the bounded unprivileged assertion reader only while visible. Failed refreshes retain explicitly stale observations; close discards process data. An unsettled child pauses further reads for the app session. This reader never changes sleep admission or power settings. See `docs/live-sleep-assertions.md`.
 
 - **Mockup sync**: Any UI or behavioral change to the native app must also be reflected in `src/landing/NativeAppDemo.jsx`, `src/demo/useBenzoDemo.js` and `src/design/appPresentation.js`. `BenzoLanding` owns the single state. Preserve historical `BenzoHybrid`/`BenzoMockup` sources, reducer and tests.
 - **Draft fidelity**: Marketing redesigns must preserve the native UI and interactive controls in `src/landing/NativeAppDemo.jsx`; keep demo navigation/disclosures outside the app panel. Verify against current Swift source, and reserve pixel-parity claims for comparison with an approved native screenshot.

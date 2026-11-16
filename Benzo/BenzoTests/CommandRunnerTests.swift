@@ -6,13 +6,13 @@ final class CommandRunnerTests: XCTestCase {
     // not extra engine waits; fixture children also self-expire after five seconds.
     private let schedulingTolerance: TimeInterval = 2
 
-    func testFixedReadRequestsIncludeBoundedProfilerDiscoveryAndBothUSBFormats() {
+    func testFixedReadRequestsIncludeUSBFormatsAndSleepAssertions() {
         let requests = ReadCommand.allCases.map(\.request)
-        XCTAssertEqual(requests.map(\.executable), ["/usr/bin/pmset", "/usr/bin/pmset", "/usr/sbin/system_profiler", "/usr/sbin/system_profiler", "/usr/sbin/system_profiler"])
-        XCTAssertEqual(requests.map(\.arguments), [["-g"], ["-g", "log"], ["-listDataTypes"], ["SPUSBDataType", "-json"], ["SPUSBHostDataType", "-json"]])
-        XCTAssertEqual(requests.map(\.timeout), [10, 10, 10, 30, 30])
-        XCTAssertEqual(requests.map(\.maximumOutputBytes), [8 * 1_024 * 1_024, 8 * 1_024 * 1_024, 64 * 1_024, 16 * 1_024 * 1_024, 16 * 1_024 * 1_024])
-        XCTAssertEqual(requests.map(\.finalizationReserve), [0.5, 0.5, 0.5, 0.5, 0.5])
+        XCTAssertEqual(requests.map(\.executable), ["/usr/bin/pmset", "/usr/bin/pmset", "/usr/sbin/system_profiler", "/usr/sbin/system_profiler", "/usr/sbin/system_profiler", "/usr/bin/pmset"])
+        XCTAssertEqual(requests.map(\.arguments), [["-g"], ["-g", "log"], ["-listDataTypes"], ["SPUSBDataType", "-json"], ["SPUSBHostDataType", "-json"], ["-g", "assertions"]])
+        XCTAssertEqual(requests.map(\.timeout), [10, 10, 10, 30, 30, 3])
+        XCTAssertEqual(requests.map(\.maximumOutputBytes), [8 * 1_024 * 1_024, 8 * 1_024 * 1_024, 64 * 1_024, 16 * 1_024 * 1_024, 16 * 1_024 * 1_024, 256 * 1_024])
+        XCTAssertEqual(requests.map(\.finalizationReserve), [0.5, 0.5, 0.5, 0.5, 0.5, 0.5])
     }
 
     func testDrainsMoreThanOneMiBFromEachStreamWithoutDeadlock() async throws {

@@ -4,6 +4,7 @@ import AppKit
 struct PopoverContentView: View {
     @ObservedObject var viewModel: BenzoViewModel
     @ObservedObject var updates: UpdateViewModel
+    let sleepAssertions: SleepAssertionsViewModel
     let maximumContentHeight: () -> CGFloat
     @State private var showOptions = false
     @State private var deferredConflicts: Set<ManagedCell> = []
@@ -35,7 +36,7 @@ struct PopoverContentView: View {
                 )
             }
         } else if viewModel.showDiagnostics {
-            DiagnosticView(viewModel: viewModel, maximumContentHeight: maximumContentHeight, onBack: {
+            DiagnosticView(viewModel: viewModel, sleepAssertions: sleepAssertions, maximumContentHeight: maximumContentHeight, onBack: {
                 returnToControl = .diagnostics
                 viewModel.showDiagnostics = false
             })
