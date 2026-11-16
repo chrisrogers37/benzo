@@ -3,6 +3,7 @@ import AppKit
 
 struct DiagnosticView: View {
     @ObservedObject var viewModel: BenzoViewModel
+    let sleepAssertions: SleepAssertionsViewModel
     let maximumContentHeight: () -> CGFloat
     let onBack: () -> Void
     @FocusState private var backFocused: Bool
@@ -21,6 +22,7 @@ struct DiagnosticView: View {
                 }
             ScrollView {
                 VStack(alignment: .leading, spacing: 0) {
+                    SleepAssertionsPanel(model: sleepAssertions)
                     sleepSessionsPanel
                     wakeReasonPanel
                     usbDevicesPanel
@@ -66,9 +68,11 @@ struct DiagnosticView: View {
         .onAppear {
             heightLimit = maximumContentHeight()
             viewModel.loadDiagnostics()
+            sleepAssertions.setDiagnosticsVisible(true)
             backFocused = true
             backAccessibilityFocused = true
         }
+        .onDisappear { sleepAssertions.setDiagnosticsVisible(false) }
     }
 
     private func scrollDiagnostics(down: Bool, page: Bool = false) {

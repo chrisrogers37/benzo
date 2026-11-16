@@ -7,6 +7,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
     private var popover: NSPopover!
     private let viewModel = AppDelegate.makeViewModel()
     private let updateViewModel = AppDelegate.makeUpdateViewModel()
+    private let sleepAssertions = SleepAssertionsViewModel(
+        read: { await DiagnosticService(reader: CommandRunner()).fetchSleepAssertions() },
+        now: { Date() },
+        wait: { seconds in try await Task.sleep(nanoseconds: UInt64(seconds * 1_000_000_000)) }
+    )
     private var eventMonitor: Any?
     private var terminationPending = false
 
@@ -81,7 +86,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
             button.setAccessibilityHelp("Open Benzo sleep controls. Diagnostics are available inside the panel.")
         }
 
-        let contentView = PopoverContentView(viewModel: viewModel, updates: updateViewModel,
+        let contentView = PopoverContentView(viewModel: viewModel, updates: updateViewModel, sleepAssertions: sleepAssertions,
             maximumContentHeight: { [weak self] in self?.maximumPopoverContentHeight ?? 600 })
             .onExitCommand { [weak self] in self?.closePopover() }
         let hostingController = NSHostingController(rootView: contentView)
@@ -101,11 +106,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
         }
     }
 
-    @objc private func systemWillSleep(_ notification: Notification) { viewModel.systemWillSleep() }
-    @objc private func systemDidWake(_ notification: Notification) { viewModel.systemDidWake() }
+    @objc private func systemWillSleep(_ notification: Notification) {
+        sleepAssertions.setSuspended(true)
+        viewModel.systemWillSleep()
+    }
+    @objc private func systemDidWake(_ notification: Notification) {
+        sleepAssertions.setSuspended(false)
+        viewModel.systemDidWake()
+    }
 
     func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
         updateViewModel.cancelCheck()
+        sleepAssertions.setPopoverVisible(false)
         guard !terminationPending else { return .terminateLater }
         terminationPending = true
         Task { await settleTermination(sender) }
@@ -128,6 +140,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
                 alert.buttons[0].keyEquivalent = "\u{1b}"
                 alert.runModal()
                 terminationPending = false
+                sleepAssertions.setPopoverVisible(popover.isShown)
                 application.reply(toApplicationShouldTerminate: false)
                 return
             }
@@ -146,6 +159,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
                 return
             default:
                 terminationPending = false
+                sleepAssertions.setPopoverVisible(popover.isShown)
                 application.reply(toApplicationShouldTerminate: false)
                 return
             }
@@ -221,6 +235,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
         guard let button = statusItem.button else { return }
         NSApplication.shared.activate(ignoringOtherApps: true)
         popover.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
+        sleepAssertions.setDiagnosticsVisible(viewModel.showDiagnostics && !viewModel.showHelperSetup)
+        sleepAssertions.setPopoverVisible(!terminationPending)
         popover.contentViewController?.view.window?.makeKey()
 
         eventMonitor = NSEvent.addGlobalMonitorForEvents(matching: [.leftMouseDown, .rightMouseDown]) { [weak self] _ in
@@ -230,6 +246,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
 
     private func closePopover() {
         updateViewModel.cancelCheck()
+        sleepAssertions.setPopoverVisible(false)
         popover.performClose(nil)
         if let monitor = eventMonitor {
             NSEvent.removeMonitor(monitor)
@@ -239,6 +256,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
 
     func popoverDidClose(_ notification: Notification) {
         updateViewModel.cancelCheck()
+        sleepAssertions.setPopoverVisible(false)
     }
 }
 

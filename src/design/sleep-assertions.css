@@ -1,0 +1,22 @@
+.benzo-site .bn-assertion-heading { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; padding-right: 16px; }
+.benzo-site .bn-assertion-heading h3 { padding-right: 0; }
+.benzo-site .bn-assertion-heading > button { flex-shrink: 0; color: var(--native-control-accent); font-size: var(--native-small); }
+.benzo-site .bn-assertion-heading > button:disabled { color: var(--native-muted); }
+.benzo-site .bn-assertion-body { padding: 0 16px 12px; overflow-wrap: anywhere; line-height: 1.4; }
+.benzo-site .bn-assertion-body p { margin: 3px 0; }
+.benzo-site .bn-assertion-note { color: var(--native-muted); font-size: var(--native-small); }
+.benzo-site .bn-assertion-failure { color: var(--native-red); font-size: var(--native-small); }
+.benzo-site .bn-assertion-group { margin-top: 10px; }
+.benzo-site .bn-assertion-group h4 { margin: 0 0 4px; color: var(--native-ink); font-size: var(--native-secondary); font-weight: 600; }
+.benzo-site .bn-assertion-group ul { list-style: none; padding: 0; margin: 0; }
+.benzo-site .bn-assertion-group > ul > li + li { margin-top: 8px; }
+.benzo-site .bn-assertion-process { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; font-size: var(--native-secondary); }
+.benzo-site .bn-assertion-process > strong { font-weight: 500; }
+.benzo-site .bn-assertion-process > span { flex-shrink: 0; font-size: var(--native-small); color: var(--native-muted); }
+.benzo-site .bn-assertion-description { color: var(--native-muted); font-size: var(--native-small); }
+.benzo-site .bn-assertions details { color: var(--native-muted); font-size: var(--native-small); }
+.benzo-site .bn-assertions details > summary { width: fit-content; color: var(--native-control-accent); cursor: pointer; }
+.benzo-site .bn-assertions details > summary:focus-visible { outline: 2px solid var(--native-control-accent); outline-offset: 2px; }
+.benzo-site .bn-assertions details ul { padding: 4px 0 0 10px; }
+.benzo-site .bn-assertions details li + li { margin-top: 4px; }
+.benzo-site .bn-assertion-body .bn-assertion-explanation { margin-top: 10px; }

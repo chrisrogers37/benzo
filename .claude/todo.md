@@ -1,5 +1,14 @@
 # Benzo Open Work
 
+## Live sleep assertions — November 16, 2026
+
+- [x] Isolate from primary and sibling work; retain read-only host boundaries.
+- [x] Add bounded assertion reader, strict model/parser and injected tests.
+- [x] Add visible-only refresh ownership and compact Diagnostics section.
+- [x] Mirror in active demo with lifecycle, error and independent dataset tests.
+- [ ] Integrate after Diagnostics layout/USB sibling, review independently and pass CI.
+- [ ] Merge reviewed final head; leave native installation/release/acceptance to original chat.
+
 ## Diagnostics layout and USB reporting — November 16, 2026
 
 - [x] Refresh origin/main and isolate on `codex/diagnostics-layout-usb` from `5ddfa67`.
